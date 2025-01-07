@@ -385,8 +385,9 @@ class CustomTile extends StatelessWidget {
                   label,
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
-                    fontSize: 14,
+                    fontSize: 13,
                   ),
+                  overflow: TextOverflow.visible  ,
                 ),
               ],
             ),

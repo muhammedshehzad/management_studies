@@ -125,7 +125,7 @@ class _StudentDetailsState extends State<StudentDetails> {
             itemBuilder: (context, index) {
               if (index == sections.length) {
                 return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 32),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
                   child: SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
@@ -189,17 +189,21 @@ Widget CustomRow2(String label, String value) {
           label,
           style: TextStyle(
             fontWeight: FontWeight.w400,
-            fontSize: 16,
+            fontSize: 13,
             color: Colors.blueGrey[600],
           ),
+          overflow: TextOverflow.ellipsis,
+
         ),
         Text(
           value,
           style: TextStyle(
             fontWeight: FontWeight.w800,
-            fontSize: 16,
+            fontSize: 15,
             color: Colors.blueGrey[800],
           ),
+          overflow: TextOverflow.ellipsis,
+
         ),
       ],
     ),
@@ -216,7 +220,7 @@ Widget CustomRow(String label1, String value1, String label2, String value2) {
           '$label1: $value1',
           style: TextStyle(
             fontWeight: FontWeight.w600,
-            fontSize: 16,
+            fontSize: 14,
             color: Colors.blueGrey[700],
           ),
         ),
@@ -224,7 +228,7 @@ Widget CustomRow(String label1, String value1, String label2, String value2) {
           '$label2: $value2',
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            fontSize: 16,
+            fontSize: 14,
             color: label2.toLowerCase() == "status" &&
                     value2.toLowerCase() == "passed"
                 ? Colors.green

@@ -245,18 +245,31 @@ class CustomStudentTile extends StatelessWidget {
                   color: Colors.black87),
             ),
           ),
-          title: Text(name, style: TextStyle(fontWeight: FontWeight.bold)),
-          subtitle: Text(email,
-              style: TextStyle(fontWeight: FontWeight.w500, fontSize: 13)),
+          title: Text(name, style: TextStyle(fontWeight: FontWeight.bold,color: Colors.black87)),
+          subtitle:  Flexible(
+            child: Container(
+              width: MediaQuery.of(context).size.width * 0.7,
+              padding: const EdgeInsets.only(bottom: 4.0),
+              child: Text(
+                '${email}',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w400,
+                  fontSize: 14,
+                  color: Colors.black54,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ),
           trailing: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text('${score}/1200',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10.5)),
               Text("${percentage}%",
-                  style: TextStyle(fontWeight: FontWeight.bold)),
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10.5)),
               Text('Grade: ${grade}',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10.5)),
             ],
           ),
         ),

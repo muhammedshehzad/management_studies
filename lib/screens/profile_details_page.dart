@@ -325,19 +325,22 @@ Widget buildEditableRow(String image, String label,
                   ),
                 ),
                 isEditing
-                    ? TextField(
-                  minLines: 1,
-                        decoration: InputDecoration(
-                          border: InputBorder.none,
-                          focusedBorder: InputBorder.none,
-                          enabledBorder: InputBorder.none,
-                          errorBorder: InputBorder.none,
-                          disabledBorder: InputBorder.none,
+                    ? Expanded(
+                      child: TextField(
+                                        minLines: 1,
+                                        maxLines: 3,
+                          decoration: InputDecoration(
+                            border: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            errorBorder: InputBorder.none,
+                            disabledBorder: InputBorder.none,
+                          ),
+                          controller: controller,
+                          style: const TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.w400),
                         ),
-                        controller: controller,
-                        style: const TextStyle(
-                            fontSize: 17, fontWeight: FontWeight.w400),
-                      )
+                    )
                     : Text(
                         details,
                         style: const TextStyle(

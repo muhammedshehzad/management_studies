@@ -109,13 +109,13 @@ class _TwoFactorAuthState extends State<TwoFactorAuth> with WidgetsBindingObserv
         title: const Text("Two-Factor Authentication"),
       ),
       body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8.0,vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 12.0,vertical: 12),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             const Text(
-              "Enable Biometric Authentication",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+              "Enable 2F Authentication",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
             ),
             const SizedBox(height: 20),
             Switch(
