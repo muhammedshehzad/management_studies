@@ -15,7 +15,7 @@ class _AcademicRecordsState extends State<AcademicRecords> {
   final FirebaseFirestore firestore = FirebaseFirestore.instance;
   final TextEditingController SearchBar = TextEditingController();
   String searchtext = '';
-  String _filterGrade = 'All';
+  String _filterGrade = '';
   String currentfilter = 'None';
   String _selectedDate = '';
   String _dateCount = '';
@@ -73,8 +73,7 @@ class _AcademicRecordsState extends State<AcademicRecords> {
 
   void clearQuery() {
     setState(() {
-      query = FirebaseFirestore.instance
-          .collection('records');
+      query = FirebaseFirestore.instance.collection('records');
     });
   }
 
@@ -183,8 +182,7 @@ class _AcademicRecordsState extends State<AcademicRecords> {
                                       child: SfDateRangePicker(
                                         onSelectionChanged: _onSelectionChanged,
                                         selectionMode:
-                                            DateRangePickerSelectionMode
-                                                .range,
+                                            DateRangePickerSelectionMode.range,
                                         initialSelectedRange: PickerDateRange(
                                           DateTime.now().subtract(
                                               const Duration(days: 6)),
@@ -316,47 +314,14 @@ class _AcademicRecordsState extends State<AcademicRecords> {
                                 ),
                               ],
                               if (currentfilter == 'Grade') ...[
-                                PopupMenuButton<String>(
-                                    onSelected: _updateFilter,
-                                    itemBuilder: (context) => [
-                                          const PopupMenuItem(
-                                              value: 'All',
-                                              child: Text('All Grades')),
-                                          const PopupMenuItem(
-                                              value: 'E',
-                                              child: Text('All Failed')),
-                                          const PopupMenuItem(
-                                              value: 'A+',
-                                              child: Text('Grade A+')),
-                                          const PopupMenuItem(
-                                              value: 'A',
-                                              child: Text('Grade A')),
-                                          const PopupMenuItem(
-                                              value: 'B+',
-                                              child: Text('Grade B+')),
-                                          const PopupMenuItem(
-                                              value: 'B',
-                                              child: Text('Grade B')),
-                                          const PopupMenuItem(
-                                              value: 'C+',
-                                              child: Text('Grade C+')),
-                                          const PopupMenuItem(
-                                              value: 'C',
-                                              child: Text('Grade C')),
-                                          const PopupMenuItem(
-                                              value: 'D+',
-                                              child: Text('Grade D+')),
-                                          const PopupMenuItem(
-                                              value: 'D',
-                                              child: Text('Grade D')),
-                                        ],
-                                    icon: Center(
-                                        child: Text(
-                                      'Select Grade',
-                                      style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 16),
-                                    ))),
+                                GradeFilterButton(
+                                  onSelected: (selectedGrade) {
+                                    setState(() {
+                                      _filterGrade = selectedGrade;
+                                    });
+                                    print('Selected Grade: $selectedGrade');
+                                  },
+                                ),
                               ],
                             ],
                           ),
@@ -436,7 +401,6 @@ class _AcademicRecordsState extends State<AcademicRecords> {
                   );
                 }
 
-
                 final allRecords = snapshot.data!.docs;
                 final filteredRecords = allRecords.where((doc) {
                   final data = doc.data() as Map<String, dynamic>;
@@ -487,7 +451,8 @@ class _AcademicRecordsState extends State<AcademicRecords> {
                     final name = data['name'] ?? 'No name';
                     final email = data['email'] ?? 'No email';
                     final score = num.tryParse(data['score'].toString()) ?? 0;
-                    final percentage = num.tryParse(data['percentage'].toString()) ?? 0;
+                    final percentage =
+                        num.tryParse(data['percentage'].toString()) ?? 0;
                     final grade = data['grade'] ?? 'N/A';
 
                     return CustomStudentTile(
@@ -540,6 +505,78 @@ class _AcademicRecordsState extends State<AcademicRecords> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class GradeFilterButton extends StatefulWidget {
+  final Function(String) onSelected;
+
+  const GradeFilterButton({Key? key, required this.onSelected})
+      : super(key: key);
+
+  @override
+  _GradeFilterButtonState createState() => _GradeFilterButtonState();
+}
+
+class _GradeFilterButtonState extends State<GradeFilterButton> {
+  List<String> grades = ['All']; // Default option
+  Future<List<String>> fetchGrades() async {
+    try {
+      final querySnapshot =
+          await FirebaseFirestore.instance.collection('records').get();
+
+      // Extract unique grade values
+      final grades = querySnapshot.docs
+          .map((doc) => doc.data()) // Ensure correct type
+          .map((data) =>
+              data['grade'] as String?) // Safely cast grade to String?
+          .where((grade) => grade != null) // Filter out null grades
+          .cast<String>() // Ensure a List<String>
+          .toSet() // Ensure unique grades
+          .toList();
+
+      // Sort grades (optional)
+      grades.sort();
+
+      return grades;
+    } catch (e) {
+      print('Error fetching grades: $e');
+      return []; // Return an empty list if an error occurs
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchGrades();
+  }
+
+  Future<void> _fetchGrades() async {
+    final fetchedGrades = await fetchGrades();
+    setState(() {
+      grades = ['All'] + fetchedGrades; // Prepend 'All' option
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<String>(
+      onSelected: widget.onSelected,
+      itemBuilder: (context) => grades
+          .map(
+            (grade) => PopupMenuItem(
+              value: grade,
+              child: Text(grade == 'All' ? 'All Grades' : 'Grade $grade'),
+            ),
+          )
+          .toList(),
+      icon: Center(
+        child: Text(
+          'Select Grade',
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+        ),
       ),
     );
   }
