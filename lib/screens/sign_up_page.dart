@@ -261,7 +261,7 @@ class _SignUpState extends State<SignUp> {
                 const SizedBox(height: 30.0),
                 Container(
                   height: 40,
-                  width: 400,
+                  width: MediaQuery.of(context).size.width,
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       foregroundColor: Colors.white,

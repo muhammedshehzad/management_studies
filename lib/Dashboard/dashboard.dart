@@ -213,7 +213,8 @@ class _DashboardState extends State<Dashboard> {
                       image: DecorationImage(
                         image: selectedImage != null
                             ? FileImage(selectedImage!)
-                            : FileImage(File(data!['url'] ?? "")) as ImageProvider,
+                            : FileImage(File(data!['url'] ?? ""))
+                                as ImageProvider,
                         fit: BoxFit.cover,
                         colorFilter: ColorFilter.mode(
                           Colors.black.withOpacity(0.5),
@@ -278,7 +279,6 @@ class _DashboardState extends State<Dashboard> {
                       ),
                     ),
                   ),
-
                   ListTile(
                     title: CustomTile(
                       label: 'Academic Records',
@@ -387,7 +387,7 @@ class CustomTile extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                     fontSize: 13,
                   ),
-                  overflow: TextOverflow.visible  ,
+                  overflow: TextOverflow.visible,
                 ),
               ],
             ),
@@ -438,49 +438,49 @@ class _ContentAreaState extends State<ContentArea> {
           Center(
             child: Column(
               children: [
-                if (isStudent) SizedBox(height: 50),
-                if (isStudent)
-                  CircularIndicator(0.82, "82.0%", "Average Attendance",
-                      Colors.yellowAccent.shade700),
-                if (isStudent)
-                  CircularIndicator(0.18, "18.0%", "Average Leave Taken",
-                      Colors.purpleAccent.shade700),
                 if (isStudent)
                   Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Padding(
-                        padding: const EdgeInsets.only(left: 38.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            SizedBox(
-                              height: 15,
-                            ),
-                            Text(
-                                "Total Attendance = \nDays Present / Total No.Of Working Days"),
-                            Text(
-                              "109 / 120",
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            SizedBox(
-                              height: 10,
-                            ),
-                          ],
-                        ),
+                      SizedBox(height: 50),
+                      CircularIndicator(0.82, "82.0%", "Average Attendance",
+                          Colors.yellowAccent.shade700),
+                      CircularIndicator(0.18, "18.0%", "Average Leave Taken",
+                          Colors.purpleAccent.shade700),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(
+                            height: 15,
+                          ),
+                          Text(
+                              "Total Attendance = \nDays Present / Total No.Of Working Days"),
+                          Text(
+                            "109 / 120",
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          SizedBox(
+                            height: 10,
+                          ),
+                        ],
                       ),
-                      Padding(
-                        padding: const EdgeInsets.only(left: 24.0),
-                        child: LinearPercentIndicator(
-                          width: 350.0,
-                          lineHeight: 24.0,
-                          percent: 0.82,
-                          backgroundColor: Colors.grey,
-                          progressColor: Colors.blue,
+                      Center(
+                        child: Container(
+                          width: MediaQuery.of(context).size.width*.7,
+                          child: LinearPercentIndicator(
+                            width: MediaQuery.of(context).size.width*.7,
+                            lineHeight: 36.0,
+                            percent: 0.82,
+                            backgroundColor: Colors.grey,
+                            progressColor: Colors.blue.shade500,
+                            center: Text('90.83%'),
+                          ),
                         ),
                       ),
                     ],
                   ),
+
+
                 if (isTeacher)
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,

@@ -15,78 +15,99 @@ class _AcademicRecordsState extends State<AcademicRecords> {
   final FirebaseFirestore firestore = FirebaseFirestore.instance;
   final TextEditingController SearchBar = TextEditingController();
   String searchtext = '';
-  String _filterGrade = 'All';
-  String currentfilter = 'None';
   String _selectedDate = '';
   String _dateCount = '';
   String _range = '';
   String _rangeCount = '';
-  String? selectedname;
+  String _filterGrade = 'All';
   Query? query;
-  List<dynamic> filteredRecords = [];
+  String currentfilter = 'None';
+  String? selectedname;
   DateTime startDate = DateTime.now();
   DateTime endDate = DateTime.now().add(Duration(days: 300));
+  List<dynamic> filteredRecords = [];
 
-  Stream<QuerySnapshot<Map<String, dynamic>>> records() {
-    return firestore.collection('records').snapshots();
+  Stream<QuerySnapshot<Map<String, dynamic>>> records()  {
+    return FirebaseFirestore.instance.collection('your_collection_name').snapshots();
+
   }
-
-  void fetchDateRecords(DateTime? startDate, DateTime? endDate) {
-    FirebaseFirestore.instance
-        .collection('records')
-        .where('admdate', isGreaterThanOrEqualTo: startDate)
-        .where('admdate', isLessThanOrEqualTo: endDate)
-        .snapshots()
-        .listen((querySnapshot) {
-      setState(() {
-        querySnapshot.docs.map((doc) => doc.data()).toList();
-      });
-    });
-  }
-
-  void fetchclearquery(DateTime start, DateTime end) {
+  void fetchRecords(DateTime? startDate, DateTime? endDate) {
     setState(() {
-      query = FirebaseFirestore.instance
-          .collection('records')
-          .where('admdate', isGreaterThanOrEqualTo: startDate)
-          .where('admdate', isLessThanOrEqualTo: endDate);
-    });
-    print('Filtered Records: $filteredRecords');
-  }
-
-  void _onSelectionChanged(DateRangePickerSelectionChangedArgs args) {
-    setState(() {
-      if (args.value is PickerDateRange) {
-        startDate = args.value.startDate;
-        endDate = args.value.endDate ?? args.value.startDate;
-        fetchclearquery(startDate, endDate);
-        print('$startDate - $endDate ');
-      } else if (args.value is DateTime) {
-        _selectedDate = args.value.toString();
-      } else if (args.value is List<DateTime>) {
-        _dateCount = args.value.length.toString();
-      } else {
-        _rangeCount = args.value.length.toString();
-      }
+      // Trigger refresh by calling setState with updated filters
     });
   }
-
-  void clearQuery() {
-    setState(() {
-      query = FirebaseFirestore.instance
-          .collection('records');
-    });
-  }
-
-  void SeachName(String query) {
+  void SeacrhName(String query) {
     setState(() {
       searchtext = query.toLowerCase();
     });
   }
 
+  void searchQuery() {
+    setState(() {
+      query = FirebaseFirestore.instance
+          .collection('records')
+          .where('academicyear',
+          isEqualTo: FirebaseAuth.instance.currentUser!.uid)
+          .orderBy('descending')
+          .startAt([SearchBar.text]).endAt([SearchBar.text + '\uf8ff']);
+    });
+  }
+
+  void fetchQuery(String name) {
+    setState(() {
+      query = FirebaseFirestore.instance
+          .collection('appointments')
+          .where('patientid', isEqualTo: FirebaseAuth.instance.currentUser!.uid)
+          .where('doctorsname', isEqualTo: selectedname);
+    });
+  }
+
+  void clearQuery() {
+    setState(() {
+      startDate = DateTime.now();
+      endDate = DateTime.now();
+      _filterGrade = 'All';
+      selectedname = null;
+      searchtext = '';    });
+  }
+
+  void fetchclearquery(DateTime start, DateTime end) async {
+    try {
+      QuerySnapshot querySnapshot = await FirebaseFirestore.instance
+          .collection('records')
+          .orderBy('admdate', descending: false)
+          .startAt([Timestamp.fromDate(start)]).endAt(
+          [Timestamp.fromDate(end)]).get();
+
+      setState(() {
+        filteredRecords = querySnapshot.docs.map((doc) => doc.data()).toList();
+      });
+
+      print('Filtered Records: $filteredRecords');
+      print('from ${startDate} to ${endDate}');
+    } catch (e) {
+      print('Error fetching records: $e');
+    }
+  }
+
   void _updateFilter(String grade) {
     setState(() {
       _filterGrade = grade;
+    });
+  }
+
+  void _onSelectionChanged(DateRangePickerSelectionChangedArgs args) {
+    setState(() {
+      startDate = args.value.startDate;
+      endDate = args.value.endDate;
+      if (args.value is PickerDateRange) {
+        startDate = args.value.startDate;
+        endDate = args.value.endDate ?? args.value.startDate;
+        fetchclearquery(startDate, endDate);
+        print('$startDate - $endDate');
+      } else if (args.value is DateTime) {
+        _selectedDate = args.value.toString();
+      }
     });
   }
 
@@ -96,6 +117,7 @@ class _AcademicRecordsState extends State<AcademicRecords> {
 
     return Scaffold(
       appBar: AppBar(
+        title: const Text('Academic Records'),
         leading: IconButton(
             onPressed: () {
               showModalBottomSheet<void>(
@@ -103,222 +125,221 @@ class _AcademicRecordsState extends State<AcademicRecords> {
                 builder: (BuildContext context) {
                   return StatefulBuilder(
                       builder: (BuildContext context, StateSetter setState) {
-                    return SizedBox(
-                      height: 500,
-                      width: MediaQuery.of(context).size.width,
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: SingleChildScrollView(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: <Widget>[
-                              Text(
-                                "Filter By",
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              SizedBox(height: 5),
-                              Text(
-                                "Select a filtering method: ",
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.grey[600],
-                                ),
-                              ),
-                              SizedBox(height: 5),
-                              Row(
-                                children: [
-                                  DropdownButton<String>(
-                                    value: currentfilter,
-                                    items: <String>[
-                                      'None',
-                                      'Student\'s Name',
-                                      'Date range',
-                                      'Grade',
-                                    ].map((String value) {
-                                      return DropdownMenuItem<String>(
-                                        value: value,
-                                        child: Text(value),
-                                      );
-                                    }).toList(),
-                                    onChanged: (value) {
-                                      setState(() {
-                                        currentfilter = value!;
-                                        print(currentfilter);
-                                      });
-                                    },
+                        return SizedBox(
+                          height: 500,
+                          width: MediaQuery.of(context).size.width,
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: SingleChildScrollView(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: <Widget>[
+                                  Text(
+                                    "Filter By",
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
-                                  Spacer(),
-                                  ElevatedButton(
-                                      onPressed: () {
-                                        clearQuery();
-                                      },
-                                      child: Text("Clear Filter"))
-                                ],
-                              ),
-                              if (currentfilter == 'None') ...[
-                                Container(
-                                  height: 250,
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(12),
-                                    color: Colors.grey[200],
+                                  SizedBox(height: 5),
+                                  Text(
+                                    "Select a filtering method: ",
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      color: Colors.grey[600],
+                                    ),
                                   ),
-                                  padding: const EdgeInsets.all(8.0),
-                                  child: Center(
-                                    child: Text('No Filter Category Selected'),
+                                  SizedBox(height: 5),
+                                  Row(
+                                    children: [
+                                      DropdownButton<String>(
+                                        value: currentfilter,
+                                        items: <String>[
+                                          'None',
+                                          'Student\'s Name',
+                                          'Date range',
+                                          'Grade',
+                                        ].map((String value) {
+                                          return DropdownMenuItem<String>(
+                                            value: value,
+                                            child: Text(value),
+                                          );
+                                        }).toList(),
+                                        onChanged: (value) {
+                                          setState(() {
+                                            currentfilter = value!;
+                                            print(currentfilter);
+                                          });
+                                        },
+                                      ),
+                                      Spacer(),
+                                      ElevatedButton(
+                                          onPressed: () {
+                                            clearQuery();
+                                          },
+                                          child: Text("Clear Filter"))
+                                    ],
                                   ),
-                                ),
-                              ],
-                              if (currentfilter == 'Date range') ...[
-                                Column(
-                                  children: [
+                                  if (currentfilter == 'None') ...[
                                     Container(
+                                      height: 250,
                                       decoration: BoxDecoration(
                                         borderRadius: BorderRadius.circular(12),
                                         color: Colors.grey[200],
                                       ),
                                       padding: const EdgeInsets.all(8.0),
-                                      child: SfDateRangePicker(
-                                        onSelectionChanged: _onSelectionChanged,
-                                        selectionMode:
-                                            DateRangePickerSelectionMode
-                                                .range,
-                                        initialSelectedRange: PickerDateRange(
-                                          DateTime.now().subtract(
-                                              const Duration(days: 6)),
-                                          DateTime.now()
-                                              .add(const Duration(days: 0)),
-                                        ),
+                                      child: Center(
+                                        child: Text('No Filter Category Selected'),
                                       ),
                                     ),
-                                    SizedBox(
-                                      height: 5,
-                                    ),
-                                    ElevatedButton(
-                                      onPressed: () {
-                                        fetchDateRecords(startDate, endDate);
-                                        print('$fetchDateRecords');
-                                        Navigator.pop(context);
-                                      },
-                                      child: const Text("Apply Date Filter"),
+                                  ],
+                                  if (currentfilter == 'Date range') ...[
+                                    Column(
+                                      children: [
+                                        Container(
+                                          decoration: BoxDecoration(
+                                            borderRadius: BorderRadius.circular(12),
+                                            color: Colors.grey[200],
+                                          ),
+                                          padding: const EdgeInsets.all(8.0),
+                                          child: SfDateRangePicker(
+                                            onSelectionChanged: _onSelectionChanged,
+                                            selectionMode:
+                                            DateRangePickerSelectionMode.range,
+                                            initialSelectedRange: PickerDateRange(
+                                              DateTime.now().subtract(
+                                                  const Duration(days: 1)),
+                                              DateTime.now()
+                                                  .add(const Duration(days: 1)),
+                                            ),
+                                          ),
+                                        ),
+                                        SizedBox(
+                                          height: 5,
+                                        ),
+                                        ElevatedButton(
+                                          onPressed: () {
+                                            if (startDate != null && endDate != null) {
+                                              fetchRecords(startDate, endDate); // Fetch records based on new date range
+                                            }
+                                          },
+                                          child: const Text("Apply Date Filter"),
+                                        ),
+                                      ],
                                     ),
                                   ],
-                                ),
-                              ],
-                              if (currentfilter == 'Student\'s name') ...[
-                                Container(
-                                  height: 300,
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(12),
-                                    color: Colors.grey[200],
-                                  ),
-                                  padding: const EdgeInsets.all(8.0),
-                                  child: StreamBuilder(
-                                    stream: FirebaseFirestore.instance
-                                        .collection('doctors')
-                                        .snapshots(),
-                                    builder: (context,
-                                        AsyncSnapshot<QuerySnapshot> snapshot) {
-                                      if (snapshot.connectionState ==
-                                          ConnectionState.waiting) {
-                                        return const Center(
-                                            child: CircularProgressIndicator());
-                                      }
-                                      if (snapshot.hasError) {
-                                        // ignore: avoid_print
-                                        print(
-                                            'Error fetching data: ${snapshot.error}');
-                                        return const Center(
-                                            child: Text('Error fetching data'));
-                                      }
+                                  if (currentfilter == 'Student\'s name') ...[
+                                    Container(
+                                      height: 300,
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(12),
+                                        color: Colors.grey[200],
+                                      ),
+                                      padding: const EdgeInsets.all(8.0),
+                                      child: StreamBuilder(
+                                        stream: FirebaseFirestore.instance
+                                            .collection('doctors')
+                                            .snapshots(),
+                                        builder: (context,
+                                            AsyncSnapshot<QuerySnapshot> snapshot) {
+                                          if (snapshot.connectionState ==
+                                              ConnectionState.waiting) {
+                                            return const Center(
+                                                child: CircularProgressIndicator());
+                                          }
+                                          if (snapshot.hasError) {
+                                            // ignore: avoid_print
+                                            print(
+                                                'Error fetching data: ${snapshot.error}');
+                                            return const Center(
+                                                child: Text('Error fetching data'));
+                                          }
 
-                                      if (snapshot.hasData &&
-                                          snapshot.data!.docs.isEmpty) {
-                                        return const Center(
-                                            child: Text('No Doctors found'));
-                                      }
-                                      return ListView.builder(
-                                          itemCount: snapshot.data!.docs.length,
-                                          itemBuilder: (context, index) {
-                                            final doctorsdata =
+                                          if (snapshot.hasData &&
+                                              snapshot.data!.docs.isEmpty) {
+                                            return const Center(
+                                                child: Text('No Doctors found'));
+                                          }
+                                          return ListView.builder(
+                                              itemCount: snapshot.data!.docs.length,
+                                              itemBuilder: (context, index) {
+                                                final doctorsdata =
                                                 snapshot.data!.docs[index];
-                                            final name = doctorsdata['name'];
-                                            // final uid = doctorsdata['uid'];
-                                            // final type = doctorsdata['type'];
-                                            // final url =
-                                            // doctorsdata['imageurl'];
-                                            // final available =
-                                            // doctorsdata['available'];
-                                            // final rating =
-                                            doctorsdata['rating'];
+                                                final name = doctorsdata['name'];
+                                                // final uid = doctorsdata['uid'];
+                                                // final type = doctorsdata['type'];
+                                                // final url =
+                                                // doctorsdata['imageurl'];
+                                                // final available =
+                                                // doctorsdata['available'];
+                                                // final rating =
+                                                doctorsdata['rating'];
 
-                                            return Padding(
-                                              padding:
+                                                return Padding(
+                                                  padding:
                                                   const EdgeInsets.symmetric(
                                                       vertical: 5),
-                                              child: Material(
-                                                elevation: 4,
-                                                borderRadius:
+                                                  child: Material(
+                                                    elevation: 4,
+                                                    borderRadius:
                                                     BorderRadius.circular(15),
-                                                child: Card(
-                                                  color: const Color.fromARGB(
-                                                      136, 79, 34, 153),
-                                                  shadowColor:
+                                                    child: Card(
+                                                      color: const Color.fromARGB(
+                                                          136, 79, 34, 153),
+                                                      shadowColor:
                                                       const Color.fromARGB(
                                                           24, 99, 69, 155),
-                                                  elevation: 15,
-                                                  child: ListTile(
-                                                      onTap: () {
-                                                        print(selectedname);
-                                                        setState(() {
-                                                          selectedname = name;
-                                                          // fetchQuery(
-                                                          //     selectedname!);
-                                                        });
-                                                      },
-                                                      contentPadding:
+                                                      elevation: 15,
+                                                      child: ListTile(
+                                                          onTap: () {
+                                                            print(selectedname);
+                                                            setState(() {
+                                                              selectedname = name;
+                                                              fetchQuery(
+                                                                  selectedname!);
+                                                            });
+                                                          },
+                                                          contentPadding:
                                                           const EdgeInsets
                                                               .symmetric(
                                                               horizontal: 16,
                                                               vertical: 12),
-                                                      leading: Text(
-                                                        name,
-                                                        maxLines: 2,
-                                                        overflow: TextOverflow
-                                                            .ellipsis,
-                                                        style: const TextStyle(
-                                                          color: Colors.white,
-                                                          fontSize: 18,
-                                                          fontWeight:
+                                                          leading: Text(
+                                                            name,
+                                                            maxLines: 2,
+                                                            overflow: TextOverflow
+                                                                .ellipsis,
+                                                            style: const TextStyle(
+                                                              color: Colors.white,
+                                                              fontSize: 18,
+                                                              fontWeight:
                                                               FontWeight.bold,
-                                                        ),
-                                                      ),
-                                                      trailing: CircleAvatar(
-                                                        radius: 10,
-                                                        child: CircleAvatar(
-                                                            radius: 8,
-                                                            backgroundColor:
+                                                            ),
+                                                          ),
+                                                          trailing: CircleAvatar(
+                                                            radius: 10,
+                                                            child: CircleAvatar(
+                                                                radius: 8,
+                                                                backgroundColor:
                                                                 selectedname ==
-                                                                        name
+                                                                    name
                                                                     ? Colors
-                                                                        .green
+                                                                    .green
                                                                     : Colors
-                                                                        .black),
-                                                      )),
-                                                ),
-                                              ),
-                                            );
-                                          });
-                                    },
-                                  ),
-                                ),
-                              ],
-                              if (currentfilter == 'Grade') ...[
-                                PopupMenuButton<String>(
-                                    onSelected: _updateFilter,
-                                    itemBuilder: (context) => [
+                                                                    .black),
+                                                          )),
+                                                    ),
+                                                  ),
+                                                );
+                                              });
+                                        },
+                                      ),
+                                    ),
+                                  ],
+                                  if (currentfilter == 'Grade') ...[
+                                    PopupMenuButton<String>(
+                                        onSelected: _updateFilter,
+                                        itemBuilder: (context) => [
                                           const PopupMenuItem(
                                               value: 'All',
                                               child: Text('All Grades')),
@@ -350,25 +371,24 @@ class _AcademicRecordsState extends State<AcademicRecords> {
                                               value: 'D',
                                               child: Text('Grade D')),
                                         ],
-                                    icon: Center(
-                                        child: Text(
-                                      'Select Grade',
-                                      style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 16),
-                                    ))),
-                              ],
-                            ],
+                                        icon: Center(
+                                            child: Text(
+                                              'Select Grade',
+                                              style: TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 16),
+                                            ))),
+                                  ],
+                                ],
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
-                    );
-                  });
+                        );
+                      });
                 },
               );
             },
             icon: Icon(Icons.tune)),
-        title: const Text('Academic Records'),
         // actions: [
         //   PopupMenuButton<String>(
         //     onSelected: _updateFilter,
@@ -403,7 +423,10 @@ class _AcademicRecordsState extends State<AcademicRecords> {
             padding: const EdgeInsets.all(8.0),
             child: TextField(
               controller: SearchBar,
-              onChanged: SeachName,
+              onChanged: (value) {
+                print(SearchBar.text);
+                SeacrhName(SearchBar.text);
+              },
               decoration: InputDecoration(
                 hintText: 'Search students',
                 filled: true,
@@ -416,8 +439,8 @@ class _AcademicRecordsState extends State<AcademicRecords> {
             ),
           ),
           Expanded(
-            child: StreamBuilder(
-              stream: query!.snapshots(),
+            child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+              stream: recordStream,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
@@ -435,25 +458,28 @@ class _AcademicRecordsState extends State<AcademicRecords> {
                     ),
                   );
                 }
-
-
                 final allRecords = snapshot.data!.docs;
+                final selectedStartDate = DateTime(2024, 01, 01); // Example start date
+                final selectedEndDate = DateTime(2025, 01, 01);
                 final filteredRecords = allRecords.where((doc) {
-                  final data = doc.data() as Map<String, dynamic>;
+                  final data = doc.data();
                   final name = (data['name'] ?? '').toLowerCase();
                   final email = (data['email'] ?? '').toLowerCase();
+                  final grade = (data['grade'] ?? '');
+                  final admdate = (data['admdate'] as Timestamp).toDate();
+                  final isWithinRange = admdate.isAfter(selectedStartDate.subtract(Duration(days: 1))) &&
+                      admdate.isBefore(selectedEndDate.add(Duration(days: 1)));
 
-                  // Check if the search text matches the name or email
-                  final matchesSearch = searchtext.isEmpty ||
-                      name.contains(searchtext.toLowerCase()) ||
-                      email.contains(searchtext.toLowerCase());
 
-                  return matchesSearch;
+                  final matchesSearch =
+                      name.contains(searchtext) || email.contains(searchtext);
+
+                  final matchesFilter =
+                      _filterGrade == 'All' || grade == _filterGrade;
+
+                  return matchesSearch && matchesFilter;
                 }).toList();
 
-                if (filteredRecords.isEmpty) {
-                  return Center(child: Text('No records found.'));
-                }
                 if (filteredRecords.isEmpty) {
                   return const Center(
                     child: Text(
@@ -467,29 +493,24 @@ class _AcademicRecordsState extends State<AcademicRecords> {
                   itemCount: filteredRecords.length,
                   itemBuilder: (context, index) {
                     final record = filteredRecords[index];
-                    final data = record.data() as Map<String, dynamic>;
-
-                    // final academicyear = data['academicyear'] ?? 'N/A';
-                    // final department = data['department'] ?? 'N/A';
-                    // final fatherjob = data['fatherjob'] ?? 'N/A';
-                    // final fathername = data['fathername'] ?? 'N/A';
-                    // final fatherphone = data['fatherphone'] ?? 'N/A';
-                    // final hod = data['hod'] ?? 'N/A';
-                    // final motherjob = data['motherjob'] ?? 'N/A';
-                    // final mothername = data['mothername'] ?? 'N/A';
-                    // final motherphone = data['motherphone'] ?? 'N/A';
-                    // final regno = data['regno'] ?? 'N/A';
-                    // final admdate = data['admdate']  ??  'N/A';
-                    //
-                    // final allRecords = snapshot.data!.docs;
-
+                    final data = filteredRecords[index].data();
                     final status = data['status'] ?? 'N/A';
                     final name = data['name'] ?? 'No name';
                     final email = data['email'] ?? 'No email';
                     final score = num.tryParse(data['score'].toString()) ?? 0;
-                    final percentage = num.tryParse(data['percentage'].toString()) ?? 0;
+                    final percentage =
+                        num.tryParse(data['percentage'].toString()) ?? 0;
                     final grade = data['grade'] ?? 'N/A';
-
+                    final academicyear = data['academicyear'] ?? 'N/A';
+                    final department = data['department'] ?? 'N/A';
+                    final fatherjob = data['fatherjob'] ?? 'N/A';
+                    final fathername = data['fathername'] ?? 'N/A';
+                    final fatherphone = data['fatherphone'] ?? 'N/A';
+                    final hod = data['hod  '] ?? 'N/A';
+                    final motherjob = data['motherjob'] ?? 'N/A';
+                    final mothername = data['mothername'] ?? 'N/A';
+                    final motherphone = data['motherphone'] ?? 'N/A';
+                    final regno = data['regno'] ?? 'N/A';
                     return CustomStudentTile(
                       status,
                       name,
@@ -497,7 +518,7 @@ class _AcademicRecordsState extends State<AcademicRecords> {
                       score,
                       percentage,
                       grade,
-                      () {
+                          () {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -516,7 +537,7 @@ class _AcademicRecordsState extends State<AcademicRecords> {
             padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8),
             child: Container(
               height: 40,
-              width: 400,
+              width: MediaQuery.of(context).size.width,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   foregroundColor: Colors.white,
@@ -547,14 +568,14 @@ class _AcademicRecordsState extends State<AcademicRecords> {
 
 class CustomStudentTile extends StatelessWidget {
   const CustomStudentTile(
-    this.status,
-    this.name,
-    this.email,
-    this.score,
-    this.percentage,
-    this.grade,
-    this.ontap,
-  );
+      this.status,
+      this.name,
+      this.email,
+      this.score,
+      this.percentage,
+      this.grade,
+      this.ontap,
+      );
 
   final String status;
   final String name;
@@ -604,13 +625,13 @@ class CustomStudentTile extends StatelessWidget {
             children: [
               Text('${score}/1200',
                   style:
-                      TextStyle(fontWeight: FontWeight.bold, fontSize: 10.5)),
+                  TextStyle(fontWeight: FontWeight.bold, fontSize: 10.5)),
               Text("${percentage}%",
                   style:
-                      TextStyle(fontWeight: FontWeight.bold, fontSize: 10.5)),
+                  TextStyle(fontWeight: FontWeight.bold, fontSize: 10.5)),
               Text('Grade: ${grade}',
                   style:
-                      TextStyle(fontWeight: FontWeight.bold, fontSize: 10.5)),
+                  TextStyle(fontWeight: FontWeight.bold, fontSize: 10.5)),
             ],
           ),
         ),
@@ -757,7 +778,7 @@ class _FormViewStudentsMarkState extends State<FormViewStudentsMark> {
               TextField(
                 controller: _admno,
                 decoration:
-                    const InputDecoration(labelText: "Admission Number"),
+                const InputDecoration(labelText: "Admission Number"),
               ),
               TextField(
                 controller: _admdate,
@@ -778,12 +799,12 @@ class _FormViewStudentsMarkState extends State<FormViewStudentsMark> {
               TextField(
                 controller: _fatherjob,
                 decoration:
-                    const InputDecoration(labelText: "Father's Occupation"),
+                const InputDecoration(labelText: "Father's Occupation"),
               ),
               TextField(
                 controller: _fatherphone,
                 decoration:
-                    const InputDecoration(labelText: "Father's Phone Number"),
+                const InputDecoration(labelText: "Father's Phone Number"),
               ),
               TextField(
                 controller: _mothername,
@@ -792,20 +813,20 @@ class _FormViewStudentsMarkState extends State<FormViewStudentsMark> {
               TextField(
                 controller: _motherjob,
                 decoration:
-                    const InputDecoration(labelText: "Mother's Occupation"),
+                const InputDecoration(labelText: "Mother's Occupation"),
               ),
               TextField(
                 controller: _motherphone,
                 keyboardType: TextInputType.number,
                 decoration:
-                    const InputDecoration(labelText: "Mother's Phone Number"),
+                const InputDecoration(labelText: "Mother's Phone Number"),
               ),
               const SizedBox(height: 20),
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 12.0),
                 child: Container(
                   height: 40,
-                  width: 400,
+                  width: MediaQuery.of(context).size.width,
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       foregroundColor: Colors.white,

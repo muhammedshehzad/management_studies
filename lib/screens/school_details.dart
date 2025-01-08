@@ -205,12 +205,12 @@ class _SchoolDetailsPageState extends State<SchoolDetailsPage> {
                         }
                       : null,
                   child: Container(
-                    height: 220,
-                    width: 370,
+                    height: MediaQuery.of(context).size.height*.475,
+                    width: MediaQuery.of(context).size.width*.95,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(24),
                       shape: BoxShape.rectangle,
-                      border: Border.all(color: Colors.black, width: 0.25),
+                      border: Border.all(color: Colors.black, width: 1),
                       image: DecorationImage(
                         image: temporaryImage != null
                             ? FileImage(temporaryImage!)

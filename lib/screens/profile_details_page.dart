@@ -328,7 +328,7 @@ Widget buildEditableRow(String image, String label,
                     ? Expanded(
                       child: TextField(
                                         minLines: 1,
-                                        maxLines: 3,
+                                        maxLines: 4,
                           decoration: InputDecoration(
                             border: InputBorder.none,
                             focusedBorder: InputBorder.none,

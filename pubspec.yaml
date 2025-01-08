@@ -53,6 +53,7 @@ dependencies:
   path_provider: ^2.1.5
   open_file: ^3.4.0
   printing: ^5.13.4
+  syncfusion_flutter_datepicker: ^28.1.38
   
 dev_dependencies:
   flutter_test:

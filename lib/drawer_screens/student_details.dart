@@ -39,7 +39,7 @@ class _StudentDetailsState extends State<StudentDetails> {
                   'regno': data['regno'] ?? 'N/A',
                   'academicyear': data['academicyear'] ?? 'N/A',
                   'admno': data['admno'] ?? 'N/A',
-                  'admdate': data['admdate'] ?? 'N/A',
+                  'admdate': (data['admdate'] as Timestamp).toDate().toLocal().toString(),
                   'department': data['department'] ?? 'N/A',
                   'hod': data['hod'] ?? 'N/A',
                   'fathername': data['fathername'] ?? 'N/A',
@@ -95,7 +95,13 @@ class _StudentDetailsState extends State<StudentDetails> {
               CustomRow2("Registration Number", data['regno'] ?? 'N/A'),
               CustomRow2("Academic Year", data['academicyear'] ?? 'N/A'),
               CustomRow2("Admission Number", data['admno'] ?? 'N/A'),
-              CustomRow2("Date of Admission", data['admdate'] ?? 'N/A'),
+              CustomRow2(
+                "Date of Admission",
+                (data['admdate'] != null && data['admdate'] is Timestamp)
+                    ? (data['admdate'] as Timestamp).toDate().toLocal().toString().split(' ')[0]
+                    : 'N/A',
+              ),
+
             ],
             [
               CustomRow2("Department", data['department'] ?? 'N/A'),
