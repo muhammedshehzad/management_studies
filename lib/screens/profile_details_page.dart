@@ -25,9 +25,7 @@ class _ProfileDetailsPageState extends State<ProfileDetailsPage> {
       setState(() {
         tempImage = File(returnedImage.path);
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SizedBox() as SnackBar
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SizedBox() as SnackBar);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('No image selected.')),
@@ -175,40 +173,21 @@ class _ProfileDetailsPageState extends State<ProfileDetailsPage> {
             child: Column(
               children: [
                 GestureDetector(
-                  onTap: isEditing
-                      ? () async {
-                    await _pickImage();
-                  }
-                      : null,
-                  child: Container(
-                    height: 250,
-                    width: 250,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.5),
-                        width: 5,
-                      ),                      image: DecorationImage(
-                        image: tempImage != null
-                            ? FileImage(tempImage!)
-                            : selectedImage != null
+                  onTap: isEditing ? _pickImage : null,
+                  child: CircleAvatar(
+                    radius: 90,
+                    backgroundColor: Colors.blueGrey.shade100,
+                    backgroundImage: tempImage != null
+                        ? FileImage(tempImage!)
+                        : selectedImage != null
                             ? FileImage(selectedImage!)
-                            : data['url'] != null
-                            ? FileImage(File(data['url'] ?? ""))
                             : NetworkImage(data['url'] ?? '') as ImageProvider,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                    child: !isEditing
-                        ? Container(
-                      child: const Center(
-                        child: Text(''),
-                      ),
-                    )
+                    child: tempImage == null && selectedImage == null
+                        ? const Icon(Icons.camera_alt,
+                            size: 50, color: Colors.white)
                         : null,
                   ),
                 ),
-
                 const SizedBox(height: 10),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 18.0),
@@ -292,7 +271,14 @@ Widget buildEditableRow(String image, String label,
       height: 70,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: Colors.grey, width: 1.0),
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            blurRadius: 5,
+            spreadRadius: .25,
+            color: Colors.grey,
+          ),
+        ],
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -326,9 +312,9 @@ Widget buildEditableRow(String image, String label,
                 ),
                 isEditing
                     ? Expanded(
-                      child: TextField(
-                                        minLines: 1,
-                                        maxLines: 4,
+                        child: TextField(
+                          minLines: 1,
+                          maxLines: 4,
                           decoration: InputDecoration(
                             border: InputBorder.none,
                             focusedBorder: InputBorder.none,
@@ -340,12 +326,12 @@ Widget buildEditableRow(String image, String label,
                           style: const TextStyle(
                               fontSize: 16, fontWeight: FontWeight.w400),
                         ),
-                    )
+                      )
                     : Text(
                         details,
                         style: const TextStyle(
                             fontSize: 17, fontWeight: FontWeight.w400),
-                  overflow: TextOverflow.ellipsis,
+                        overflow: TextOverflow.ellipsis,
                       ),
               ],
             ),
@@ -355,16 +341,3 @@ Widget buildEditableRow(String image, String label,
     ),
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
