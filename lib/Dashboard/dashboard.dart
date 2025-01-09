@@ -291,18 +291,16 @@ class _DashboardState extends State<Dashboard> {
                       // ...
                     },
                   ),
-                  Expanded(
-                    child: ListTile(
-                      title: CustomTile(
-                        label: 'Homework and \nAssignments',
-                        onPressed: () {},
-                        image: 'lib/assets/homeworkandassignment.png',
-                      ),
-                      onTap: () {
-                        // Update the state of the app.
-                        // ...
-                      },
+                  ListTile(
+                    title: CustomTile(
+                      label: 'Homework and \nAssignments',
+                      onPressed: () {},
+                      image: 'lib/assets/homeworkandassignment.png',
                     ),
+                    onTap: () {
+                      // Update the state of the app.
+                      // ...
+                    },
                   ),
                   ListTile(
                     title: CustomTile(

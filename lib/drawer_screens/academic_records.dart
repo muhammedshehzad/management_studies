@@ -210,30 +210,6 @@ class _AcademicRecordsState extends State<AcademicRecords> {
                                             fontWeight: FontWeight.bold,
                                             color: Colors.black87),
                                       ),
-                                      ElevatedButton(
-                                        style: ElevatedButton.styleFrom(
-                                          foregroundColor: Colors.white,
-                                          backgroundColor: Color(0xff3e948e),
-                                          elevation: 3,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(6),
-                                          ),
-                                        ),
-                                        onPressed: () {
-                                          setState(() {
-                                            clearQuery();
-                                          });
-                                          Navigator.pop(context);
-                                        },
-                                        child: Text(
-                                          'Clear Filters',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 14,
-                                          ),
-                                        ),
-                                      ),
                                     ],
                                   ),
                                 ),
@@ -343,17 +319,20 @@ class _AcademicRecordsState extends State<AcademicRecords> {
                                       backgroundColor: Color(0xff3e948e),
                                       elevation: 3,
                                       shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8),
+                                        borderRadius: BorderRadius.circular(6),
                                       ),
                                     ),
                                     onPressed: () {
+                                      setState(() {
+                                        clearQuery();
+                                      });
                                       Navigator.pop(context);
                                     },
                                     child: Text(
-                                      "Apply Filters",
+                                      'Clear Filters',
                                       style: TextStyle(
                                         fontWeight: FontWeight.bold,
-                                        fontSize: 16,
+                                        fontSize: 14,
                                       ),
                                     ),
                                   ),
