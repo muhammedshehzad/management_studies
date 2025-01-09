@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:new_school/drawer_screens/student_details.dart';
 import 'package:syncfusion_flutter_datepicker/datepicker.dart';
+import 'package:intl/intl.dart';
 
 class AcademicRecords extends StatefulWidget {
   const AcademicRecords({super.key});
@@ -27,15 +28,18 @@ class _AcademicRecordsState extends State<AcademicRecords> {
   DateTime endDate = DateTime.now().add(Duration(days: 300));
   List<dynamic> filteredRecords = [];
 
-  Stream<QuerySnapshot<Map<String, dynamic>>> records()  {
-    return FirebaseFirestore.instance.collection('your_collection_name').snapshots();
-
+  Stream<QuerySnapshot<Map<String, dynamic>>> records() {
+    return FirebaseFirestore.instance
+        .collection('your_collection_name')
+        .snapshots();
   }
+
   void fetchRecords(DateTime? startDate, DateTime? endDate) {
     setState(() {
       // Trigger refresh by calling setState with updated filters
     });
   }
+
   void SeacrhName(String query) {
     setState(() {
       searchtext = query.toLowerCase();
@@ -47,7 +51,7 @@ class _AcademicRecordsState extends State<AcademicRecords> {
       query = FirebaseFirestore.instance
           .collection('records')
           .where('academicyear',
-          isEqualTo: FirebaseAuth.instance.currentUser!.uid)
+              isEqualTo: FirebaseAuth.instance.currentUser!.uid)
           .orderBy('descending')
           .startAt([SearchBar.text]).endAt([SearchBar.text + '\uf8ff']);
     });
@@ -68,7 +72,8 @@ class _AcademicRecordsState extends State<AcademicRecords> {
       endDate = DateTime.now();
       _filterGrade = 'All';
       selectedname = null;
-      searchtext = '';    });
+      searchtext = '';
+    });
   }
 
   void fetchclearquery(DateTime start, DateTime end) async {
@@ -77,7 +82,7 @@ class _AcademicRecordsState extends State<AcademicRecords> {
           .collection('records')
           .orderBy('admdate', descending: false)
           .startAt([Timestamp.fromDate(start)]).endAt(
-          [Timestamp.fromDate(end)]).get();
+              [Timestamp.fromDate(end)]).get();
 
       setState(() {
         filteredRecords = querySnapshot.docs.map((doc) => doc.data()).toList();
@@ -125,221 +130,223 @@ class _AcademicRecordsState extends State<AcademicRecords> {
                 builder: (BuildContext context) {
                   return StatefulBuilder(
                       builder: (BuildContext context, StateSetter setState) {
-                        return SizedBox(
-                          height: 500,
-                          width: MediaQuery.of(context).size.width,
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: SingleChildScrollView(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: <Widget>[
-                                  Text(
-                                    "Filter By",
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                    ),
+                    return SizedBox(
+                      height: 500,
+                      width: MediaQuery.of(context).size.width,
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              Text(
+                                "Filter By",
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              SizedBox(height: 5),
+                              Text(
+                                "Select a filtering method: ",
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                              SizedBox(height: 5),
+                              Row(
+                                children: [
+                                  DropdownButton<String>(
+                                    value: currentfilter,
+                                    items: <String>[
+                                      'None',
+                                      'Student\'s Name',
+                                      'Date range',
+                                      'Grade',
+                                    ].map((String value) {
+                                      return DropdownMenuItem<String>(
+                                        value: value,
+                                        child: Text(value),
+                                      );
+                                    }).toList(),
+                                    onChanged: (value) {
+                                      setState(() {
+                                        currentfilter = value!;
+                                        print(currentfilter);
+                                      });
+                                    },
                                   ),
-                                  SizedBox(height: 5),
-                                  Text(
-                                    "Select a filtering method: ",
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      color: Colors.grey[600],
-                                    ),
+                                  Spacer(),
+                                  ElevatedButton(
+                                      onPressed: () {
+                                        clearQuery();
+                                      },
+                                      child: Text("Clear Filter"))
+                                ],
+                              ),
+                              if (currentfilter == 'None') ...[
+                                Container(
+                                  height: 250,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(12),
+                                    color: Colors.grey[200],
                                   ),
-                                  SizedBox(height: 5),
-                                  Row(
-                                    children: [
-                                      DropdownButton<String>(
-                                        value: currentfilter,
-                                        items: <String>[
-                                          'None',
-                                          'Student\'s Name',
-                                          'Date range',
-                                          'Grade',
-                                        ].map((String value) {
-                                          return DropdownMenuItem<String>(
-                                            value: value,
-                                            child: Text(value),
-                                          );
-                                        }).toList(),
-                                        onChanged: (value) {
-                                          setState(() {
-                                            currentfilter = value!;
-                                            print(currentfilter);
-                                          });
-                                        },
-                                      ),
-                                      Spacer(),
-                                      ElevatedButton(
-                                          onPressed: () {
-                                            clearQuery();
-                                          },
-                                          child: Text("Clear Filter"))
-                                    ],
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: Center(
+                                    child: Text('No Filter Category Selected'),
                                   ),
-                                  if (currentfilter == 'None') ...[
+                                ),
+                              ],
+                              if (currentfilter == 'Date range') ...[
+                                Column(
+                                  children: [
                                     Container(
-                                      height: 250,
                                       decoration: BoxDecoration(
                                         borderRadius: BorderRadius.circular(12),
                                         color: Colors.grey[200],
                                       ),
                                       padding: const EdgeInsets.all(8.0),
-                                      child: Center(
-                                        child: Text('No Filter Category Selected'),
-                                      ),
-                                    ),
-                                  ],
-                                  if (currentfilter == 'Date range') ...[
-                                    Column(
-                                      children: [
-                                        Container(
-                                          decoration: BoxDecoration(
-                                            borderRadius: BorderRadius.circular(12),
-                                            color: Colors.grey[200],
-                                          ),
-                                          padding: const EdgeInsets.all(8.0),
-                                          child: SfDateRangePicker(
-                                            onSelectionChanged: _onSelectionChanged,
-                                            selectionMode:
+                                      child: SfDateRangePicker(
+                                        onSelectionChanged: _onSelectionChanged,
+                                        selectionMode:
                                             DateRangePickerSelectionMode.range,
-                                            initialSelectedRange: PickerDateRange(
-                                              DateTime.now().subtract(
-                                                  const Duration(days: 1)),
-                                              DateTime.now()
-                                                  .add(const Duration(days: 1)),
-                                            ),
-                                          ),
+                                        initialSelectedRange: PickerDateRange(
+                                          DateTime.now().subtract(
+                                              const Duration(days: 1)),
+                                          DateTime.now()
+                                              .add(const Duration(days: 1)),
                                         ),
-                                        SizedBox(
-                                          height: 5,
-                                        ),
-                                        ElevatedButton(
-                                          onPressed: () {
-                                            if (startDate != null && endDate != null) {
-                                              fetchRecords(startDate, endDate); // Fetch records based on new date range
-                                            }
-                                          },
-                                          child: const Text("Apply Date Filter"),
-                                        ),
-                                      ],
+                                      ),
+                                    ),
+                                    SizedBox(
+                                      height: 5,
+                                    ),
+                                    ElevatedButton(
+                                      onPressed: () {
+                                        if (startDate != null &&
+                                            endDate != null) {
+                                          fetchRecords(startDate,
+                                              endDate); // Fetch records based on new date range
+                                        }
+                                      },
+                                      child: const Text("Apply Date Filter"),
                                     ),
                                   ],
-                                  if (currentfilter == 'Student\'s name') ...[
-                                    Container(
-                                      height: 300,
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(12),
-                                        color: Colors.grey[200],
-                                      ),
-                                      padding: const EdgeInsets.all(8.0),
-                                      child: StreamBuilder(
-                                        stream: FirebaseFirestore.instance
-                                            .collection('doctors')
-                                            .snapshots(),
-                                        builder: (context,
-                                            AsyncSnapshot<QuerySnapshot> snapshot) {
-                                          if (snapshot.connectionState ==
-                                              ConnectionState.waiting) {
-                                            return const Center(
-                                                child: CircularProgressIndicator());
-                                          }
-                                          if (snapshot.hasError) {
-                                            // ignore: avoid_print
-                                            print(
-                                                'Error fetching data: ${snapshot.error}');
-                                            return const Center(
-                                                child: Text('Error fetching data'));
-                                          }
+                                ),
+                              ],
+                              if (currentfilter == 'Student\'s name') ...[
+                                Container(
+                                  height: 300,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(12),
+                                    color: Colors.grey[200],
+                                  ),
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: StreamBuilder(
+                                    stream: FirebaseFirestore.instance
+                                        .collection('doctors')
+                                        .snapshots(),
+                                    builder: (context,
+                                        AsyncSnapshot<QuerySnapshot> snapshot) {
+                                      if (snapshot.connectionState ==
+                                          ConnectionState.waiting) {
+                                        return const Center(
+                                            child: CircularProgressIndicator());
+                                      }
+                                      if (snapshot.hasError) {
+                                        // ignore: avoid_print
+                                        print(
+                                            'Error fetching data: ${snapshot.error}');
+                                        return const Center(
+                                            child: Text('Error fetching data'));
+                                      }
 
-                                          if (snapshot.hasData &&
-                                              snapshot.data!.docs.isEmpty) {
-                                            return const Center(
-                                                child: Text('No Doctors found'));
-                                          }
-                                          return ListView.builder(
-                                              itemCount: snapshot.data!.docs.length,
-                                              itemBuilder: (context, index) {
-                                                final doctorsdata =
+                                      if (snapshot.hasData &&
+                                          snapshot.data!.docs.isEmpty) {
+                                        return const Center(
+                                            child: Text('No Doctors found'));
+                                      }
+                                      return ListView.builder(
+                                          itemCount: snapshot.data!.docs.length,
+                                          itemBuilder: (context, index) {
+                                            final doctorsdata =
                                                 snapshot.data!.docs[index];
-                                                final name = doctorsdata['name'];
-                                                // final uid = doctorsdata['uid'];
-                                                // final type = doctorsdata['type'];
-                                                // final url =
-                                                // doctorsdata['imageurl'];
-                                                // final available =
-                                                // doctorsdata['available'];
-                                                // final rating =
-                                                doctorsdata['rating'];
+                                            final name = doctorsdata['name'];
+                                            // final uid = doctorsdata['uid'];
+                                            // final type = doctorsdata['type'];
+                                            // final url =
+                                            // doctorsdata['imageurl'];
+                                            // final available =
+                                            // doctorsdata['available'];
+                                            // final rating =
+                                            doctorsdata['rating'];
 
-                                                return Padding(
-                                                  padding:
+                                            return Padding(
+                                              padding:
                                                   const EdgeInsets.symmetric(
                                                       vertical: 5),
-                                                  child: Material(
-                                                    elevation: 4,
-                                                    borderRadius:
+                                              child: Material(
+                                                elevation: 4,
+                                                borderRadius:
                                                     BorderRadius.circular(15),
-                                                    child: Card(
-                                                      color: const Color.fromARGB(
-                                                          136, 79, 34, 153),
-                                                      shadowColor:
+                                                child: Card(
+                                                  color: const Color.fromARGB(
+                                                      136, 79, 34, 153),
+                                                  shadowColor:
                                                       const Color.fromARGB(
                                                           24, 99, 69, 155),
-                                                      elevation: 15,
-                                                      child: ListTile(
-                                                          onTap: () {
-                                                            print(selectedname);
-                                                            setState(() {
-                                                              selectedname = name;
-                                                              fetchQuery(
-                                                                  selectedname!);
-                                                            });
-                                                          },
-                                                          contentPadding:
+                                                  elevation: 15,
+                                                  child: ListTile(
+                                                      onTap: () {
+                                                        print(selectedname);
+                                                        setState(() {
+                                                          selectedname = name;
+                                                          fetchQuery(
+                                                              selectedname!);
+                                                        });
+                                                      },
+                                                      contentPadding:
                                                           const EdgeInsets
                                                               .symmetric(
                                                               horizontal: 16,
                                                               vertical: 12),
-                                                          leading: Text(
-                                                            name,
-                                                            maxLines: 2,
-                                                            overflow: TextOverflow
-                                                                .ellipsis,
-                                                            style: const TextStyle(
-                                                              color: Colors.white,
-                                                              fontSize: 18,
-                                                              fontWeight:
+                                                      leading: Text(
+                                                        name,
+                                                        maxLines: 2,
+                                                        overflow: TextOverflow
+                                                            .ellipsis,
+                                                        style: const TextStyle(
+                                                          color: Colors.white,
+                                                          fontSize: 18,
+                                                          fontWeight:
                                                               FontWeight.bold,
-                                                            ),
-                                                          ),
-                                                          trailing: CircleAvatar(
-                                                            radius: 10,
-                                                            child: CircleAvatar(
-                                                                radius: 8,
-                                                                backgroundColor:
+                                                        ),
+                                                      ),
+                                                      trailing: CircleAvatar(
+                                                        radius: 10,
+                                                        child: CircleAvatar(
+                                                            radius: 8,
+                                                            backgroundColor:
                                                                 selectedname ==
-                                                                    name
+                                                                        name
                                                                     ? Colors
-                                                                    .green
+                                                                        .green
                                                                     : Colors
-                                                                    .black),
-                                                          )),
-                                                    ),
-                                                  ),
-                                                );
-                                              });
-                                        },
-                                      ),
-                                    ),
-                                  ],
-                                  if (currentfilter == 'Grade') ...[
-                                    PopupMenuButton<String>(
-                                        onSelected: _updateFilter,
-                                        itemBuilder: (context) => [
+                                                                        .black),
+                                                      )),
+                                                ),
+                                              ),
+                                            );
+                                          });
+                                    },
+                                  ),
+                                ),
+                              ],
+                              if (currentfilter == 'Grade') ...[
+                                PopupMenuButton<String>(
+                                    onSelected: _updateFilter,
+                                    itemBuilder: (context) => [
                                           const PopupMenuItem(
                                               value: 'All',
                                               child: Text('All Grades')),
@@ -371,20 +378,20 @@ class _AcademicRecordsState extends State<AcademicRecords> {
                                               value: 'D',
                                               child: Text('Grade D')),
                                         ],
-                                        icon: Center(
-                                            child: Text(
-                                              'Select Grade',
-                                              style: TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 16),
-                                            ))),
-                                  ],
-                                ],
-                              ),
-                            ),
+                                    icon: Center(
+                                        child: Text(
+                                      'Select Grade',
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16),
+                                    ))),
+                              ],
+                            ],
                           ),
-                        );
-                      });
+                        ),
+                      ),
+                    );
+                  });
                 },
               );
             },
@@ -459,7 +466,8 @@ class _AcademicRecordsState extends State<AcademicRecords> {
                   );
                 }
                 final allRecords = snapshot.data!.docs;
-                final selectedStartDate = DateTime(2024, 01, 01); // Example start date
+                final selectedStartDate =
+                    DateTime(2024, 01, 01); // Example start date
                 final selectedEndDate = DateTime(2025, 01, 01);
                 final filteredRecords = allRecords.where((doc) {
                   final data = doc.data();
@@ -467,9 +475,9 @@ class _AcademicRecordsState extends State<AcademicRecords> {
                   final email = (data['email'] ?? '').toLowerCase();
                   final grade = (data['grade'] ?? '');
                   final admdate = (data['admdate'] as Timestamp).toDate();
-                  final isWithinRange = admdate.isAfter(selectedStartDate.subtract(Duration(days: 1))) &&
+                  final isWithinRange = admdate.isAfter(
+                          selectedStartDate.subtract(Duration(days: 1))) &&
                       admdate.isBefore(selectedEndDate.add(Duration(days: 1)));
-
 
                   final matchesSearch =
                       name.contains(searchtext) || email.contains(searchtext);
@@ -518,7 +526,7 @@ class _AcademicRecordsState extends State<AcademicRecords> {
                       score,
                       percentage,
                       grade,
-                          () {
+                      () {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -568,14 +576,14 @@ class _AcademicRecordsState extends State<AcademicRecords> {
 
 class CustomStudentTile extends StatelessWidget {
   const CustomStudentTile(
-      this.status,
-      this.name,
-      this.email,
-      this.score,
-      this.percentage,
-      this.grade,
-      this.ontap,
-      );
+    this.status,
+    this.name,
+    this.email,
+    this.score,
+    this.percentage,
+    this.grade,
+    this.ontap,
+  );
 
   final String status;
   final String name;
@@ -625,13 +633,13 @@ class CustomStudentTile extends StatelessWidget {
             children: [
               Text('${score}/1200',
                   style:
-                  TextStyle(fontWeight: FontWeight.bold, fontSize: 10.5)),
+                      TextStyle(fontWeight: FontWeight.bold, fontSize: 10.5)),
               Text("${percentage}%",
                   style:
-                  TextStyle(fontWeight: FontWeight.bold, fontSize: 10.5)),
+                      TextStyle(fontWeight: FontWeight.bold, fontSize: 10.5)),
               Text('Grade: ${grade}',
                   style:
-                  TextStyle(fontWeight: FontWeight.bold, fontSize: 10.5)),
+                      TextStyle(fontWeight: FontWeight.bold, fontSize: 10.5)),
             ],
           ),
         ),
@@ -667,6 +675,21 @@ class _FormViewStudentsMarkState extends State<FormViewStudentsMark> {
   final TextEditingController _admno = TextEditingController();
   final TextEditingController _admdate = TextEditingController();
 
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? selectedDate = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(2010),
+      lastDate: DateTime(2050),
+    );
+    if (selectedDate != null && selectedDate != DateTime.now()) {
+      setState(() {
+        final DateFormat dateFormat = DateFormat('dd-MM-yyyy');
+        _admdate.text = dateFormat.format(selectedDate);
+      });
+    }
+  }
+
   Future<void> _submitData() async {
     final status = _statusController.text;
     final name = _nameController.text;
@@ -701,7 +724,8 @@ class _FormViewStudentsMarkState extends State<FormViewStudentsMark> {
       if (user != null) {
         final score = num.tryParse(_scoreController.text) ?? 0;
         final percentage = num.tryParse(_percentageController.text) ?? 0;
-
+        final admDateTime = DateFormat('dd-MM-yyyy').parse(admdate);
+        final admTimestamp = Timestamp.fromDate(admDateTime);
         await FirebaseFirestore.instance.collection('records').add({
           'status': status,
           'name': name,
@@ -720,7 +744,7 @@ class _FormViewStudentsMarkState extends State<FormViewStudentsMark> {
           'motherphone': motherphone,
           'regno': regno,
           'admno': admno,
-          'admdate': admdate,
+          'admdate': admTimestamp,
         });
 
         Navigator.pop(context);
@@ -778,11 +802,14 @@ class _FormViewStudentsMarkState extends State<FormViewStudentsMark> {
               TextField(
                 controller: _admno,
                 decoration:
-                const InputDecoration(labelText: "Admission Number"),
+                    const InputDecoration(labelText: "Admission Number"),
               ),
               TextField(
                 controller: _admdate,
                 decoration: const InputDecoration(labelText: "Admission Date"),
+                readOnly: true,
+                onTap: () =>
+                    _selectDate(context), // Trigger date picker when tapped
               ),
               TextField(
                 controller: _department,
@@ -799,12 +826,12 @@ class _FormViewStudentsMarkState extends State<FormViewStudentsMark> {
               TextField(
                 controller: _fatherjob,
                 decoration:
-                const InputDecoration(labelText: "Father's Occupation"),
+                    const InputDecoration(labelText: "Father's Occupation"),
               ),
               TextField(
                 controller: _fatherphone,
                 decoration:
-                const InputDecoration(labelText: "Father's Phone Number"),
+                    const InputDecoration(labelText: "Father's Phone Number"),
               ),
               TextField(
                 controller: _mothername,
@@ -813,17 +840,17 @@ class _FormViewStudentsMarkState extends State<FormViewStudentsMark> {
               TextField(
                 controller: _motherjob,
                 decoration:
-                const InputDecoration(labelText: "Mother's Occupation"),
+                    const InputDecoration(labelText: "Mother's Occupation"),
               ),
               TextField(
                 controller: _motherphone,
                 keyboardType: TextInputType.number,
                 decoration:
-                const InputDecoration(labelText: "Mother's Phone Number"),
+                    const InputDecoration(labelText: "Mother's Phone Number"),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 10),
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12.0),
+                padding: const EdgeInsets.only(bottom: 12.0),
                 child: Container(
                   height: 40,
                   width: MediaQuery.of(context).size.width,

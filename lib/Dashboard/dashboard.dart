@@ -236,34 +236,30 @@ class _DashboardState extends State<Dashboard> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
-                          Flexible(
-                            child: Container(
-                              width: MediaQuery.of(context).size.width * 0.7,
-                              padding: const EdgeInsets.only(bottom: 4.0),
-                              child: Text(
-                                data["username"] ?? 'N/A',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 24,
-                                  color: Colors.white,
-                                ),
-                                overflow: TextOverflow.ellipsis,
+                          Container(
+                            width: MediaQuery.of(context).size.width * 0.7,
+                            padding: const EdgeInsets.only(bottom: 4.0),
+                            child: Text(
+                              data["username"] ?? 'N/A',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 24,
+                                color: Colors.white,
                               ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          Flexible(
-                            child: Container(
-                              width: MediaQuery.of(context).size.width * 0.7,
-                              padding: const EdgeInsets.only(bottom: 4.0),
-                              child: Text(
-                                data["email"] ?? 'N/A',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 18,
-                                  color: Colors.white70,
-                                ),
-                                overflow: TextOverflow.ellipsis,
+                          Container(
+                            width: MediaQuery.of(context).size.width * 0.7,
+                            padding: const EdgeInsets.only(bottom: 4.0),
+                            child: Text(
+                              data["email"] ?? 'N/A',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 18,
+                                color: Colors.white70,
                               ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           Text(
@@ -466,9 +462,9 @@ class _ContentAreaState extends State<ContentArea> {
                       ),
                       Center(
                         child: Container(
-                          width: MediaQuery.of(context).size.width*.7,
+                          width: MediaQuery.of(context).size.width * .7,
                           child: LinearPercentIndicator(
-                            width: MediaQuery.of(context).size.width*.7,
+                            width: MediaQuery.of(context).size.width * .7,
                             lineHeight: 36.0,
                             percent: 0.82,
                             backgroundColor: Colors.grey,
@@ -479,8 +475,6 @@ class _ContentAreaState extends State<ContentArea> {
                       ),
                     ],
                   ),
-
-
                 if (isTeacher)
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,

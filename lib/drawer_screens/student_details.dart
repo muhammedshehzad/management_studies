@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/widgets.dart' as pw;
 
@@ -29,39 +30,43 @@ class _StudentDetailsState extends State<StudentDetails> {
         centerTitle: true,
         actions: [
           IconButton(
-              onPressed: () async {
-                final snapshot = await fetchDetails();
-                final data = snapshot.data()!;
+            onPressed: () async {
+              final snapshot = await fetchDetails();
+              final data = snapshot.data()!;
 
-                final studentData = {
-                  'name': data['name'] ?? 'N/A',
-                  'email': data['email'] ?? 'N/A',
-                  'regno': data['regno'] ?? 'N/A',
-                  'academicyear': data['academicyear'] ?? 'N/A',
-                  'admno': data['admno'] ?? 'N/A',
-                  'admdate': (data['admdate'] as Timestamp).toDate().toLocal().toString(),
-                  'department': data['department'] ?? 'N/A',
-                  'hod': data['hod'] ?? 'N/A',
-                  'fathername': data['fathername'] ?? 'N/A',
-                  'fatherjob': data['fatherjob'] ?? 'N/A',
-                  'fatherphone': data['fatherphone'] ?? 'N/A',
-                  'mothername': data['mothername'] ?? 'N/A',
-                  'motherjob': data['motherjob'] ?? 'N/A',
-                  'motherphone': data['motherphone'] ?? 'N/A',
-                  'score': "${data['score'] ?? 0}",
-                  'percentage': "${data['percentage'] ?? 0}",
-                  'grade': data['grade'] ?? 'N/A',
-                  'status': data['status'] ?? 'N/A',
-                };
+              final studentData = {
+                'name': data['name'] ?? 'N/A',
+                'email': data['email'] ?? 'N/A',
+                'regno': data['regno'] ?? 'N/A',
+                'academicyear': data['academicyear'] ?? 'N/A',
+                'admno': data['admno'] ?? 'N/A',
+                'admdate': (data['admdate'] as Timestamp)
+                    .toDate()
+                    .toLocal()
+                    .toString(),
+                'department': data['department'] ?? 'N/A',
+                'hod': data['hod'] ?? 'N/A',
+                'fathername': data['fathername'] ?? 'N/A',
+                'fatherjob': data['fatherjob'] ?? 'N/A',
+                'fatherphone': data['fatherphone'] ?? 'N/A',
+                'mothername': data['mothername'] ?? 'N/A',
+                'motherjob': data['motherjob'] ?? 'N/A',
+                'motherphone': data['motherphone'] ?? 'N/A',
+                'score': "${data['score'] ?? 0}",
+                'percentage': "${data['percentage'] ?? 0}",
+                'grade': data['grade'] ?? 'N/A',
+                'status': data['status'] ?? 'N/A',
+              };
 
-                final pdfFile = await PdfApi.generateStudentPdf(studentData);
-                await PdfApi.openFile(pdfFile);
-              },
-              icon: SizedBox(
-                height: 30,
-                width: 30,
-                child: Image.asset('lib/assets/pdf.png'),
-              ),),
+              final pdfFile = await PdfApi.generateStudentPdf(studentData);
+              await PdfApi.openFile(pdfFile);
+            },
+            icon: SizedBox(
+              height: 30,
+              width: 30,
+              child: Image.asset('lib/assets/pdf.png'),
+            ),
+          ),
         ],
       ),
       body: FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
@@ -98,10 +103,10 @@ class _StudentDetailsState extends State<StudentDetails> {
               CustomRow2(
                 "Date of Admission",
                 (data['admdate'] != null && data['admdate'] is Timestamp)
-                    ? (data['admdate'] as Timestamp).toDate().toLocal().toString().split(' ')[0]
+                    ? DateFormat('dd-MM-yyyy').format(
+                        (data['admdate'] as Timestamp).toDate().toLocal())
                     : 'N/A',
               ),
-
             ],
             [
               CustomRow2("Department", data['department'] ?? 'N/A'),
@@ -199,7 +204,6 @@ Widget CustomRow2(String label, String value) {
             color: Colors.blueGrey[600],
           ),
           overflow: TextOverflow.ellipsis,
-
         ),
         Text(
           value,
@@ -209,7 +213,6 @@ Widget CustomRow2(String label, String value) {
             color: Colors.blueGrey[800],
           ),
           overflow: TextOverflow.ellipsis,
-
         ),
       ],
     ),
