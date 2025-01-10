@@ -7,6 +7,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:new_school/drawer_screens/academic_records.dart';
+import 'package:new_school/drawer_screens/homework_assignment.dart';
 import 'package:new_school/screens/sign_in_page.dart';
 import 'package:percent_indicator/circular_percent_indicator.dart';
 import 'package:percent_indicator/linear_percent_indicator.dart';
@@ -294,7 +295,12 @@ class _DashboardState extends State<Dashboard> {
                   ListTile(
                     title: CustomTile(
                       label: 'Homework and \nAssignments',
-                      onPressed: () {},
+                      onPressed: () {
+                        Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) => HomeworkAssignmentsScreen()));
+                      },
                       image: 'lib/assets/homeworkandassignment.png',
                     ),
                     onTap: () {
