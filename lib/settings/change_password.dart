@@ -1,6 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-
 import '../screens/sign_in_page.dart';
 
 class ChangePassword extends StatefulWidget {
@@ -11,161 +10,119 @@ class ChangePassword extends StatefulWidget {
 }
 
 class _ChangePasswordState extends State<ChangePassword> {
-  final TextEditingController _oldpasswordController = TextEditingController();
-  final TextEditingController _newpasswordController = TextEditingController();
-  final TextEditingController _confirmnewPassword = TextEditingController();
-  bool isloading = false;
+  final TextEditingController _oldPasswordController = TextEditingController();
+  final TextEditingController _newPasswordController = TextEditingController();
+  final TextEditingController _confirmNewPasswordController =
+      TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  bool isLoading = false;
 
   var auth = FirebaseAuth.instance;
   var currentUser = FirebaseAuth.instance.currentUser;
 
-  changepassword(
-    String oldPassword,
-    String newPassword,
-  ) async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
-    if (_newpasswordController.text != _confirmnewPassword.text) {
+  Future<void> changePassword(String oldPassword, String newPassword) async {
+    if (!_formKey.currentState!.validate()) return;
+
+    if (_newPasswordController.text != _confirmNewPasswordController.text) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Passwords do not match')),
       );
       return;
     }
+
     String email = currentUser!.email!;
     var cred =
         EmailAuthProvider.credential(email: email, password: oldPassword);
-    await currentUser!.reauthenticateWithCredential(cred).then((value) {
-      currentUser!.updatePassword(newPassword);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Passwords changed')),
 
-      );Navigator.pushAndRemoveUntil(
+    setState(() => isLoading = true);
+    try {
+      await currentUser!.reauthenticateWithCredential(cred);
+      await currentUser!.updatePassword(newPassword);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Password successfully changed')),
+      );
+      Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (context) => SignIn()),
-            (Route<dynamic> route) => false,
+        (route) => false,
       );
-    }).catchError((error) {
+    } catch (error) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error : ${error.toString()}')),
+        SnackBar(content: Text('Error: ${error.toString()}')),
       );
-    });
-
+    } finally {
+      setState(() => isLoading = false);
+    }
   }
-
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        title: Text("Change Password"),
         leading: IconButton(
-            onPressed: () {
-              Navigator.pop(context);
-            },
-            icon: Icon(Icons.arrow_back)),
+          onPressed: () => Navigator.pop(context),
+          icon: Icon(Icons.arrow_back),
+        ),
       ),
       body: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.all(12.0),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           child: Form(
             key: _formKey,
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SizedBox(
-                  height: 0,
-                ),
                 Text(
-                  "Change password",
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 18,
-                      color: Colors.black87),
+                  "Update your password to enhance security.",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 16, color: Colors.black54),
                 ),
-                const SizedBox(height: 16.0),
-                TextFormField(
-                  controller: _oldpasswordController,
-                  decoration: const InputDecoration(
-                    labelText: 'Old password',
-                    border: OutlineInputBorder(),
-                  ),
-                  keyboardType: TextInputType.visiblePassword,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter your old password';
-                    }
-                    if (value.length < 6) {
-                      return 'Password must be at least 6 characters';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16.0),
-                TextFormField(
-                  controller: _newpasswordController,
+                const SizedBox(height: 20),
+                _buildTextField(
+                  controller: _oldPasswordController,
+                  label: "Old Password",
                   obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: 'New password',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter your new password';
-                    }
-                    if (value.length < 6) {
-                      return 'Password must be at least 6 characters';
-                    }
-                    return null;
-                  },
                 ),
-                const SizedBox(height: 16.0),
-                TextFormField(
-                  controller: _confirmnewPassword,
+                const SizedBox(height: 16),
+                _buildTextField(
+                  controller: _newPasswordController,
+                  label: "New Password",
                   obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Confirm new password',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please confirm your new password';
-                    }
-                    if (value.length < 6) {
-                      return 'Password must be at least 6 characters';
-                    }
-                    return null;
-                  },
                 ),
-                const SizedBox(height: 20.0),
-                isloading
-                    ? Center(
-                        child: CircularProgressIndicator(
-                          strokeWidth: 5,
-                          strokeAlign: .01,
-                          color: Color(0xff3e948e),
-                        ),
-                      )
+                const SizedBox(height: 16),
+                _buildTextField(
+                  controller: _confirmNewPasswordController,
+                  label: "Confirm New Password",
+                  obscureText: true,
+                ),
+                const SizedBox(height: 30),
+                isLoading
+                    ? CircularProgressIndicator(color: Color(0xff3e948e))
                     : Container(
-                        height: 40,
-                        width: 400,
+                        width: MediaQuery.of(context).size.width,
+                        height: 48,
                         child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            foregroundColor: Colors.white,
-                            backgroundColor: Color(0xff3e948e),
-                            elevation: 5,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                          ),
                           onPressed: () async {
-                            await changepassword(
-
-                                _oldpasswordController.text,
-                                _newpasswordController.text);
-
+                            await changePassword(
+                              _oldPasswordController.text,
+                              _newPasswordController.text,
+                            );
                           },
-                          child: const Text('Change'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Color(0xff3e948e),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                                vertical: 14, horizontal: 20),
+                          ),
+                          child: Text(
+                            "Change Password",
+                            style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white),
+                          ),
                         ),
                       ),
               ],
@@ -173,6 +130,31 @@ class _ChangePasswordState extends State<ChangePassword> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    bool obscureText = false,
+  }) {
+    return TextFormField(
+      controller: controller,
+      obscureText: obscureText,
+      decoration: InputDecoration(
+        labelText: label,
+        border: OutlineInputBorder(),
+        contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+      ),
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Please enter ${label.toLowerCase()}';
+        }
+        if (value.length < 6) {
+          return '$label must be at least 6 characters';
+        }
+        return null;
+      },
     );
   }
 }

@@ -212,14 +212,12 @@ class _SchoolDetailsPageState extends State<SchoolDetailsPage> {
                       shape: BoxShape.rectangle,
                       border: Border.all(color: Colors.black, width: 1),
                       image: DecorationImage(
-                        image: temporaryImage != null
-                            ? FileImage(temporaryImage!)
-                            : selectedNewImage != null
-                                ? FileImage(selectedNewImage!)
-                                : schooldata['url'] != null
-                                    ? FileImage(File(schooldata['url'] ?? ""))
-                                    : NetworkImage(schooldata['url'] ?? '')
-                                        as ImageProvider,
+                        image:
+
+                                     FileImage(File(schooldata['url'] ?? "")),
+                        // temporaryImage != null
+                                    // : NetworkImage(schooldata['url'] ?? '')
+                                    //     as ImageProvider,
                         fit: BoxFit.cover,
                       ),
                     ),

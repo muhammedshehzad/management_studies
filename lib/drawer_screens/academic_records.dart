@@ -425,37 +425,49 @@ class _AcademicRecordsState extends State<AcademicRecords> {
                   );
                 }
 
-                return ListView.builder(
-                  itemCount: filteredRecords.length,
-                  itemBuilder: (context, index) {
-                    final record = filteredRecords[index];
-                    final data = record.data() as Map<String, dynamic>;
-                    final status = data['status'] ?? 'N/A';
-                    final name = data['name'] ?? 'No name';
-                    final email = data['email'] ?? 'No email';
-                    final score = num.tryParse(data['score'].toString()) ?? 0;
-                    final percentage =
-                        num.tryParse(data['percentage'].toString()) ?? 0;
-                    final grade = data['grade'] ?? 'N/A';
-
-                    return CustomStudentTile(
-                      status,
-                      name,
-                      email,
-                      score,
-                      percentage,
-                      grade,
-                      () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                StudentDetails(docId: record.id),
-                          ),
-                        );
-                      },
-                    );
+                return RefreshIndicator(
+                  onRefresh: () {
+                    setState(() {
+                      query = FirebaseFirestore.instance.collection('records');
+                      _filterGrade = 'All';
+                      _filterDepartment = 'All';
+                      SearchBar.text = "";
+                      searchtext = "";
+                    });
+                    return _fetchRecords();
                   },
+                  child: ListView.builder(
+                    itemCount: filteredRecords.length,
+                    itemBuilder: (context, index) {
+                      final record = filteredRecords[index];
+                      final data = record.data() as Map<String, dynamic>;
+                      final status = data['status'] ?? 'N/A';
+                      final name = data['name'] ?? 'No name';
+                      final email = data['email'] ?? 'No email';
+                      final score = num.tryParse(data['score'].toString()) ?? 0;
+                      final percentage =
+                          num.tryParse(data['percentage'].toString()) ?? 0;
+                      final grade = data['grade'] ?? 'N/A';
+
+                      return CustomStudentTile(
+                        status,
+                        name,
+                        email,
+                        score,
+                        percentage,
+                        grade,
+                        () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  StudentDetails(docId: record.id),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
                 );
               },
             ),
@@ -653,8 +665,7 @@ class _FormViewStudentsMarkState extends State<FormViewStudentsMark> {
                 controller: _admdate,
                 decoration: const InputDecoration(labelText: "Admission Date"),
                 readOnly: true,
-                onTap: () =>
-                    _selectDate(context),
+                onTap: () => _selectDate(context),
               ),
               TextField(
                 controller: _department,
@@ -779,14 +790,21 @@ class CustomStudentTile extends StatelessWidget {
             ),
           ),
           trailing: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text('${score}/1200',
                   style:
                       TextStyle(fontWeight: FontWeight.bold, fontSize: 10.5)),
+              SizedBox(
+                height: 2,
+              ),
               Text("${percentage}%",
                   style:
                       TextStyle(fontWeight: FontWeight.bold, fontSize: 10.5)),
+              SizedBox(
+                height: 2,
+              ),
               Text('Grade: ${grade}',
                   style:
                       TextStyle(fontWeight: FontWeight.bold, fontSize: 10.5)),

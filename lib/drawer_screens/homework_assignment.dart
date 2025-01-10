@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:new_school/drawer_screens/student_details.dart';
+import 'package:side_sheet/side_sheet.dart';
 
 class HomeworkAssignmentsScreen extends StatefulWidget {
   @override
@@ -14,11 +14,18 @@ class _HomeworkAssignmentsScreenState extends State<HomeworkAssignmentsScreen> {
   Query? query;
   String searchtext = '';
   final TextEditingController Search = TextEditingController();
+  List<String> subject = ['All'];
+  String? selectedsubjectFilter;
+  String _filterSubject = '';
+  List<DocumentSnapshot> filteredSubRecords = [];
+  List<DocumentSnapshot> allSubRecords = [];
 
   @override
   void initState() {
     super.initState();
+    _filterSubject = 'All';
     query = FirebaseFirestore.instance.collection('homeworks');
+    _fetchInitialData();
   }
 
   void Seacrhh(String query) {
@@ -27,12 +34,195 @@ class _HomeworkAssignmentsScreenState extends State<HomeworkAssignmentsScreen> {
     });
   }
 
+  void _applyDeptFilter() {
+    setState(() {
+      if (_filterSubject == 'All') {
+        filteredSubRecords = allSubRecords; // Show all records
+      } else {
+        filteredSubRecords = allSubRecords
+            .where((doc) => doc['subject'] == _filterSubject)
+            .toList();
+      }
+    });
+  }
+
+  void clearQuery() {
+    setState(() {
+      _filterSubject = 'All';
+      query = FirebaseFirestore.instance.collection('homeworks');
+    });
+  }
+
+  Future<void> _fetchInitialData() async {
+    final querySnapshot =
+        await FirebaseFirestore.instance.collection('homeworks').get();
+    setState(() {
+      allSubRecords = querySnapshot.docs;
+      _applyDeptFilter();
+    });
+  }
+
+  Future<void> _submitnewData() async {
+    return;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text('Homework and Assignments'),
         centerTitle: true,
+        actions: [
+          IconButton(
+              onPressed: () {
+                SideSheet.right(
+                  sheetBorderRadius: 6,
+                  body: DefaultTabController(
+                    animationDuration: Duration(milliseconds: 300),
+                    length: 3,
+                    child: StatefulBuilder(
+                      builder: (BuildContext context, StateSetter setState) {
+                        return SizedBox(
+                          height: 400,
+                          child: Column(
+                            children: [
+                              // Header Section
+                              Padding(
+                                padding: const EdgeInsets.all(16.0),
+                                child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      "Filters",
+                                      style: TextStyle(
+                                          fontSize: 20,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.black87),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              // Tab Bar
+                              TabBar(
+                                indicatorColor: Color(0xff3e948e),
+                                labelColor: Colors.black87,
+                                unselectedLabelColor: Colors.grey,
+                                tabs: [
+                                  Tab(text: "Subject"),
+                                  Tab(text: "Status"),
+                                  Tab(text: "Date"),
+                                ],
+                              ),
+                              // Tab Bar Views
+                              Expanded(
+                                child: TabBarView(
+                                  children: [
+                                    // Grade Tab
+                                    Padding(
+                                      padding: const EdgeInsets.all(16.0),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            "Select a Subject",
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w500,
+                                              color: Colors.black87,
+                                            ),
+                                          ),
+                                          SizedBox(height: 12),
+                                          // GradeFilterButton(
+                                          //   onSelected: (selectedGrade) {
+                                          //     setState(() {
+                                          //       // _filterGrade = selectedGrade;
+                                          //       // _applyFilter();
+                                          //     });
+                                          //   },
+                                          // ),
+                                          SubjectFilterButton(
+                                              onSelected: (selectedSubject) {
+                                            setState(() {
+                                              _filterSubject = selectedSubject;
+                                              _applyDeptFilter();
+                                            });
+                                          })
+                                        ],
+                                      ),
+                                    ),
+                                    // Department Tab
+                                    Padding(
+                                      padding: const EdgeInsets.all(16.0),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            "Select a Status",
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w500,
+                                              color: Colors.black87,
+                                            ),
+                                          ),
+                                          SizedBox(height: 12),
+                                        ],
+                                      ),
+                                    ),
+                                    // Date Tab
+                                    Padding(
+                                      padding: const EdgeInsets.all(16.0),
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          color: Colors.grey[100],
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              // Apply Filter Button
+                              Padding(
+                                padding: const EdgeInsets.all(16.0),
+                                child: ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    foregroundColor: Colors.white,
+                                    backgroundColor: Color(0xff3e948e),
+                                    elevation: 3,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                  ),
+                                  onPressed: () {
+                                    setState(() {
+                                      clearQuery();
+                                    });
+                                    Navigator.pop(context);
+                                  },
+                                  child: Text(
+                                    'Clear Filters',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  context: context,
+                );
+              },
+              icon: Icon(Icons.filter_list_sharp))
+        ],
       ),
       body: Stack(
         children: [
@@ -41,13 +231,6 @@ class _HomeworkAssignmentsScreenState extends State<HomeworkAssignmentsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Padding(
-                //   padding: const EdgeInsets.only(left: 8.0),
-                //   child: Text(
-                //     'Homeworks & Assignments',
-                //     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                //   ),
-                // ),
                 Padding(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 4.0, vertical: 4),
@@ -100,6 +283,7 @@ class _HomeworkAssignmentsScreenState extends State<HomeworkAssignmentsScreen> {
                                 ?.toDate()
                                 .toString() ??
                             '';
+
                         final status =
                             data['status']?.toString().toLowerCase() ?? '';
                         final matchesSearch = searchtext.isEmpty ||
@@ -108,7 +292,11 @@ class _HomeworkAssignmentsScreenState extends State<HomeworkAssignmentsScreen> {
                             status.contains(searchtext) ||
                             deadline.contains(searchtext);
 
-                        return matchesSearch;
+                        final matchesSubject =
+                            _filterSubject.toLowerCase() == 'all' ||
+                                subject.trim().toLowerCase() ==
+                                    _filterSubject.trim().toLowerCase();
+                        return matchesSearch && matchesSubject;
                       }).toList();
 
                       if (filteredRecords.isEmpty) {
@@ -120,30 +308,39 @@ class _HomeworkAssignmentsScreenState extends State<HomeworkAssignmentsScreen> {
                         );
                       }
 
-                      return ListView.builder(
-                        itemCount: filteredRecords.length,
-                        itemBuilder: (context, index) {
-                          final record = filteredRecords[index];
-                          final data = record.data() as Map<String, dynamic>;
-                          final subject = data['subject'] ?? 'N/A';
-                          final title = data['title'] ?? 'No title';
-                          final deadline =
-                              (data['deadline'] as Timestamp?)?.toDate() ??
-                                  DateTime.now();
-                          final formattedDeadline =
-                              DateFormat('dd-MM-yyyy').format(deadline);
-                          final status = data['status'] ?? 'No status';
-
-                          return CustomStudentTile(
-                            subject,
-                            title,
-                            formattedDeadline,
-                            status,
-                            () {
-                              // Handle onTap here
-                            },
-                          );
+                      return RefreshIndicator(
+                        onRefresh: () {
+                          setState(() {
+                            query = FirebaseFirestore.instance
+                                .collection('homeworks');
+                            Search.text = "";
+                            searchtext = "";
+                          });
+                          return _submitnewData();
                         },
+                        child: ListView.builder(
+                          itemCount: filteredRecords.length,
+                          itemBuilder: (context, index) {
+                            final record = filteredRecords[index];
+                            final data = record.data() as Map<String, dynamic>;
+                            final subject = data['subject'] ?? 'N/A';
+                            final title = data['title'] ?? 'No title';
+                            final deadline =
+                                (data['deadline'] as Timestamp?)?.toDate() ??
+                                    DateTime.now();
+                            final formattedDeadline =
+                                DateFormat('dd-MM-yyyy').format(deadline);
+                            final status = data['status'] ?? 'No status';
+
+                            return CustomStudentTile(
+                              subject,
+                              title,
+                              formattedDeadline,
+                              status,
+                              () {},
+                            );
+                          },
+                        ),
                       );
                     },
                   ),
@@ -364,6 +561,108 @@ class _HomeWorkDetailsState extends State<HomeWorkDetails> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class SubjectFilterButton extends StatefulWidget {
+  final Function(String) onSelected;
+
+  const SubjectFilterButton({Key? key, required this.onSelected})
+      : super(key: key);
+
+  @override
+  _SubjectFilterButtonState createState() => _SubjectFilterButtonState();
+}
+
+class _SubjectFilterButtonState extends State<SubjectFilterButton> {
+  List<String> subject = ['All'];
+  String? selectedsubjectFilter; // Selected value
+  String _filterSubject = '';
+  List<DocumentSnapshot> filteredSubRecords = [];
+  List<DocumentSnapshot> allSubRecords = []; // All fetched records
+
+  void _applyDeptFilter() {
+    setState(() {
+      if (_filterSubject == 'All') {
+        filteredSubRecords = allSubRecords;
+      } else {
+        filteredSubRecords = allSubRecords
+            .where((doc) => doc['homeworks'] == _filterSubject)
+            .toList();
+      }
+    });
+  }
+
+  Future<List<String>> fetchSubject() async {
+    try {
+      final querySnapshot =
+          await FirebaseFirestore.instance.collection('homeworks').get();
+
+      final subjects = querySnapshot.docs
+          .map((doc) => doc.data())
+          .map((data) => data['subject'] as String?)
+          .where((subject) => subject != null)
+          .cast<String>()
+          .toSet()
+          .toList();
+
+      subjects.sort();
+      return subjects;
+    } catch (e) {
+      print('Error fetching departments: $e');
+      return [];
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    setState(() {
+      _fetchSubjects();
+    });
+    _fetchSubjects();
+  }
+
+  Future<void> _fetchSubjects() async {
+    final fetchedDepartments = await fetchSubject();
+    setState(() {
+      subject = ['All'] + fetchedDepartments;
+      selectedsubjectFilter = subject.first;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DropdownButton<String>(
+      value: selectedsubjectFilter,
+      items: subject.map((String subject) {
+        return DropdownMenuItem<String>(
+          value: subject,
+          child: Text(
+            subject == 'All' ? 'All Subjects' : subject,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
+        );
+      }).toList(),
+      onChanged: (newValue) {
+        setState(() {
+          selectedsubjectFilter = newValue!;
+          _filterSubject = newValue;
+          widget.onSelected(newValue!);
+          print(selectedsubjectFilter);
+        });
+      },
+      hint: Text(
+        'Select Dept',
+        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+      ),
+      icon: const Icon(
+        Icons.arrow_drop_down,
+        color: Colors.blueGrey,
+      ),
+      dropdownColor: Colors.white,
+      underline: Container(height: 0),
     );
   }
 }

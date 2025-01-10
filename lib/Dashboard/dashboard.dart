@@ -5,9 +5,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:new_school/drawer_screens/academic_records.dart';
 import 'package:new_school/drawer_screens/homework_assignment.dart';
+import 'package:new_school/screens/profile_page.dart';
 import 'package:new_school/screens/sign_in_page.dart';
 import 'package:percent_indicator/circular_percent_indicator.dart';
 import 'package:percent_indicator/linear_percent_indicator.dart';
@@ -25,21 +27,47 @@ class Dashboard extends StatefulWidget {
   State<Dashboard> createState() => _DashboardState();
 }
 
-class _DashboardState extends State<Dashboard> {
+class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
   File? selectedImage;
   bool isAuthenticating = false;
 
   Future<void> _checkAuthenticationOnStartup() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     bool isFingerprintEnabled = prefs.getBool('fingerprint_enabled') ?? false;
+    bool isAuthenticated = prefs.getBool('is_authenticated') ?? false;
 
-    if (isFingerprintEnabled) {
-      bool isAuthenticated = await _showBiometricAuth();
-      if (!isAuthenticated) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => TwoFactorAuth()),
+    if (isFingerprintEnabled && !isAuthenticated && !isAuthenticating) {
+      bool authResult = await _showBiometricAuth();
+      if (!authResult) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Authentication required.')),
         );
+        await Future.delayed(const Duration(milliseconds: 100));
+        SystemNavigator.pop();
+      }
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _checkAuthenticationOnResume();
+    }
+    super.didChangeAppLifecycleState(state);
+  }
+
+  Future<void> _checkAuthenticationOnResume() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    bool isFingerprintEnabled = prefs.getBool('fingerprint_enabled') ?? false;
+    bool isAuthenticated = prefs.getBool('is_authenticated') ?? false;
+
+    if (isFingerprintEnabled && !isAuthenticated && !isAuthenticating) {
+      bool authResult = await _showBiometricAuth();
+      if (!authResult) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Authentication required.')),
+        );
+        SystemNavigator.pop();
       }
     }
   }
@@ -57,7 +85,7 @@ class _DashboardState extends State<Dashboard> {
       if (!canCheckBiometrics) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text('Biometric authentication not available')),
+              content: Text('Biometric authentication not available.')),
         );
         return false;
       }
@@ -66,10 +94,16 @@ class _DashboardState extends State<Dashboard> {
         localizedReason: 'Authenticate to access the dashboard',
         options: const AuthenticationOptions(biometricOnly: true),
       );
+
+      if (result) {
+        SharedPreferences prefs = await SharedPreferences.getInstance();
+        prefs.setBool('is_authenticated', true);
+      }
+
       return result;
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
+        SnackBar(content: Text('Authentication error: $e')),
       );
       return false;
     } finally {
@@ -104,7 +138,14 @@ class _DashboardState extends State<Dashboard> {
   void initState() {
     super.initState();
     _loadImage();
+    WidgetsBinding.instance.addObserver(this);
     _checkAuthenticationOnStartup();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
   }
 
   Future<void> _loadImage() async {
@@ -169,11 +210,11 @@ class _DashboardState extends State<Dashboard> {
                 Padding(
                   padding: const EdgeInsets.only(right: 5.0),
                   child: IconButton(
-                    onPressed: () async {
-                      await Navigator.pushNamed(context, '/profile');
-                      setState(() {
-                        _loadImage();
-                      });
+                    onPressed: () {
+                      Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => ProfilePage()));
                     },
                     icon: Container(
                         height: 33,
@@ -182,11 +223,9 @@ class _DashboardState extends State<Dashboard> {
                             shape: BoxShape.circle,
                             image: DecorationImage(
                               image: (selectedImage != null)
-                                  ? FileImage(selectedImage!)
-                                  : (selectedImage == null)
-                                      ? FileImage(File(data['url'] ?? ""))
-                                          as ImageProvider
-                                      : AssetImage('lib/assets/pandy.jpeg'),
+                                  ? FileImage(File(data['url'] ?? ""))
+                                      as ImageProvider
+                                  : AssetImage('lib/assets/pandy.jpeg'),
                               fit: BoxFit.cover,
                             ))),
                   ),
@@ -209,126 +248,138 @@ class _DashboardState extends State<Dashboard> {
                 padding: EdgeInsets.zero,
                 dragStartBehavior: DragStartBehavior.start,
                 children: [
-                  DrawerHeader(
-                    decoration: BoxDecoration(
-                      image: DecorationImage(
-                        image: selectedImage != null
-                            ? FileImage(selectedImage!)
-                            : FileImage(File(data!['url'] ?? ""))
+                  Expanded(
+                    flex: 3,
+                    child: Container(
+                      child: DrawerHeader(
+                        decoration: BoxDecoration(
+                          image: DecorationImage(
+                            image: FileImage(File(data!['url'] ?? ""))
                                 as ImageProvider,
-                        fit: BoxFit.cover,
-                        colorFilter: ColorFilter.mode(
-                          Colors.black.withOpacity(0.5),
-                          BlendMode.darken,
+                            fit: BoxFit.cover,
+                            colorFilter: ColorFilter.mode(
+                              Colors.black.withOpacity(0.5),
+                              BlendMode.darken,
+                            ),
+                          ),
+                          borderRadius: BorderRadius.vertical(
+                            bottom: Radius.circular(2),
+                          ),
+                        ),
+                        child: GestureDetector(
+                          onTap: () async {
+                            await Navigator.pushNamed(context, '/profile');
+                            setState(() {
+                              _loadImage();
+                            });
+                          },
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  data["username"] ?? 'N/A',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 24,
+                                    color: Colors.white,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              Expanded(
+                                child: Text(
+                                  data["email"] ?? 'N/A',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 18,
+                                    color: Colors.white70,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              Expanded(
+                                child: Text(
+                                  role,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 17,
+                                    color: Colors.yellowAccent,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                      borderRadius: BorderRadius.vertical(
-                        bottom: Radius.circular(2),
-                      ),
                     ),
-                    child: GestureDetector(
-                      onTap: () async {
-                        await Navigator.pushNamed(context, '/profile');
-                        setState(() {
-                          _loadImage();
-                        });
-                      },
+                  ),
+                  Expanded(
+                    flex: 7,
+                    child: Container(
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.end,
                         children: [
-                          Container(
-                            width: MediaQuery.of(context).size.width * 0.7,
-                            padding: const EdgeInsets.only(bottom: 4.0),
-                            child: Text(
-                              data["username"] ?? 'N/A',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 24,
-                                color: Colors.white,
-                              ),
-                              overflow: TextOverflow.ellipsis,
+                          ListTile(
+                            title: CustomTile(
+                              label: 'Academic Records',
+                              onPressed: () {
+                                Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (context) =>
+                                            AcademicRecords()));
+                              },
+                              image: 'lib/assets/academicrecords.png',
                             ),
+                            onTap: () {
+                              // Update the state of the app.
+                              // ...
+                            },
                           ),
-                          Container(
-                            width: MediaQuery.of(context).size.width * 0.7,
-                            padding: const EdgeInsets.only(bottom: 4.0),
-                            child: Text(
-                              data["email"] ?? 'N/A',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 18,
-                                color: Colors.white70,
-                              ),
-                              overflow: TextOverflow.ellipsis,
+                          ListTile(
+                            title: CustomTile(
+                              label: 'Homework and \nAssignments',
+                              onPressed: () {
+                                Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (context) =>
+                                            HomeworkAssignmentsScreen()));
+                              },
+                              image: 'lib/assets/homeworkandassignment.png',
                             ),
+                            onTap: () {
+                              // Update the state of the app.
+                              // ...
+                            },
                           ),
-                          Text(
-                            role,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 17,
-                              color: Colors.yellowAccent,
-                              fontStyle: FontStyle.italic,
+                          ListTile(
+                            title: CustomTile(
+                              label: 'Canteen',
+                              onPressed: () {},
+                              image: 'lib/assets/canteen.png',
                             ),
+                            onTap: () {
+                              // Update the state of the app.
+                              // ...
+                            },
+                          ),
+                          ListTile(
+                            title: CustomTile(
+                              label: 'Leaves',
+                              onPressed: () {},
+                              image: 'lib/assets/leaves.png',
+                            ),
+                            onTap: () {
+                              // Update the state of the app.
+                              // ...
+                            },
                           ),
                         ],
                       ),
                     ),
-                  ),
-                  ListTile(
-                    title: CustomTile(
-                      label: 'Academic Records',
-                      onPressed: () {
-                        Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) => AcademicRecords()));
-                      },
-                      image: 'lib/assets/academicrecords.png',
-                    ),
-                    onTap: () {
-                      // Update the state of the app.
-                      // ...
-                    },
-                  ),
-                  ListTile(
-                    title: CustomTile(
-                      label: 'Homework and \nAssignments',
-                      onPressed: () {
-                        Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) => HomeworkAssignmentsScreen()));
-                      },
-                      image: 'lib/assets/homeworkandassignment.png',
-                    ),
-                    onTap: () {
-                      // Update the state of the app.
-                      // ...
-                    },
-                  ),
-                  ListTile(
-                    title: CustomTile(
-                      label: 'Canteen',
-                      onPressed: () {},
-                      image: 'lib/assets/canteen.png',
-                    ),
-                    onTap: () {
-                      // Update the state of the app.
-                      // ...
-                    },
-                  ),
-                  ListTile(
-                    title: CustomTile(
-                      label: 'Leaves',
-                      onPressed: () {},
-                      image: 'lib/assets/leaves.png',
-                    ),
-                    onTap: () {
-                      // Update the state of the app.
-                      // ...
-                    },
                   ),
                 ],
               ),
@@ -649,6 +700,7 @@ class TeacherDashboard extends StatelessWidget {
       child: Container(
         height: 350,
         child: ListView.builder(
+          physics: NeverScrollableScrollPhysics(),
           itemCount: departmentGenderCount.length,
           itemBuilder: (context, index) {
             String department = departmentGenderCount.keys.elementAt(index);

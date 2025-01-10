@@ -190,7 +190,7 @@ class _ProfileDetailsPageState extends State<ProfileDetailsPage> {
                 ),
                 const SizedBox(height: 10),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 18.0),
+                  padding: const EdgeInsets.symmetric(horizontal: 9.0),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -274,8 +274,8 @@ Widget buildEditableRow(String image, String label,
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            blurRadius: 5,
-            spreadRadius: .25,
+            blurRadius: 2,
+            spreadRadius: .15,
             color: Colors.grey,
           ),
         ],
