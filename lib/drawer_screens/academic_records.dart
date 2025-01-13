@@ -18,7 +18,7 @@ class _AcademicRecordsState extends State<AcademicRecords> {
   final TextEditingController SearchBar = TextEditingController();
   String searchtext = '';
   String _filterGrade = '';
-  List<DocumentSnapshot> allRecords = []; // All fetched records
+  List<DocumentSnapshot> allRecords = [];
   List<DocumentSnapshot> filteredRecords = [];
   String currentfilter = 'None';
   String _selectedDate = '';
@@ -33,7 +33,8 @@ class _AcademicRecordsState extends State<AcademicRecords> {
   List<String> department = ['All'];
   String? selectedFilter;
   List<DocumentSnapshot> filteredDeptRecords = [];
-  List<DocumentSnapshot> allDptRecords = []; // All fetched
+  List<DocumentSnapshot> allDptRecords = [];
+
   Stream<QuerySnapshot<Map<String, dynamic>>> records() {
     return firestore.collection('records').snapshots();
   }
@@ -138,7 +139,7 @@ class _AcademicRecordsState extends State<AcademicRecords> {
           await FirebaseFirestore.instance.collection('records').get();
       setState(() {
         allRecords = querySnapshot.docs;
-        _applyFilter();
+        _applyGradeFilter();
         _applyDeptFilter();
       });
     } catch (e) {
@@ -146,7 +147,7 @@ class _AcademicRecordsState extends State<AcademicRecords> {
     }
   }
 
-  void _applyFilter() {
+  void _applyGradeFilter() {
     setState(() {
       if (_filterGrade == 'All') {
         filteredRecords = allRecords;
@@ -213,7 +214,6 @@ class _AcademicRecordsState extends State<AcademicRecords> {
                                     ],
                                   ),
                                 ),
-                                // Tab Bar
                                 TabBar(
                                   indicatorColor: Color(0xff3e948e),
                                   labelColor: Colors.black87,
@@ -224,11 +224,9 @@ class _AcademicRecordsState extends State<AcademicRecords> {
                                     Tab(text: "Date"),
                                   ],
                                 ),
-                                // Tab Bar Views
                                 Expanded(
                                   child: TabBarView(
                                     children: [
-                                      // Grade Tab
                                       Padding(
                                         padding: const EdgeInsets.all(16.0),
                                         child: Column(
@@ -248,14 +246,13 @@ class _AcademicRecordsState extends State<AcademicRecords> {
                                               onSelected: (selectedGrade) {
                                                 setState(() {
                                                   _filterGrade = selectedGrade;
-                                                  _applyFilter();
+                                                  _applyGradeFilter();
                                                 });
                                               },
                                             ),
                                           ],
                                         ),
                                       ),
-                                      // Department Tab
                                       Padding(
                                         padding: const EdgeInsets.all(16.0),
                                         child: Column(
@@ -276,14 +273,13 @@ class _AcademicRecordsState extends State<AcademicRecords> {
                                                 setState(() {
                                                   _filterDepartment =
                                                       selectedDepartment;
-                                                  _applyFilter();
+                                                  _applyGradeFilter();
                                                 });
                                               },
                                             ),
                                           ],
                                         ),
                                       ),
-                                      // Date Tab
                                       Padding(
                                         padding: const EdgeInsets.all(16.0),
                                         child: Container(
@@ -313,26 +309,31 @@ class _AcademicRecordsState extends State<AcademicRecords> {
                                 // Apply Filter Button
                                 Padding(
                                   padding: const EdgeInsets.all(16.0),
-                                  child: ElevatedButton(
-                                    style: ElevatedButton.styleFrom(
-                                      foregroundColor: Colors.white,
-                                      backgroundColor: Color(0xff3e948e),
-                                      elevation: 3,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(6),
+                                  child: Container(
+                                    width:
+                                        MediaQuery.of(context).size.width * .9,
+                                    child: ElevatedButton(
+                                      style: ElevatedButton.styleFrom(
+                                        foregroundColor: Colors.white,
+                                        backgroundColor: Color(0xff3e948e),
+                                        elevation: 3,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(6),
+                                        ),
                                       ),
-                                    ),
-                                    onPressed: () {
-                                      setState(() {
-                                        clearQuery();
-                                      });
-                                      Navigator.pop(context);
-                                    },
-                                    child: Text(
-                                      'Clear Filters',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 14,
+                                      onPressed: () {
+                                        setState(() {
+                                          clearQuery();
+                                        });
+                                        Navigator.pop(context);
+                                      },
+                                      child: Text(
+                                        'Clear Filters',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -896,7 +897,6 @@ class _GradeFilterButtonState extends State<GradeFilterButton> {
     );
   }
 }
-
 class DepartmentFilterButton extends StatefulWidget {
   final Function(String) onSelected;
 
@@ -946,7 +946,6 @@ class _DepartmentFilterButtonState extends State<DepartmentFilterButton> {
       return [];
     }
   }
-
   @override
   void initState() {
     super.initState();

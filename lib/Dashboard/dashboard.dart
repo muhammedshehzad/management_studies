@@ -248,66 +248,64 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
                 padding: EdgeInsets.zero,
                 dragStartBehavior: DragStartBehavior.start,
                 children: [
-                  Expanded(
-                    flex: 3,
-                    child: Container(
-                      child: DrawerHeader(
-                        decoration: BoxDecoration(
-                          image: DecorationImage(
-                            image: FileImage(File(data!['url'] ?? ""))
-                                as ImageProvider,
-                            fit: BoxFit.cover,
-                            colorFilter: ColorFilter.mode(
-                              Colors.black.withOpacity(0.5),
-                              BlendMode.darken,
-                            ),
-                          ),
-                          borderRadius: BorderRadius.vertical(
-                            bottom: Radius.circular(2),
+                  Container(
+                    child: DrawerHeader(
+                      decoration: BoxDecoration(
+                        image: DecorationImage(
+                          image: FileImage(File(data!['url'] ?? ""))
+                              as ImageProvider,
+                          fit: BoxFit.cover,
+                          colorFilter: ColorFilter.mode(
+                            Colors.black.withOpacity(0.5),
+                            BlendMode.darken,
                           ),
                         ),
-                        child: GestureDetector(
-                          onTap: () async {
-                            await Navigator.pushNamed(context, '/profile');
-                            setState(() {
-                              _loadImage();
-                            });
-                          },
+                        borderRadius: BorderRadius.vertical(
+                          bottom: Radius.circular(2),
+                        ),
+                      ),
+                      child: GestureDetector(
+                        onTap: () async {
+                          await Navigator.pushNamed(context, '/profile');
+                          setState(() {
+                            _loadImage();
+                          });
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.all(8.0),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: [
-                              Expanded(
-                                child: Text(
-                                  data["username"] ?? 'N/A',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 24,
-                                    color: Colors.white,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
+                              Text(
+                                data["username"] ?? 'N/A',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 24,
+                                  color: Colors.white,
                                 ),
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              Expanded(
-                                child: Text(
-                                  data["email"] ?? 'N/A',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 18,
-                                    color: Colors.white70,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
+                              const SizedBox(height: 8),
+                              // Added space between text widgets
+                              Text(
+                                data["email"] ?? 'N/A',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 18,
+                                  color: Colors.white70,
                                 ),
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              Expanded(
-                                child: Text(
-                                  role,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 17,
-                                    color: Colors.yellowAccent,
-                                    fontStyle: FontStyle.italic,
-                                  ),
+                              const SizedBox(height: 8),
+                              // Added space between text widgets
+                              Text(
+                                role,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 17,
+                                  color: Colors.yellowAccent,
+                                  fontStyle: FontStyle.italic,
                                 ),
                               ),
                             ],
@@ -316,70 +314,52 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
                       ),
                     ),
                   ),
-                  Expanded(
-                    flex: 7,
-                    child: Container(
-                      child: Column(
-                        children: [
-                          ListTile(
-                            title: CustomTile(
-                              label: 'Academic Records',
-                              onPressed: () {
-                                Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                        builder: (context) =>
-                                            AcademicRecords()));
-                              },
-                              image: 'lib/assets/academicrecords.png',
-                            ),
-                            onTap: () {
-                              // Update the state of the app.
-                              // ...
-                            },
-                          ),
-                          ListTile(
-                            title: CustomTile(
-                              label: 'Homework and \nAssignments',
-                              onPressed: () {
-                                Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                        builder: (context) =>
-                                            HomeworkAssignmentsScreen()));
-                              },
-                              image: 'lib/assets/homeworkandassignment.png',
-                            ),
-                            onTap: () {
-                              // Update the state of the app.
-                              // ...
-                            },
-                          ),
-                          ListTile(
-                            title: CustomTile(
-                              label: 'Canteen',
-                              onPressed: () {},
-                              image: 'lib/assets/canteen.png',
-                            ),
-                            onTap: () {
-                              // Update the state of the app.
-                              // ...
-                            },
-                          ),
-                          ListTile(
-                            title: CustomTile(
-                              label: 'Leaves',
-                              onPressed: () {},
-                              image: 'lib/assets/leaves.png',
-                            ),
-                            onTap: () {
-                              // Update the state of the app.
-                              // ...
-                            },
-                          ),
-                        ],
+                  Column(
+                    children: [
+                      ListTile(
+                        title: CustomTile(
+                          label: 'Academic Records',
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => AcademicRecords(),
+                              ),
+                            );
+                          },
+                          image: 'lib/assets/academicrecords.png',
+                        ),
                       ),
-                    ),
+                      ListTile(
+                        title: CustomTile(
+                          label: 'Homework and \nAssignments',
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    HomeworkAssignmentsScreen(),
+                              ),
+                            );
+                          },
+                          image: 'lib/assets/homeworkandassignment.png',
+                        ),
+                      ),
+                      ListTile(
+                        title: CustomTile(
+                          label: 'Canteen',
+                          onPressed: () {},
+                          image: 'lib/assets/canteen.png',
+                        ),
+                      ),
+                      ListTile(
+                        title: CustomTile(
+                          label: 'Leaves',
+                          onPressed: () {},
+                          image: 'lib/assets/leaves.png',
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),

@@ -3,6 +3,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:side_sheet/side_sheet.dart';
+import 'package:syncfusion_flutter_datepicker/datepicker.dart';
+
+import 'homework_details.dart';
 
 class HomeworkAssignmentsScreen extends StatefulWidget {
   @override
@@ -19,6 +22,16 @@ class _HomeworkAssignmentsScreenState extends State<HomeworkAssignmentsScreen> {
   String _filterSubject = '';
   List<DocumentSnapshot> filteredSubRecords = [];
   List<DocumentSnapshot> allSubRecords = [];
+  String selectedStatus = "All";
+  List<Map<String, dynamic>> allstatusRecords = [];
+  List<Map<String, dynamic>> filteredstatusRecords = [];
+  DateTime startDate = DateTime.now();
+  DateTime endDate = DateTime.now().add(Duration(days: 300));
+  String _selectedDate = '';
+  String _dateCount = '';
+  String _range = '';
+  String _rangeCount = '';
+  List<DocumentSnapshot> allRecords = [];
 
   @override
   void initState() {
@@ -34,7 +47,7 @@ class _HomeworkAssignmentsScreenState extends State<HomeworkAssignmentsScreen> {
     });
   }
 
-  void _applyDeptFilter() {
+  void _applySubjectFilter() {
     setState(() {
       if (_filterSubject == 'All') {
         filteredSubRecords = allSubRecords; // Show all records
@@ -46,19 +59,80 @@ class _HomeworkAssignmentsScreenState extends State<HomeworkAssignmentsScreen> {
     });
   }
 
+  void _applystatusFilter() {
+    setState(() {
+      if (selectedStatus == 'All') {
+        filteredstatusRecords = List.from(allstatusRecords);
+      } else {
+        filteredstatusRecords = allstatusRecords
+            .where((doc) => doc['status'] == selectedStatus)
+            .toList();
+      }
+    });
+  }
+
   void clearQuery() {
     setState(() {
       _filterSubject = 'All';
-      query = FirebaseFirestore.instance.collection('homeworks');
+      selectedStatus = 'All';
+      _applySubjectFilter();
+      _applystatusFilter();
+      // query = FirebaseFirestore.instance.collection('homeworks');
     });
   }
+
+  void fetchclearquery(DateTime start, DateTime end) {
+    setState(() {
+      query = FirebaseFirestore.instance
+          .collection('homeworks')
+          .where('deadline', isGreaterThanOrEqualTo: startDate)
+          .where('deadline', isLessThanOrEqualTo: endDate);
+    });
+  }
+
+  void _onSelectionChanged(DateRangePickerSelectionChangedArgs args) {
+    setState(() {
+      if (args.value is PickerDateRange) {
+        startDate = args.value.startDate;
+        endDate = args.value.endDate ?? args.value.startDate;
+        fetchclearquery(startDate, endDate);
+        print('$startDate - $endDate ');
+      } else if (args.value is DateTime) {
+        _selectedDate = args.value.toString();
+      } else if (args.value is List<DateTime>) {
+        _dateCount = args.value.length.toString();
+      } else {
+        _rangeCount = args.value.length.toString();
+      }
+    });
+  }
+
+  // Future<void> _fetchRecords() async {
+  //   try {
+  //     final querySnapshot =
+  //     await FirebaseFirestore.instance.collection('homeworks').get();
+  //     setState(() {
+  //       allRecords = querySnapshot.docs;
+  //       _applystatusFilter();
+  //     });
+  //   } catch (e) {
+  //     print('Error fetching records: $e');
+  //   }
+  // }
 
   Future<void> _fetchInitialData() async {
     final querySnapshot =
         await FirebaseFirestore.instance.collection('homeworks').get();
     setState(() {
       allSubRecords = querySnapshot.docs;
-      _applyDeptFilter();
+
+      allstatusRecords = querySnapshot.docs
+          .map((doc) => doc.data() as Map<String, dynamic>)
+          .toList();
+
+      allRecords = querySnapshot.docs;
+      _applySubjectFilter();
+      _applystatusFilter();
     });
   }
 
@@ -134,19 +208,11 @@ class _HomeworkAssignmentsScreenState extends State<HomeworkAssignmentsScreen> {
                                             ),
                                           ),
                                           SizedBox(height: 12),
-                                          // GradeFilterButton(
-                                          //   onSelected: (selectedGrade) {
-                                          //     setState(() {
-                                          //       // _filterGrade = selectedGrade;
-                                          //       // _applyFilter();
-                                          //     });
-                                          //   },
-                                          // ),
                                           SubjectFilterButton(
                                               onSelected: (selectedSubject) {
                                             setState(() {
                                               _filterSubject = selectedSubject;
-                                              _applyDeptFilter();
+                                              _applySubjectFilter();
                                             });
                                           })
                                         ],
@@ -162,12 +228,98 @@ class _HomeworkAssignmentsScreenState extends State<HomeworkAssignmentsScreen> {
                                           Text(
                                             "Select a Status",
                                             style: TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w500,
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.w600,
                                               color: Colors.black87,
                                             ),
                                           ),
-                                          SizedBox(height: 12),
+                                          SizedBox(
+                                            height: 16,
+                                          ),
+                                          Wrap(
+                                            spacing: 14,
+                                            alignment:
+                                                WrapAlignment.spaceEvenly,
+                                            children: [
+                                              ChoiceChip(
+                                                label: Text("All"),
+                                                labelStyle: TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  color: selectedStatus == "All"
+                                                      ? Colors.white
+                                                      : Colors.black,
+                                                ),
+                                                selected:
+                                                    selectedStatus == "All",
+                                                selectedColor:
+                                                    Colors.blueGrey.shade600,
+                                                backgroundColor:
+                                                    Colors.blueGrey.shade200,
+                                                onSelected: (bool selected) {
+                                                  setState(() {
+                                                    selectedStatus = selected
+                                                        ? "All"
+                                                        : selectedStatus;
+                                                    print(
+                                                        "Selected Status: $selectedStatus");
+                                                    _applystatusFilter();
+                                                  });
+                                                },
+                                              ),
+                                              ChoiceChip(
+                                                label: Text("Completed"),
+                                                labelStyle: TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  color: selectedStatus ==
+                                                          "Completed"
+                                                      ? Colors.white
+                                                      : Colors.black,
+                                                ),
+                                                selected: selectedStatus ==
+                                                    "Completed",
+                                                selectedColor:
+                                                    Colors.green.shade600,
+                                                backgroundColor:
+                                                    Colors.green.shade200,
+                                                onSelected: (bool selected) {
+                                                  setState(() {
+                                                    selectedStatus = selected
+                                                        ? "Completed"
+                                                        : selectedStatus;
+                                                    print(
+                                                        "Selected Status: $selectedStatus");
+                                                    _applystatusFilter();
+                                                  });
+                                                },
+                                              ),
+                                              ChoiceChip(
+                                                label: Text("Pending"),
+                                                labelStyle: TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  color: selectedStatus ==
+                                                          "Pending"
+                                                      ? Colors.white
+                                                      : Colors.black,
+                                                ),
+                                                selected:
+                                                    selectedStatus == "Pending",
+                                                selectedColor:
+                                                    Colors.red.shade600,
+                                                backgroundColor:
+                                                    Colors.red.shade200,
+                                                onSelected: (bool selected) {
+                                                  setState(() {
+                                                    selectedStatus = selected
+                                                        ? "Pending"
+                                                        : selectedStatus;
+                                                    print(
+                                                        "Selected Status: $selectedStatus");
+                                                    _applystatusFilter();
+                                                  });
+                                                },
+                                              ),
+                                            ],
+                                          ),
                                         ],
                                       ),
                                     ),
@@ -180,34 +332,59 @@ class _HomeworkAssignmentsScreenState extends State<HomeworkAssignmentsScreen> {
                                           borderRadius:
                                               BorderRadius.circular(8),
                                         ),
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(16.0),
+                                          child: Container(
+                                            decoration: BoxDecoration(
+                                              color: Colors.grey[100],
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                            ),
+                                            child: SfDateRangePicker(
+                                              onSelectionChanged:
+                                                  _onSelectionChanged,
+                                              selectionMode:
+                                                  DateRangePickerSelectionMode
+                                                      .range,
+                                              initialSelectedRange:
+                                                  PickerDateRange(
+                                                DateTime.now().subtract(
+                                                    Duration(days: 6)),
+                                                DateTime.now(),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
-                              // Apply Filter Button
                               Padding(
                                 padding: const EdgeInsets.all(16.0),
-                                child: ElevatedButton(
-                                  style: ElevatedButton.styleFrom(
-                                    foregroundColor: Colors.white,
-                                    backgroundColor: Color(0xff3e948e),
-                                    elevation: 3,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(6),
+                                child: Container(
+                                  width: MediaQuery.of(context).size.width * .9,
+                                  child: ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                      foregroundColor: Colors.white,
+                                      backgroundColor: Color(0xff3e948e),
+                                      elevation: 3,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
                                     ),
-                                  ),
-                                  onPressed: () {
-                                    setState(() {
-                                      clearQuery();
-                                    });
-                                    Navigator.pop(context);
-                                  },
-                                  child: Text(
-                                    'Clear Filters',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
+                                    onPressed: () {
+                                      setState(() {
+                                        clearQuery();
+                                      });
+                                      Navigator.pop(context);
+                                    },
+                                    child: Text(
+                                      'Clear Filters',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -296,7 +473,13 @@ class _HomeworkAssignmentsScreenState extends State<HomeworkAssignmentsScreen> {
                             _filterSubject.toLowerCase() == 'all' ||
                                 subject.trim().toLowerCase() ==
                                     _filterSubject.trim().toLowerCase();
-                        return matchesSearch && matchesSubject;
+
+                        final matchesStatus =
+                            selectedStatus.toLowerCase() == 'all' ||
+                                status.trim().toLowerCase() ==
+                                    selectedStatus.trim().toLowerCase();
+
+                        return matchesSearch && matchesSubject && matchesStatus;
                       }).toList();
 
                       if (filteredRecords.isEmpty) {
@@ -315,6 +498,8 @@ class _HomeworkAssignmentsScreenState extends State<HomeworkAssignmentsScreen> {
                                 .collection('homeworks');
                             Search.text = "";
                             searchtext = "";
+                            selectedStatus = "All";
+                            _filterSubject = 'All';
                           });
                           return _submitnewData();
                         },
@@ -337,7 +522,15 @@ class _HomeworkAssignmentsScreenState extends State<HomeworkAssignmentsScreen> {
                               title,
                               formattedDeadline,
                               status,
-                              () {},
+                              () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        HomeworkDetails(docId: record.id),
+                                  ),
+                                );
+                              },
                             );
                           },
                         ),
@@ -456,17 +649,27 @@ class _HomeWorkDetailsState extends State<HomeWorkDetails> {
   TextEditingController _deadlines = TextEditingController();
 
   TextEditingController _status = TextEditingController();
+  TextEditingController _assignedby = TextEditingController();
+  TextEditingController _description = TextEditingController();
+  TextEditingController _estimatedtime = TextEditingController();
 
   Future<void> _submitnewData() async {
     final subject = _subject.text;
     final title = _title.text;
     final deadline = _deadlines.text;
     final status = _status.text;
+    final assignedby = _assignedby.text;
+    final description = _description.text;
+    final estimatedtime = _estimatedtime.text;
 
     if (status.isEmpty ||
         deadline.isEmpty ||
         title.isEmpty ||
-        subject.isEmpty) {
+        subject.isEmpty ||
+        description.isEmpty ||
+        estimatedtime.isEmpty ||
+        assignedby.isEmpty
+    ) {
       return;
     }
 
@@ -480,6 +683,9 @@ class _HomeWorkDetailsState extends State<HomeWorkDetails> {
           'subject': subject,
           'title': title,
           'deadline': deadlineTimestamp,
+          'assignedby': assignedby,
+          'description': description,
+          'estimatedtime': estimatedtime,
         });
 
         Navigator.pop(context);
@@ -526,14 +732,37 @@ class _HomeWorkDetailsState extends State<HomeWorkDetails> {
                 decoration: const InputDecoration(labelText: 'Title'),
               ),
               TextField(
+                controller: _description,
+                decoration: const InputDecoration(labelText: 'Description'),
+              ),
+              TextField(
                 controller: _deadlines,
                 decoration: const InputDecoration(labelText: 'Deadline'),
                 readOnly: true,
                 onTap: () => _selectDate(context),
               ),
-              TextField(
-                controller: _status,
+              DropdownButtonFormField<String>(
+                value: _status.text.isEmpty ? null : _status.text,
                 decoration: const InputDecoration(labelText: 'Status'),
+                items: const [
+                  DropdownMenuItem(
+                      value: "Completed", child: Text("Completed")),
+                  DropdownMenuItem(value: "Pending", child: Text("Pending")),
+
+                ],
+                onChanged: (String? newValue) {
+                  if (newValue != null) {
+                    _status.text = newValue;
+                  }
+                },
+              ),
+              TextField(
+                controller: _assignedby,
+                decoration: const InputDecoration(labelText: 'Assigned By'),
+              ),
+              TextField(
+                controller: _estimatedtime,
+                decoration: const InputDecoration(labelText: 'Estimated Time'),
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 12.0),
