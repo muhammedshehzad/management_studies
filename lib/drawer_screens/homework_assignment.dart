@@ -16,7 +16,7 @@ class HomeWorkScreen extends StatefulWidget {
 }
 
 class _HomeWorkScreenState extends State<HomeWorkScreen> {
-  static const PAGE_SIZE = 9;
+  static const PAGE_SIZE = 8;
   final FirebaseFirestore firestore = FirebaseFirestore.instance;
   String _filterSubject = 'All';
   String selectedStatus = 'All';
@@ -51,65 +51,61 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
   String _range = '';
   String _rangeCount = '';
 
-  // Filtered list for local search
+  List<QueryDocumentSnapshot>? searchResult;
   List<HomeWorkDetailModel> filteredData = [];
   final TextEditingController Search = TextEditingController();
   String searchText = '';
+  Query newquery = FirebaseFirestore.instance.collection('homeworks');
 
   @override
   void initState() {
     super.initState();
     _fetchFirebaseData();
-    _searchController.addListener(_onSearchChanged);
+    // _searchController.addListener(_onSearchChanged);
   }
 
-  void _onSearchChanged() {
-    setState(() {
-      searchText = _searchController.text.toLowerCase();
-    });
-    _applySearchFilter();
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
-  void _applySearchFilter() {
-    setState(() {
-      filteredData = _data.where((homework) {
-        final subject = homework.subject.toLowerCase();
-        final title = homework.title.toLowerCase();
-        final deadline = DateFormat('dd-MM-yyyy').format(homework.deadline);
-        final status = homework.status.toLowerCase();
-
-        return title.contains(searchText) ||
-            subject.contains(searchText) ||
-            deadline.contains(searchText) ||
-            status.contains(searchText);
-      }).toList();
-    });
+  List<String> generateSearchKeywords(String text) {
+    List<String> keywords = [];
+    for (int i = 0; i < text.length; i++) {
+      keywords.add(text.substring(0, i + 1).toLowerCase());
+    }
+    return keywords;
   }
 
-  void _applyFilters() {
-    setState(() {
-      filteredData = _data.where((homeworks) {
-        final subject = homeworks.subject.toLowerCase();
-        final title = homeworks.title.toLowerCase();
-        final deadline = DateFormat('dd-MM-yyyy').format(homeworks.deadline);
-        final status = homeworks.status.toLowerCase();
+  void SearchAllData() async {
+    if (searchText.isEmpty) {
+      // Clear search result if the search field is empty
+      setState(() {
+        searchResult = null;
+      });
+      return;
+    }
 
-        final matchesSearch = searchText.isEmpty ||
-            title.contains(searchText) ||
-            subject.contains(searchText) ||
-            deadline.contains(searchText) ||
-            status.contains(searchText);
+    try {
+      final snapshots =
+          await FirebaseFirestore.instance.collection('homeworks').get();
 
-        final matchesSubject =
-            _filterSubject == 'All' || subject == _filterSubject.toLowerCase();
-        final matchesStatus =
-            selectedStatus == 'All' || status == selectedStatus.toLowerCase();
+      final results = snapshots.docs
+          .where((doc) =>
+              doc['subject'].toString().toLowerCase().contains(searchText) ||
+              doc['title'].toString().toLowerCase().contains(searchText))
+          .toList();
 
-        return matchesSearch && matchesSubject && matchesStatus;
-      }).toList();
-    });
+      setState(() {
+        searchResult = results; // Store the search results
+      });
+    } catch (e) {
+      debugPrint('Error during search: $e');
+    }
   }
 
+//sub fltr
   void _applySubjectFilter() {
     setState(() {
       if (_filterSubject == 'All') {
@@ -122,6 +118,7 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
     });
   }
 
+//stats filtr
   void _applystatusFilter() {
     setState(() {
       if (selectedStatus == 'All') {
@@ -134,6 +131,7 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
     });
   }
 
+//date filter
   void fetchclearquery(DateTime start, DateTime end) async {
     setState(() {
       query = FirebaseFirestore.instance
@@ -148,6 +146,7 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
     await _fetchFirebaseData();
   }
 
+//clearing all serch&flter
   void clearQuery() async {
     setState(() {
       _searchController.clear();
@@ -169,6 +168,7 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
     await _fetchFirebaseData();
   }
 
+//datepicker logic
   void _onSelectionChanged(DateRangePickerSelectionChangedArgs args) {
     setState(() {
       if (args.value is PickerDateRange) {
@@ -198,8 +198,10 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
       if (_lastDocument == null) {
         snapshot = await query.get();
       } else {
-        snapshot =
-            await query.startAfterDocument(_lastDocument!).limit(2).get();
+        snapshot = await query
+            .startAfterDocument(_lastDocument!)
+            .limit(PAGE_SIZE)
+            .get();
       }
 
       if (snapshot.docs.isNotEmpty) {
@@ -209,9 +211,9 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
             final data = doc.data() as Map<String, dynamic>;
             return HomeWorkDetailModel.fromMap(data);
           }).toList());
-          _applySearchFilter();
-          if (snapshot.docs.length < 2) {
-            _allFetched = true;
+          // getFilteredHomework(searchText);
+          if (snapshot.docs.length < PAGE_SIZE) {
+            // _allFetched = true;
           }
         });
       } else {
@@ -230,25 +232,37 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final searchText = _searchController.text.toLowerCase();
-    final filteredRecords = _data.where((homeworks) {
-      final subject = homeworks.subject.toLowerCase();
-      final title = homeworks.title.toLowerCase();
-      final deadline = DateFormat('dd-MM-yyyy').format(homeworks.deadline);
-      final status = homeworks.status.toLowerCase();
+    List<HomeWorkDetailModel> filteredRecords = searchResult != null
+        ? searchResult!
+            .map((doc) =>
+                HomeWorkDetailModel.fromMap(doc.data() as Map<String, dynamic>))
+            .toList()
+        : _data.where((homeworks) {
+            // Apply additional filters here
+            return true; // Your filter logic
+          }).toList();
 
-      final matchesSearch = searchText.isEmpty ||
-          subject.contains(searchText) ||
-          title.contains(searchText) ||
-          deadline.contains(searchText);
+    if (searchText.isNotEmpty && searchResult != null) {
+      filteredRecords = searchResult!
+          .map((doc) =>
+              HomeWorkDetailModel.fromMap(doc.data() as Map<String, dynamic>))
+          .toList();
+    } else {
+      filteredRecords = _data.where((homeworks) {
+        final subject = homeworks.subject.toLowerCase();
+        final title = homeworks.title.toLowerCase();
+        final deadline = DateFormat('dd-MM-yyyy').format(homeworks.deadline);
+        final status = homeworks.status.toLowerCase();
 
-      final matchesSubject =
-          _filterSubject == 'All' || subject == _filterSubject.toLowerCase();
-      final matchesStatus =
-          selectedStatus == 'All' || status == selectedStatus.toLowerCase();
+        final matchesSubject =
+            _filterSubject == 'All' || subject == _filterSubject.toLowerCase();
+        final matchesStatus =
+            selectedStatus == 'All' || status == selectedStatus.toLowerCase();
 
-      return matchesSearch && matchesSubject && matchesStatus;
-    }).toList();
+        return matchesSubject && matchesStatus;
+      }).toList();
+    }
+    ;
 
     return Scaffold(
       appBar: AppBar(
@@ -511,12 +525,20 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
       ),
       body: NotificationListener<ScrollNotification>(
         onNotification: (scrollEnd) {
-          if (scrollEnd.metrics.atEdge &&
-              scrollEnd.metrics.pixels > 0 &&
+          if (scrollEnd.metrics.pixels >=
+                  scrollEnd.metrics.maxScrollExtent * 0.1 &&
               !_isLoading &&
               !_allFetched) {
             _fetchFirebaseData();
           }
+          if (scrollEnd.metrics.atEdge &&
+              scrollEnd.metrics.pixels >=
+                  scrollEnd.metrics.maxScrollExtent * 0.1 &&
+              !_isLoading &&
+              !_allFetched) {
+            _fetchFirebaseData();
+          }
+
           return true;
         },
         child: Column(
@@ -532,6 +554,18 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
+                onChanged: (value) {
+                  setState(() {
+                    searchText = value.toLowerCase();
+                  });
+                  if (searchText.isNotEmpty) {
+                    SearchAllData();
+                  } else {
+                    setState(() {
+                      searchResult = null;
+                    });
+                  }
+                },
               ),
             ),
             SizedBox(
@@ -593,10 +627,13 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
           if (index == records.length) {
             return const Center(
                 child: Padding(
-              padding: EdgeInsets.all(8.0),
+              padding: EdgeInsets.all(12.0),
               child: CircularProgressIndicator(),
             ));
           }
+          // else{
+          //   SizedBox.shrink();
+          // }
           final homework = records[index];
           return CustomStudentTile(
               homework.subject,
@@ -712,6 +749,37 @@ class _HomeWorkDetailsState extends State<HomeWorkDetails> {
   TextEditingController _description = TextEditingController();
   TextEditingController _estimatedtime = TextEditingController();
 
+  Future<void> addHomeworkToFirestore(
+      String title, String subject, DateTime deadline, String status) async {
+    final firestore = FirebaseFirestore.instance;
+
+    List<String> keywords = _generateKeywords(title, subject);
+
+    await firestore.collection('homeworks').add({
+      'title': title,
+      'subject': subject,
+      'deadline': Timestamp.fromDate(deadline),
+      'status': status,
+      'keywords': keywords,
+    });
+  }
+
+  List<String> _generateKeywords(String title, String subject) {
+    List<String> keywords = [];
+
+    void _addToKeywords(String text) {
+      text = text.toLowerCase();
+      for (int i = 1; i <= text.length; i++) {
+        keywords.add(text.substring(0, i));
+      }
+    }
+
+    _addToKeywords(title);
+    _addToKeywords(subject);
+
+    return keywords.toSet().toList();
+  }
+
   Future<void> _submitnewData() async {
     final subject = _subject.text;
     final title = _title.text;
@@ -752,7 +820,7 @@ class _HomeWorkDetailsState extends State<HomeWorkDetails> {
           'docid': docid,
         });
         print('Generated docid: $docid');
-
+        addHomeworkToFirestore;
         Navigator.pop(context);
       }
     } catch (error) {
@@ -861,8 +929,7 @@ class _HomeWorkDetailsState extends State<HomeWorkDetails> {
 class SubjectFilterButton extends StatefulWidget {
   final Function(String) onSelected;
 
-  const SubjectFilterButton({Key? key, required this.onSelected})
-      : super(key: key);
+  const SubjectFilterButton({super.key, required this.onSelected});
 
   @override
   _SubjectFilterButtonState createState() => _SubjectFilterButtonState();
