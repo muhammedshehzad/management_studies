@@ -227,28 +227,24 @@ class _ProfileDetailsPageState extends State<ProfileDetailsPage> {
                   ),
                 ),
                 buildEditableRow(
-                  'lib/assets/name.png',
                   'Name',
                   nameController,
                   isEditing,
                   data["username"] ?? 'N/A',
                 ),
                 buildEditableRow(
-                  'lib/assets/email.png',
                   'Mail',
                   emailController,
                   isEditing,
                   data["email"] ?? 'N/A',
                 ),
                 buildEditableRow(
-                  'lib/assets/address.png',
                   'Address',
                   addressController,
                   isEditing,
                   data["address"] ?? 'N/A',
                 ),
                 buildEditableRow(
-                  'lib/assets/phone.png',
                   'Phone Number',
                   phoneController,
                   isEditing,
@@ -263,7 +259,7 @@ class _ProfileDetailsPageState extends State<ProfileDetailsPage> {
   }
 }
 
-Widget buildEditableRow(String image, String label,
+Widget buildEditableRow( String label,
     TextEditingController controller, bool isEditing, String details) {
   return Padding(
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
@@ -283,19 +279,7 @@ Widget buildEditableRow(String image, String label,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Container(
-              height: 30,
-              width: 30,
-              decoration: BoxDecoration(
-                image: DecorationImage(
-                  image: AssetImage(image),
-                  fit: BoxFit.cover,
-                ),
-              ),
-            ),
-          ),
+
           const SizedBox(width: 14),
           Expanded(
             child: Column(
@@ -341,3 +325,227 @@ Widget buildEditableRow(String image, String label,
     ),
   );
 }
+
+
+
+
+
+
+//
+//
+//
+// import 'dart:io';
+// import 'package:cloud_firestore/cloud_firestore.dart';
+// import 'package:firebase_auth/firebase_auth.dart';
+// import 'package:flutter/material.dart';
+// import 'package:image_picker/image_picker.dart';
+// import 'package:shared_preferences/shared_preferences.dart';
+//
+// class ProfileDetailsPage extends StatefulWidget {
+//   const ProfileDetailsPage({super.key});
+//
+//   @override
+//   State<ProfileDetailsPage> createState() => _ProfileDetailsPageState();
+// }
+//
+// class _ProfileDetailsPageState extends State<ProfileDetailsPage> {
+//   File? selectedImage;
+//   File? tempImage;
+//   final picker = ImagePicker();
+//   bool isEditing = false;
+//   String? userId;
+//
+//   final TextEditingController nameController = TextEditingController();
+//   final TextEditingController emailController = TextEditingController();
+//   final TextEditingController addressController = TextEditingController();
+//   final TextEditingController phoneController = TextEditingController();
+//   final FirebaseFirestore _db = FirebaseFirestore.instance;
+//
+//   @override
+//   void initState() {
+//     super.initState();
+//     _initializeUser();
+//   }
+//
+//   Future<void> _initializeUser() async {
+//     final user = FirebaseAuth.instance.currentUser;
+//     setState(() {
+//       userId = user?.uid;
+//     });
+//     _loadImage();
+//   }
+//
+//   Future<void> _pickImage() async {
+//     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+//     if (pickedFile != null) {
+//       setState(() {
+//         tempImage = File(pickedFile.path);
+//       });
+//     } else {
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         const SnackBar(content: Text('No image selected.')),
+//       );
+//     }
+//   }
+//
+//   Future<void> saveImagePath(String path) async {
+//     final prefs = await SharedPreferences.getInstance();
+//     await prefs.setString('profileImagePath', path);
+//   }
+//
+//   Future<void> _saveChanges() async {
+//     if (tempImage != null) {
+//       selectedImage = tempImage;
+//       await saveImagePath(selectedImage!.path);
+//     }
+//     final updatedData = {
+//       "username": nameController.text,
+//       "email": emailController.text,
+//       "address": addressController.text,
+//       "phone": phoneController.text,
+//       "url": selectedImage != null ? selectedImage!.path : null
+//     };
+//
+//     try {
+//       if (userId != null) {
+//         await _db.collection("Users").doc(userId).update(updatedData);
+//         ScaffoldMessenger.of(context).showSnackBar(
+//           const SnackBar(content: Text("Profile updated successfully!")),
+//         );
+//       }
+//     } catch (e) {
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         const SnackBar(content: Text("Failed to update profile.")),
+//       );
+//     }
+//     setState(() {
+//       isEditing = false;
+//     });
+//   }
+//
+//   Future<void> _loadImage() async {
+//     final prefs = await SharedPreferences.getInstance();
+//     final path = prefs.getString('profileImagePath');
+//     if (path != null) {
+//       setState(() {
+//         selectedImage = File(path);
+//       });
+//     }
+//   }
+//
+//   Stream<DocumentSnapshot<Map<String, dynamic>>> getProfileStream() {
+//     final user = FirebaseAuth.instance.currentUser;
+//     if (user != null) {
+//       return _db.collection('Users').doc(user.uid).snapshots();
+//     }
+//     throw Exception("User not logged in");
+//   }
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       appBar: AppBar(
+//         title: const Text("Profile Details"),
+//         centerTitle: true,
+//         backgroundColor: Colors.teal,
+//       ),
+//       body: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+//         stream: getProfileStream(),
+//         builder: (context, snapshot) {
+//           if (snapshot.connectionState == ConnectionState.waiting) {
+//             return const Center(child: CircularProgressIndicator());
+//           }
+//           if (snapshot.hasError) {
+//             return Center(
+//               child: Column(
+//                 mainAxisAlignment: MainAxisAlignment.center,
+//                 children: [
+//                   const Text(
+//                     "Error loading profile data.",
+//                     style: TextStyle(color: Colors.red),
+//                   ),
+//                   ElevatedButton(
+//                     onPressed: () => setState(() {}),
+//                     child: const Text("Retry"),
+//                   ),
+//                 ],
+//               ),
+//             );
+//           }
+//           if (!snapshot.hasData || snapshot.data?.data() == null) {
+//             return const Center(child: Text("No profile data found."));
+//           }
+//
+//           final data = snapshot.data!.data()!;
+//           if (!isEditing) {
+//             nameController.text = data["username"] ?? '';
+//             emailController.text = data["email"] ?? '';
+//             addressController.text = data["address"] ?? '';
+//             phoneController.text = data["phone"] ?? '';
+//           }
+//
+//           return SingleChildScrollView(
+//             padding: const EdgeInsets.all(16),
+//             child: Column(
+//               children: [
+//                 GestureDetector(
+//                   onTap: isEditing ? _pickImage : null,
+//                   child: CircleAvatar(
+//                     radius: 80,
+//                     backgroundColor: Colors.grey.shade200,
+//                     backgroundImage: tempImage != null
+//                         ? FileImage(tempImage!)
+//                         : selectedImage != null
+//                         ? FileImage(selectedImage!)
+//                         : data["url"] != null
+//                         ? NetworkImage(data["url"])
+//                         : null,
+//                     child: tempImage == null &&
+//                         selectedImage == null &&
+//                         data["url"] == null
+//                         ? const Icon(Icons.camera_alt, size: 50)
+//                         : null,
+//                   ),
+//                 ),
+//                 const SizedBox(height: 20),
+//                 _buildTextField("Name", nameController, isEditing),
+//                 _buildTextField("Email", emailController, isEditing),
+//                 _buildTextField("Address", addressController, isEditing),
+//                 _buildTextField("Phone", phoneController, isEditing),
+//                 const SizedBox(height: 20),
+//                 isEditing
+//                     ? ElevatedButton(
+//                   onPressed: _saveChanges,
+//                   child: const Text("Save Changes"),
+//                 )
+//                     : ElevatedButton(
+//                   onPressed: () {
+//                     setState(() {
+//                       isEditing = true;
+//                     });
+//                   },
+//                   child: const Text("Edit Profile"),
+//                 ),
+//               ],
+//             ),
+//           );
+//         },
+//       ),
+//     );
+//   }
+//
+//   Widget _buildTextField(String label, TextEditingController controller,
+//       bool isEditing) {
+//     return Padding(
+//       padding: const EdgeInsets.symmetric(vertical: 10),
+//       child: TextField(
+//         controller: controller,
+//         readOnly: !isEditing,
+//         decoration: InputDecoration(
+//           labelText: label,
+//           border: const OutlineInputBorder(),
+//         ),
+//       ),
+//     );
+//   }
+// }

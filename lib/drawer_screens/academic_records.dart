@@ -3,8 +3,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:new_school/drawer_screens/student_details.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:side_sheet/side_sheet.dart';
 import 'package:syncfusion_flutter_datepicker/datepicker.dart';
+
+import 'homework_assignment.dart';
 
 class AcademicRecords extends StatefulWidget {
   const AcademicRecords({super.key});
@@ -375,7 +378,32 @@ class _AcademicRecordsState extends State<AcademicRecords> {
               stream: query?.snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+                  return Center(child: Center(
+                    child: Shimmer.fromColors(
+                      baseColor: Colors.grey[300]!,
+                      highlightColor: Colors.grey[100]!,
+                      child: ListView.builder(
+                        itemCount: 7,
+                        itemBuilder: (context, index) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 10.0),
+                            child: ListTile(
+                              title: Container(
+                                width: 150.0,
+                                height: 20.0,
+                                color: Colors.white,
+                              ),
+                              subtitle: Container(
+                                width: 100.0,
+                                height: 15.0,
+                                color: Colors.white,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ));
                 }
 
                 if (snapshot.hasError) {
@@ -798,13 +826,13 @@ class CustomStudentTile extends StatelessWidget {
                   style:
                       TextStyle(fontWeight: FontWeight.bold, fontSize: 10.5)),
               SizedBox(
-                height: 2,
+                height: 1,
               ),
               Text("${percentage}%",
                   style:
                       TextStyle(fontWeight: FontWeight.bold, fontSize: 10.5)),
               SizedBox(
-                height: 2,
+                height: 1,
               ),
               Text('Grade: ${grade}',
                   style:

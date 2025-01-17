@@ -56,6 +56,7 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
   final TextEditingController Search = TextEditingController();
   String searchText = '';
   Query newquery = FirebaseFirestore.instance.collection('homeworks');
+  List<HomeWorkDetailModel> filteredRecords = [];
 
   @override
   void initState() {
@@ -66,7 +67,7 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
 
   @override
   void dispose() {
-    _searchController.dispose();
+    // _searchController.dispose();
     super.dispose();
   }
 
@@ -109,9 +110,9 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
   void _applySubjectFilter() {
     setState(() {
       if (_filterSubject == 'All') {
-        filteredSubRecords = allSubRecords;
+        filteredSubRecords = allRecords;
       } else {
-        filteredSubRecords = allSubRecords
+        filteredSubRecords = allRecords
             .where((doc) => doc['subject'] == _filterSubject)
             .toList();
       }
@@ -122,10 +123,11 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
   void _applystatusFilter() {
     setState(() {
       if (selectedStatus == 'All') {
-        filteredstatusRecords = List.from(allstatusRecords);
+        filteredRecords = allRecords.cast<HomeWorkDetailModel>();
       } else {
-        filteredstatusRecords = allstatusRecords
+        filteredstatusRecords = allRecords
             .where((doc) => doc['status'] == selectedStatus)
+            .cast<Map<String, dynamic>>()
             .toList();
       }
     });
@@ -230,6 +232,55 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
     }
   }
 
+  void fetchFilteredData() async {
+    // Start loading state
+    setState(() {
+      _isLoading = true;
+    });
+
+    // Fetch data directly from Firestore
+    Query<Map<String, dynamic>> query =
+        FirebaseFirestore.instance.collection('homeworks');
+
+    // Apply subject filter
+    if (_filterSubject != 'All') {
+      query = query.where('subject', isEqualTo: _filterSubject);
+    }
+
+    // Apply status filter
+    if (selectedStatus != 'All') {
+      query = query.where('status', isEqualTo: selectedStatus);
+    }
+
+    // Apply date range filter
+    if (startDate != null && endDate != null) {
+      query = query
+          .where('deadline',
+              isGreaterThanOrEqualTo: Timestamp.fromDate(startDate!))
+          .where('deadline', isLessThanOrEqualTo: Timestamp.fromDate(endDate!));
+    }
+
+    try {
+      // Fetch the filtered data from Firestore
+      final querySnapshot = await query.get();
+
+      // Map Firestore documents to HomeWorkDetailModel
+      filteredRecords = querySnapshot.docs
+          .map((doc) =>
+              HomeWorkDetailModel.fromMap(doc.data() as Map<String, dynamic>))
+          .toList();
+
+      setState(() {
+        _isLoading = false;
+      });
+    } catch (e) {
+      print("Error fetching filtered data: $e");
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     List<HomeWorkDetailModel> filteredRecords = searchResult != null
@@ -239,7 +290,7 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
             .toList()
         : _data.where((homeworks) {
             // Apply additional filters here
-            return true; // Your filter logic
+            return true;
           }).toList();
 
     if (searchText.isNotEmpty && searchResult != null) {
@@ -256,6 +307,9 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
 
         final matchesSubject =
             _filterSubject == 'All' || subject == _filterSubject.toLowerCase();
+        print(
+            _filterSubject); // Add this line to check if _filterSubject is being set correctly.
+
         final matchesStatus =
             selectedStatus == 'All' || status == selectedStatus.toLowerCase();
 
@@ -334,8 +388,8 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
                                               onSelected: (selectedSubject) {
                                             setState(() {
                                               _filterSubject = selectedSubject;
-                                              _applySubjectFilter();
                                             });
+                                            fetchFilteredData();
                                           })
                                         ],
                                       ),
@@ -620,35 +674,33 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
         ),
       );
     }
-    return Expanded(
-      child: ListView.builder(
-        itemCount: records.length + (_allFetched ? 0 : 1),
-        itemBuilder: (context, index) {
-          if (index == records.length) {
-            return const Center(
-                child: Padding(
-              padding: EdgeInsets.all(12.0),
-              child: CircularProgressIndicator(),
-            ));
-          }
-          // else{
-          //   SizedBox.shrink();
-          // }
-          final homework = records[index];
-          return CustomStudentTile(
-              homework.subject,
-              homework.title,
-              DateFormat('dd-MM-yyyy').format(homework.deadline),
-              homework.status, () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => HomeworkDetails(docId: homework.docid),
-              ),
-            );
-          });
-        },
-      ),
+    return ListView.builder(
+      itemCount: records.length + (_allFetched ? 0 : 1),
+      itemBuilder: (context, index) {
+        if (index == records.length) {
+          return const Center(
+              child: Padding(
+            padding: EdgeInsets.all(12.0),
+            child: CircularProgressIndicator(),
+          ));
+        }
+        // else{
+        //   SizedBox.shrink();
+        // }
+        final homework = records[index];
+        return CustomStudentTile(
+            homework.subject,
+            homework.title,
+            DateFormat('dd-MM-yyyy').format(homework.deadline),
+            homework.status, () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => HomeworkDetails(docId: homework.docid),
+            ),
+          );
+        });
+      },
     );
   }
 }

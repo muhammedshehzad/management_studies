@@ -63,7 +63,7 @@ class _HomeworkDetailsState extends State<HomeworkDetails> {
               CustomRow2("AssignedBy", data['assignedby'] ?? 'N/A'),
               CustomRow2("Estimated Time", data['estimatedtime'] ?? 'N/A'),
               CustomRow2("Description", data['description'] ?? 'N/A'),
-              SizedBox(height: 10),
+              SizedBox(height: 16),
               Text(
                 'Progress:',
                 style: TextStyle(
@@ -73,13 +73,13 @@ class _HomeworkDetailsState extends State<HomeworkDetails> {
                 ),
                 overflow: TextOverflow.ellipsis,
               ),
-              SizedBox(height: 6),
+              SizedBox(height: 8),
               LinearProgressIndicator(
                 value: .7,
                 backgroundColor: Colors.grey[300],
                 color: Colors.green,
               ),
-              SizedBox(height: 10),
+              SizedBox(height: 16),
             ],
           ];
           return ListView.builder(
@@ -87,31 +87,7 @@ class _HomeworkDetailsState extends State<HomeworkDetails> {
             itemCount: sections.length + 1,
             itemBuilder: (context, index) {
               if (index == sections.length) {
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: SizedBox(
-                    width: double.infinity,
-                    height: 46,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        backgroundColor: const Color(0xff3e948e),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                      },
-                      child: const Text(
-                        'Close',
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 16),
-                      ),
-                    ),
-                  ),
-                );
+                return null;
               }
               return Padding(
                 padding: const EdgeInsets.only(bottom: 8.0),

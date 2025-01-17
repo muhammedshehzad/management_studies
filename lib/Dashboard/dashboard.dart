@@ -1,5 +1,4 @@
 import 'dart:io';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -16,6 +15,7 @@ import 'package:percent_indicator/linear_percent_indicator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 
+import '../assets/widgets/homeworkdatamodel.dart';
 import '../settings/two-factor_authentication.dart';
 
 class Dashboard extends StatefulWidget {
@@ -230,17 +230,6 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
                             ))),
                   ),
                 ),
-                // IconButton(
-                //     onPressed: () async {
-                //       final SharedPreferences prefs =
-                //           await SharedPreferences.getInstance();
-                //       await prefs.remove('email');
-                //       await prefs.remove('profileImagePath');
-                //       await prefs.remove('role');
-                //       await FirebaseAuth.instance.signOut();
-                //       Navigator.pushReplacementNamed(context, '/signin');
-                //     },
-                //     icon: Icon(Icons.logout)),
               ],
             ),
             drawer: Drawer(
@@ -337,8 +326,7 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) =>
-                                    HomeworkAssignmentsScreen(),
+                                builder: (context) => HomeWorkScreen(),
                               ),
                             );
                           },
@@ -451,123 +439,164 @@ class _ContentAreaState extends State<ContentArea> {
     bool isAdmin = widget.role == 'Admin';
 
     return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Center(
-              child: Text(
-                'Welcome to the ${widget.role} Dashboard!',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              ),
+        child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Center(
+            child: Text(
+              'Welcome to the ${widget.role} Dashboard!',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
           ),
-          SizedBox(
-            height: 15,
-          ),
-          Center(
-            child: Column(
-              children: [
-                if (isStudent)
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      SizedBox(height: 50),
-                      CircularIndicator(0.82, "82.0%", "Average Attendance",
-                          Colors.yellowAccent.shade700),
-                      CircularIndicator(0.18, "18.0%", "Average Leave Taken",
-                          Colors.purpleAccent.shade700),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          SizedBox(
-                            height: 15,
-                          ),
-                          Text(
-                              "Total Attendance = \nDays Present / Total No.Of Working Days"),
-                          Text(
-                            "109 / 120",
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          SizedBox(
-                            height: 10,
-                          ),
-                        ],
-                      ),
-                      Center(
-                        child: Container(
+        ),
+        SizedBox(
+          height: 15,
+        ),
+        Center(
+          child: Column(
+            children: [
+              if (isStudent)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    SizedBox(height: 50),
+                    CircularIndicator(0.82, "82.0%", "Average Attendance",
+                        Colors.yellowAccent.shade700),
+                    CircularIndicator(0.18, "18.0%", "Average Leave Taken",
+                        Colors.purpleAccent.shade700),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(
+                          height: 15,
+                        ),
+                        Text(
+                            "Total Attendance = \nDays Present / Total No.Of Working Days"),
+                        Text(
+                          "109 / 120",
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        SizedBox(
+                          height: 10,
+                        ),
+                      ],
+                    ),
+                    Center(
+                      child: Container(
+                        width: MediaQuery.of(context).size.width * .7,
+                        child: LinearPercentIndicator(
                           width: MediaQuery.of(context).size.width * .7,
-                          child: LinearPercentIndicator(
-                            width: MediaQuery.of(context).size.width * .7,
-                            lineHeight: 36.0,
-                            percent: 0.82,
-                            backgroundColor: Colors.grey,
-                            progressColor: Colors.blue.shade500,
-                            center: Text('90.83%'),
-                          ),
+                          lineHeight: 36.0,
+                          percent: 0.82,
+                          backgroundColor: Colors.grey,
+                          progressColor: Colors.blue.shade500,
+                          center: Text('90.83%'),
                         ),
                       ),
-                    ],
-                  ),
-                if (isTeacher)
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      CircularIndicator(
-                          0.75, "75.0%", "Average Attendance", Colors.green),
-                      CircularIndicator(0.25, "25.0%", "Average Leave Taken",
-                          Colors.redAccent.shade700),
-                    ],
-                  ),
-                SizedBox(
-                  height: 25,
+                    ),
+                  ],
                 ),
-                if (isTeacher) BoysGirlsChart(),
-              ],
-            ),
+              if (isTeacher)
+                Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Expanded(
+                          child: CircularIndicator(0.75, "75.0%",
+                              "Average Attendance", Colors.green),
+                        ),
+                        SizedBox(width: 8),
+                        // Adds space between the two indicators
+                        Expanded(
+                          child: CircularIndicator(0.25, "25.0%",
+                              "Average Leave Taken", Colors.redAccent.shade700),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 8),
+                    // Adds space between the row and chart
+                    BoysGirlsChart(),
+                    // Only visible if isTeacher is true
+                  ],
+                ),
+              SizedBox(height: 20),
+              if (isAdmin)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Text(
+                        'Department-wise Teachers Details',
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    TeachersChart(),
+                    TeacherDashboard(),
+                  ],
+                ),
+            ],
           ),
-          SizedBox(height: 20),
-          if (isAdmin)
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Text(
-                    'Department-wise Teachers Details',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                ),
-                TeachersChart(),
-                TeacherDashboard(),
-              ],
-            ),
-        ],
-      ),
-    );
+        ),
+      ],
+    ));
   }
 
   Widget CircularIndicator(
       double percent, String value, String label, Color color) {
-    return CircularPercentIndicator(
-      radius: 75.0,
-      lineWidth: 15.0,
-      animation: true,
-      percent: percent,
-      center: Text(
-        value,
-        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20.0),
+    return Container(
+      padding: const EdgeInsets.all(10.0),
+      margin: const EdgeInsets.all(8.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8.0),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.3),
+            spreadRadius: 1,
+            blurRadius: 8,
+            offset: Offset(1, 4),
+          ),
+        ],
       ),
-      footer: Padding(
-        padding: const EdgeInsets.all(14.0),
-        child: Text(
-          label,
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15.0),
+      child: CircularPercentIndicator(
+        radius: 75.0,
+        lineWidth: 15.0,
+        animation: true,
+        animationDuration: 1200,
+        percent: percent,
+        center: AnimatedDefaultTextStyle(
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 24.0,
+            color: Colors.black,
+          ),
+          duration: Duration(milliseconds: 300),
+          child: Text(value),
+        ),
+        footer: Padding(
+          padding: const EdgeInsets.only(top: 10.0),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 16.0,
+              color: Colors.grey[800],
+            ),
+          ),
+        ),
+        circularStrokeCap: CircularStrokeCap.round,
+        backgroundColor: Colors.grey[200]!,
+        linearGradient: LinearGradient(
+          colors: [color.withOpacity(1), color.withOpacity(0.4)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
       ),
-      circularStrokeCap: CircularStrokeCap.round,
-      progressColor: color,
     );
   }
 }
@@ -585,14 +614,46 @@ class BoysGirlsChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 410,
+      padding: const EdgeInsets.all(16.0),
+      margin: const EdgeInsets.all(10.0),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8.0),
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.2),
+            blurRadius: 8,
+            offset: Offset(1, 4),
+          ),
+        ],
+      ),
+      width: double.infinity,
       child: SfCartesianChart(
-        title: ChartTitle(text: 'Students Over the Last Years'),
-        legend: Legend(isVisible: true),
-        tooltipBehavior: TooltipBehavior(enable: true),
-        primaryXAxis: CategoryAxis(),
+        title: ChartTitle(
+          text: 'Students Over the Last Years',
+          textStyle: TextStyle(
+              fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
+        ),
+        legend: Legend(
+          isVisible: true,
+          position: LegendPosition.bottom,
+          textStyle: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+        ),
+        tooltipBehavior:
+            TooltipBehavior(enable: true, header: '', canShowMarker: false),
+        primaryXAxis: CategoryAxis(
+          title: AxisTitle(
+            text: 'Year',
+            textStyle: TextStyle(
+                fontSize: 14, fontWeight: FontWeight.w500, color: Colors.black),
+          ),
+        ),
         primaryYAxis: NumericAxis(
-          title: AxisTitle(text: 'No.of Students'),
+          title: AxisTitle(
+            text: 'No. of Students',
+            textStyle: TextStyle(
+                fontSize: 14, fontWeight: FontWeight.w500, color: Colors.black),
+          ),
         ),
         series: <CartesianSeries<dynamic, dynamic>>[
           ColumnSeries<StudentData, String>(
@@ -600,16 +661,34 @@ class BoysGirlsChart extends StatelessWidget {
             xValueMapper: (StudentData data, _) => data.year,
             yValueMapper: (StudentData data, _) => data.boys,
             name: 'Boys',
-            color: Colors.blue,
-            dataLabelSettings: DataLabelSettings(isVisible: true),
+            color: Colors.blue.shade400,
+            borderRadius: BorderRadius.circular(4),
+            dataLabelSettings: DataLabelSettings(
+              isVisible: true,
+              textStyle: TextStyle(color: Colors.white, fontSize: 12),
+            ),
+            gradient: LinearGradient(
+              colors: [Colors.blue.shade600, Colors.blue.shade200],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
           ),
           ColumnSeries<StudentData, String>(
             dataSource: chartData,
             xValueMapper: (StudentData data, _) => data.year,
             yValueMapper: (StudentData data, _) => data.girls,
             name: 'Girls',
-            color: Colors.pink,
-            dataLabelSettings: DataLabelSettings(isVisible: true),
+            color: Colors.pink.shade400,
+            borderRadius: BorderRadius.circular(4),
+            dataLabelSettings: DataLabelSettings(
+              isVisible: true,
+              textStyle: TextStyle(color: Colors.white, fontSize: 12),
+            ),
+            gradient: LinearGradient(
+              colors: [Colors.pink.shade600, Colors.pink.shade200],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ), // Gradient effect on the bars
           ),
         ],
       ),

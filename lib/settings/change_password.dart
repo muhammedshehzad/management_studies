@@ -113,8 +113,7 @@ class _ChangePasswordState extends State<ChangePassword> {
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            padding: const EdgeInsets.symmetric(
-                                vertical: 14, horizontal: 20),
+                            padding: const EdgeInsets.symmetric(vertical: 10),
                           ),
                           child: Text(
                             "Change Password",
