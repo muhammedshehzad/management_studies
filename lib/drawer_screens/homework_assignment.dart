@@ -46,7 +46,7 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
   String _dateCount = '';
   String _range = '';
   String _rangeCount = '';
-  int _page = 1; // Current page for fetching
+  int _page = 1;
   List<QueryDocumentSnapshot>? searchResult;
   List<HomeWorkDetailModel> filteredData = [];
   final TextEditingController Search = TextEditingController();
@@ -56,7 +56,7 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
 
   List<HomeWorkDetailModel> _originalData = [];
   List<HomeWorkDetailModel> _filteredData = [];
-  String _searchText = ''; // Search query
+  String _searchText = '';
 
   int _pageSize = 20;
 
@@ -75,7 +75,6 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
 
   void _applyFilters() {
     setState(() {
-      // Filter the original data and update the filteredData
       _filteredData = _originalData.where((homework) {
         final matchesSubject = _filterSubject == 'All' ||
             homework.subject.toLowerCase() == _filterSubject.toLowerCase();
@@ -191,7 +190,7 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
   void clearQuery() async {
     setState(() {
       _searchController.clear();
-      _searchText = ''; // Ensure searchText is cleared
+      _searchText = '';
       _filterSubject = 'All';
       selectedStatus = 'All';
       startDate = DateTime(2000, 1, 1);
@@ -212,7 +211,6 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
 
     await _fetchFirebaseData();
 
-    // Trigger search filter with an empty string
     _onSearchChanged('');
   }
 
@@ -230,7 +228,6 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
         _rangeCount = args.value.length.toString();
       }
 
-      // Apply all filters after date range selection
       _applyFilters();
     });
   }
@@ -343,8 +340,7 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
 
   Future<List<HomeWorkDetailModel>> fetchHomeworkData(
       int page, int pageSize) async {
-    // Replace this with your actual data fetching logic
-    // For example, querying from Firestore with pagination
+
     return [];
   }
 
@@ -356,15 +352,13 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
     });
 
     try {
-      // Simulate a delay for data fetching (replace with your actual data fetching logic)
       await Future.delayed(Duration(milliseconds: 100));
 
       if (_originalData.isEmpty) {
-        // Fetch the initial data if _originalData is empty
         final querySnapshot = await FirebaseFirestore.instance
             .collection('homeworks')
             .orderBy('deadline')
-            .limit(_pageSize) // Add limit for initial fetch
+            .limit(_pageSize)
             .get();
 
         setState(() {
@@ -373,16 +367,13 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
                   doc.data() as Map<String, dynamic>))
               .toList();
 
-          // Apply filters immediately after fetching
           _applyFilters();
 
-          // Update last document to support pagination after initial fetch
           if (querySnapshot.docs.isNotEmpty) {
             _lastDocument = querySnapshot.docs.last;
           }
         });
       } else {
-        // Fetch more data if there are already existing records (pagination logic)
         Query query = FirebaseFirestore.instance
             .collection('homeworks')
             .orderBy('deadline')
@@ -396,7 +387,7 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
 
         if (querySnapshot.docs.isEmpty) {
           setState(() {
-            _allFetched = true; // No more data available
+            _allFetched = true;
           });
         } else {
           setState(() {
@@ -405,10 +396,9 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
                     doc.data() as Map<String, dynamic>))
                 .toList());
 
-            // Update last document for next fetch
             _lastDocument = querySnapshot.docs.last;
 
-            // Apply filters after adding the new data
+
             _applyFilters();
           });
         }
@@ -417,7 +407,7 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
       debugPrint('Error fetching data: $e');
     } finally {
       setState(() {
-        _isLoading = false; // Stop loading indicator
+        _isLoading = false;
       });
     }
   }
@@ -651,10 +641,9 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
                                               initialSelectedRange:
                                                   PickerDateRange(
                                                 DateTime.now(),
-                                                // Set the default start date to today
                                                 DateTime.now().add(Duration(
                                                     days:
-                                                        1)), // Set the end date to a future date
+                                                        1)),
                                               ),
                                             ),
                                           ),
@@ -731,7 +720,7 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.all(8.0),
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
               child: TextField(
                 controller: _searchController,
                 decoration: InputDecoration(
@@ -745,7 +734,7 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
               ),
             ),
             SizedBox(
-              height: 12,
+              height: 5,
             ),
             Expanded(child: _buildHomeworkList(_filteredData)),
             Container(
@@ -782,7 +771,7 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
 
   Widget _buildHomeworkList(List<HomeWorkDetailModel> records) {
     if (records.isEmpty && _allFetched) {
-      return const SizedBox(); // Hide the progress indicator when all data is loaded
+      return const SizedBox();
     }
 
     if (_isLoading && records.isEmpty) {
@@ -794,7 +783,6 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
       );
     }
 
-    // If no records and not fetched yet, show a message
     if (records.isEmpty) {
       return const Center(
         child: Text(
@@ -808,7 +796,6 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
       itemCount: records.length + (_allFetched ? 0 : 1),
       itemBuilder: (context, index) {
         if (index == records.length && !_allFetched) {
-          // Display loading indicator while fetching more data
           return const Padding(
             padding: EdgeInsets.symmetric(vertical: 16.0),
             child: Center(child: CircularProgressIndicator()),
@@ -816,19 +803,22 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
         }
 
         final homework = records[index];
-        return CustomStudentTile(
-          homework.subject,
-          homework.title,
-          DateFormat('dd-MM-yyyy').format(homework.deadline),
-          homework.status,
-          () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => HomeworkDetails(docId: homework.docid),
-              ),
-            );
-          },
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4.0),
+          child: CustomStudentTile(
+            homework.subject,
+            homework.title,
+            DateFormat('dd-MM-yyyy').format(homework.deadline),
+            homework.status,
+            () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => HomeworkDetails(docId: homework.docid),
+                ),
+              );
+            },
+          ),
         );
       },
     );
