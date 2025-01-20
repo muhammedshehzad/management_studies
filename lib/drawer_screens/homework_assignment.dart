@@ -16,7 +16,7 @@ class HomeWorkScreen extends StatefulWidget {
 }
 
 class _HomeWorkScreenState extends State<HomeWorkScreen> {
-  static const PAGE_SIZE = 8;
+  static const PAGE_SIZE = 20;
   final FirebaseFirestore firestore = FirebaseFirestore.instance;
   String _filterSubject = 'All';
   String selectedStatus = 'All';
@@ -37,20 +37,16 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
   List<HomeWorkDetailModel> _data = [];
   final TextEditingController _searchController = TextEditingController();
 
-  List<DocumentSnapshot> filteredSubRecords = [];
-  List<DocumentSnapshot> allSubRecords = [];
-
-  List<Map<String, dynamic>> allstatusRecords = [];
   List<Map<String, dynamic>> filteredstatusRecords = [];
 
-  DateTime startDate = DateTime.now();
+  DateTime startDate = DateTime(2000, 1, 1);
   DateTime endDate = DateTime.now().add(Duration(days: 300));
 
   String _selectedDate = '';
   String _dateCount = '';
   String _range = '';
   String _rangeCount = '';
-
+  int _page = 1; // Current page for fetching
   List<QueryDocumentSnapshot>? searchResult;
   List<HomeWorkDetailModel> filteredData = [];
   final TextEditingController Search = TextEditingController();
@@ -58,11 +54,11 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
   Query newquery = FirebaseFirestore.instance.collection('homeworks');
   List<HomeWorkDetailModel> filteredRecords = [];
 
-  List<HomeWorkDetailModel> _originalData = []; // Holds unfiltered data
-  List<HomeWorkDetailModel> _filteredData = []; // Holds the filtered data
+  List<HomeWorkDetailModel> _originalData = [];
+  List<HomeWorkDetailModel> _filteredData = [];
   String _searchText = ''; // Search query
 
-  int _pageSize = 10; // Number of items to fetch per page
+  int _pageSize = 20;
 
   @override
   void initState() {
@@ -79,17 +75,15 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
 
   void _applyFilters() {
     setState(() {
+      // Filter the original data and update the filteredData
       _filteredData = _originalData.where((homework) {
-        // Apply subject filter
         final matchesSubject = _filterSubject == 'All' ||
             homework.subject.toLowerCase() == _filterSubject.toLowerCase();
 
-        // Apply search filter
         final matchesSearch = _searchText.isEmpty ||
             homework.title.toLowerCase().contains(_searchText) ||
             homework.subject.toLowerCase().contains(_searchText);
 
-        // Apply status filter
         final matchesStatus = selectedStatus == 'All' ||
             homework.status.toLowerCase() == selectedStatus.toLowerCase();
 
@@ -104,9 +98,9 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
 
   void _onSearchChanged(String value) {
     setState(() {
-      _searchText = value.toLowerCase(); // Update search query
+      _searchText = value.toLowerCase();
     });
-    _applyFilters(); // Reapply filters with the updated search query
+    _applyFilters();
   }
 
   List<String> generateSearchKeywords(String text) {
@@ -119,16 +113,16 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
 
   void _onFilterChanged(String newSubject) {
     setState(() {
-      _filterSubject = newSubject; // Update the selected subject
+      _filterSubject = newSubject;
     });
-    _applyFilters(); // Reapply filters with the updated subject filter
+    _applyFilters();
   }
 
   void SearchAllData() async {
     if (searchText.isEmpty) {
-      // Clear search result if the search field is empty
       setState(() {
         searchResult = null;
+        _applyFilters();
       });
       return;
     }
@@ -144,8 +138,7 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
           .toList();
 
       setState(() {
-        searchResult = results; // Store the search results
-        _applyFilters(); // Reapply filters after search
+        searchResult = results;
       });
     } catch (e) {
       debugPrint('Error during search: $e');
@@ -175,7 +168,6 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
             .cast<Map<String, dynamic>>()
             .toList();
       }
-      // Reapply all filters after status change
       _applyFilters();
     });
   }
@@ -198,37 +190,30 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
 //clearing all serch&flter
   void clearQuery() async {
     setState(() {
-      // Clear the search input field
       _searchController.clear();
-      searchText = '';
-
-      // Reset subject and status filters
+      _searchText = ''; // Ensure searchText is cleared
       _filterSubject = 'All';
       selectedStatus = 'All';
-
-      // Reset date filter to default values
-      startDate = DateTime.now(); // Set start date to today
-      endDate = DateTime.now()
-          .add(Duration(days: 300)); // Set end date to a future date
-
-      // Rebuild the query to fetch all data again
+      startDate = DateTime(2000, 1, 1);
+      endDate = DateTime.now().add(Duration(days: 300));
       query = FirebaseFirestore.instance
           .collection('homeworks')
           .orderBy('deadline')
           .limit(PAGE_SIZE);
 
-      // Clear the data lists and reset flags
+      // Clear all data
       _data.clear();
+      _originalData.clear();
+      _filteredData.clear();
       _allFetched = false;
       _lastDocument = null;
       _isLoading = false;
     });
 
-    // Fetch the updated data based on the cleared filters
     await _fetchFirebaseData();
 
-    // Optionally, call _applyFilters to make sure the UI gets updated with the cleared filters
-    _applyFilters();
+    // Trigger search filter with an empty string
+    _onSearchChanged('');
   }
 
 //datepicker logic
@@ -250,91 +235,86 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
     });
   }
 
-  Future<void> _fetchFirebaseData() async {
-    try {
-      if (_isLoading || _allFetched) return; // Avoid duplicate fetches
-
-      // Set loading state to true
-      setState(() {
-        _isLoading = true;
-      });
-
-      // Check if it's the first time loading data or fetching more data
-      if (_originalData.isEmpty) {
-        // Initial load
-        final querySnapshot = await FirebaseFirestore.instance
-            .collection('homeworks')
-            .orderBy('deadline')
-            .get();
-
-        setState(() {
-          _originalData = querySnapshot.docs
-              .map((doc) => HomeWorkDetailModel.fromMap(
-                  doc.data() as Map<String, dynamic>))
-              .toList();
-
-          _applyFilters(); // Apply filters after fetching initial data
-        });
-      } else {
-        // Pagination logic: fetch additional data
-        Query query =
-            FirebaseFirestore.instance.collection('homeworks').limit(_pageSize);
-
-        if (_lastDocument != null) {
-          query = query.startAfterDocument(_lastDocument!);
-        }
-
-        final querySnapshot = await query.get();
-
-        if (querySnapshot.docs.isEmpty) {
-          setState(() {
-            _allFetched = true; // No more data to fetch
-          });
-        } else {
-          setState(() {
-            // Add newly fetched data to the existing list
-            _originalData.addAll(querySnapshot.docs
-                .map((doc) => HomeWorkDetailModel.fromMap(
-                    doc.data() as Map<String, dynamic>))
-                .toList());
-
-            // Update _lastDocument for next pagination
-            _lastDocument = querySnapshot.docs.last;
-          });
-
-          print('Fetched data length: ${_originalData.length}');
-        }
-      }
-    } catch (e) {
-      debugPrint('Error fetching data: $e');
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
+  // Future<void> _fetchFirebaseData() async {
+  //   if (_isLoading || _allFetched) return;
+  //
+  //   if (_lastDocument == null) {
+  //     // Clear the list for new queries
+  //     _originalData.clear();
+  //   }
+  //
+  //   setState(() {
+  //     _isLoading = true;
+  //   });
+  //
+  //   try {
+  //     if (_originalData.isEmpty) {
+  //       final querySnapshot = await FirebaseFirestore.instance
+  //           .collection('homeworks')
+  //           .orderBy('deadline')
+  //           .get();
+  //
+  //       setState(() {
+  //         _originalData = querySnapshot.docs
+  //             .map((doc) => HomeWorkDetailModel.fromMap(
+  //                 doc.data() as Map<String, dynamic>))
+  //             .toList();
+  //
+  //         _applyFilters();
+  //       });
+  //     } else {
+  //       Query query = FirebaseFirestore.instance
+  //           .collection('homeworks')
+  //           .orderBy('deadline')
+  //           .limit(_pageSize);
+  //
+  //       if (_lastDocument != null) {
+  //         query = query.startAfterDocument(_lastDocument!);
+  //       }
+  //
+  //       final querySnapshot = await query.get();
+  //
+  //       if (querySnapshot.docs.isEmpty) {
+  //         setState(() {
+  //           _allFetched = true; // No more data to fetch
+  //         });
+  //       } else {
+  //         setState(() {
+  //           _originalData.addAll(querySnapshot.docs
+  //               .map((doc) => HomeWorkDetailModel.fromMap(
+  //                   doc.data() as Map<String, dynamic>))
+  //               .toList());
+  //
+  //           _lastDocument = querySnapshot.docs.last;
+  //           _applyFilters();
+  //         });
+  //       }
+  //     }
+  //   } catch (e) {
+  //     debugPrint('Error fetching data: $e');
+  //   } finally {
+  //     setState(() {
+  //       _isLoading = false; // Stop the loading indicator
+  //     });
+  //   }
+  // }
 
   void fetchFilteredData() async {
-    // Start loading state
     setState(() {
       _isLoading = true;
     });
 
-    // Fetch data directly from Firestore
     Query<Map<String, dynamic>> query =
         FirebaseFirestore.instance.collection('homeworks');
 
-    // Apply subject filter
     if (_filterSubject != 'All') {
       query = query.where('subject', isEqualTo: _filterSubject);
     }
 
-    // Apply status filter
     if (selectedStatus != 'All') {
       query = query.where('status', isEqualTo: selectedStatus);
     }
 
-    // Apply date range filter
     if (startDate != null && endDate != null) {
       query = query
           .where('deadline',
@@ -343,22 +323,101 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
     }
 
     try {
-      // Fetch the filtered data from Firestore
       final querySnapshot = await query.get();
 
-      // Map Firestore documents to HomeWorkDetailModel
-      filteredRecords = querySnapshot.docs
-          .map((doc) =>
-              HomeWorkDetailModel.fromMap(doc.data() as Map<String, dynamic>))
-          .toList();
-
       setState(() {
+        _originalData = querySnapshot.docs
+            .map((doc) =>
+                HomeWorkDetailModel.fromMap(doc.data() as Map<String, dynamic>))
+            .toList();
+        _applyFilters();
         _isLoading = false;
       });
     } catch (e) {
       print("Error fetching filtered data: $e");
       setState(() {
         _isLoading = false;
+      });
+    }
+  }
+
+  Future<List<HomeWorkDetailModel>> fetchHomeworkData(
+      int page, int pageSize) async {
+    // Replace this with your actual data fetching logic
+    // For example, querying from Firestore with pagination
+    return [];
+  }
+
+  Future<void> _fetchFirebaseData() async {
+    if (_isLoading || _allFetched) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Simulate a delay for data fetching (replace with your actual data fetching logic)
+      await Future.delayed(Duration(milliseconds: 100));
+
+      if (_originalData.isEmpty) {
+        // Fetch the initial data if _originalData is empty
+        final querySnapshot = await FirebaseFirestore.instance
+            .collection('homeworks')
+            .orderBy('deadline')
+            .limit(_pageSize) // Add limit for initial fetch
+            .get();
+
+        setState(() {
+          _originalData = querySnapshot.docs
+              .map((doc) => HomeWorkDetailModel.fromMap(
+                  doc.data() as Map<String, dynamic>))
+              .toList();
+
+          // Apply filters immediately after fetching
+          _applyFilters();
+
+          // Update last document to support pagination after initial fetch
+          if (querySnapshot.docs.isNotEmpty) {
+            _lastDocument = querySnapshot.docs.last;
+          }
+        });
+      } else {
+        // Fetch more data if there are already existing records (pagination logic)
+        Query query = FirebaseFirestore.instance
+            .collection('homeworks')
+            .orderBy('deadline')
+            .limit(_pageSize);
+
+        if (_lastDocument != null) {
+          query = query.startAfterDocument(_lastDocument!); // Pagination
+        }
+
+        final querySnapshot = await query.get();
+
+        if (querySnapshot.docs.isEmpty) {
+          setState(() {
+            _allFetched = true; // No more data available
+          });
+        } else {
+          setState(() {
+            _originalData.addAll(querySnapshot.docs
+                .map((doc) => HomeWorkDetailModel.fromMap(
+                    doc.data() as Map<String, dynamic>))
+                .toList());
+
+            // Update last document for next fetch
+            _lastDocument = querySnapshot.docs.last;
+
+            // Apply filters after adding the new data
+            _applyFilters();
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error fetching data: $e');
+    } finally {
+      setState(() {
+        _isLoading = false; // Stop loading indicator
       });
     }
   }
@@ -389,32 +448,6 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
 
             return matchesSubject && matchesStatus && matchesDate;
           }).toList();
-
-    // if (searchText.isNotEmpty && searchResult != null) {
-    //   filteredRecords = searchResult!
-    //       .map((doc) =>
-    //           HomeWorkDetailModel.fromMap(doc.data() as Map<String, dynamic>))
-    //       .toList();
-    // } else {
-    //   filteredRecords = _data.where((homeworks) {
-    //     final subject = homeworks.subject.toLowerCase();
-    //     final title = homeworks.title.toLowerCase();
-    //     final deadline = DateFormat('dd-MM-yyyy').format(homeworks.deadline);
-    //     final status = homeworks.status.toLowerCase();
-    //
-    //     final matchesSubject =
-    //         _filterSubject == 'All' || subject == _filterSubject.toLowerCase();
-    //     print(
-    //         _filterSubject); // Add this line to check if _filterSubject is being set correctly.
-    //
-    //     final matchesStatus =
-    //         selectedStatus == 'All' || status == selectedStatus.toLowerCase();
-    //
-    //     return matchesSubject && matchesStatus;
-    //   }).toList();
-    // }
-    // ;
-
     return Scaffold(
       appBar: AppBar(
         title: Text('Homework and Assignments'),
@@ -532,8 +565,7 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
                                                     selectedStatus = selected
                                                         ? "All"
                                                         : selectedStatus;
-                                                    print(
-                                                        "Selected Status: $selectedStatus");
+
                                                     _applystatusFilter();
                                                   });
                                                 },
@@ -558,8 +590,7 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
                                                     selectedStatus = selected
                                                         ? "Completed"
                                                         : selectedStatus;
-                                                    print(
-                                                        "Selected Status: $selectedStatus");
+
                                                     _applystatusFilter();
                                                   });
                                                 },
@@ -584,8 +615,7 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
                                                     selectedStatus = selected
                                                         ? "Pending"
                                                         : selectedStatus;
-                                                    print(
-                                                        "Selected Status: $selectedStatus");
+
                                                     _applystatusFilter();
                                                   });
                                                 },
@@ -675,16 +705,28 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
               icon: Icon(Icons.filter_list_sharp))
         ],
       ),
-      body: NotificationListener<ScrollNotification>(
-        onNotification: (scrollEnd) {
-          // Trigger when user reaches near the bottom of the list (5% before maxScrollExtent)
-          if (scrollEnd.metrics.pixels >=
-                  scrollEnd.metrics.maxScrollExtent * 0.95 &&
-              !_isLoading &&
-              !_allFetched) {
-            _fetchFirebaseData();
+      body:
+          // NotificationListener<ScrollNotification>(
+          //   onNotification: (scrollEnd) {
+          //     if (scrollEnd.metrics.pixels >=
+          //             scrollEnd.metrics.maxScrollExtent * 0.95 &&
+          //         !_isLoading &&
+          //         !_allFetched) {
+          //       _fetchFirebaseData();
+          //     }
+          //     return false;
+          //   },
+          //   child:
+          NotificationListener<ScrollNotification>(
+        onNotification: (scrollNotification) {
+          if (scrollNotification is ScrollEndNotification &&
+              scrollNotification.metrics.pixels ==
+                  scrollNotification.metrics.maxScrollExtent) {
+            if (!_isLoading && !_allFetched) {
+              _fetchFirebaseData(); // Trigger fetching more data
+            }
           }
-          return true;
+          return false;
         },
         child: Column(
           children: [
@@ -735,17 +777,24 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
         ),
       ),
     );
+    // );
   }
 
   Widget _buildHomeworkList(List<HomeWorkDetailModel> records) {
-    if (records.isEmpty && _isLoading) {
-      return const Center(
-          child: Padding(
-        padding: EdgeInsets.all(12.0),
-        child: CircularProgressIndicator(),
-      ));
+    if (records.isEmpty && _allFetched) {
+      return const SizedBox(); // Hide the progress indicator when all data is loaded
     }
 
+    if (_isLoading && records.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(12.0),
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    // If no records and not fetched yet, show a message
     if (records.isEmpty) {
       return const Center(
         child: Text(
@@ -754,35 +803,33 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
         ),
       );
     }
+
     return ListView.builder(
       itemCount: records.length + (_allFetched ? 0 : 1),
-      //if records.length changed to _originalData, pagination works but search and filter wont
       itemBuilder: (context, index) {
-        if (index == records.length) {
-          //if records.length changed to _originalData, pagination works but search and filter wont
-          return const Center(
-              child: Padding(
-            padding: EdgeInsets.all(12.0),
-            child: CircularProgressIndicator(),
-          ));
-        }
-        // else{
-        //   SizedBox.shrink();
-        // }
-        final homework = records[
-            index]; //if records changed to _originalData, pagination works but search and filter wont
-        return CustomStudentTile(
-            homework.subject,
-            homework.title,
-            DateFormat('dd-MM-yyyy').format(homework.deadline),
-            homework.status, () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => HomeworkDetails(docId: homework.docid),
-            ),
+        if (index == records.length && !_allFetched) {
+          // Display loading indicator while fetching more data
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 16.0),
+            child: Center(child: CircularProgressIndicator()),
           );
-        });
+        }
+
+        final homework = records[index];
+        return CustomStudentTile(
+          homework.subject,
+          homework.title,
+          DateFormat('dd-MM-yyyy').format(homework.deadline),
+          homework.status,
+          () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => HomeworkDetails(docId: homework.docid),
+              ),
+            );
+          },
+        );
       },
     );
   }
@@ -810,7 +857,6 @@ class HomeWorkDetailModel {
   });
 
   factory HomeWorkDetailModel.fromMap(Map<String, dynamic> map) {
-    print('Data fetched: $map');
     return HomeWorkDetailModel(
       subject: map['subject'] ?? 'N/A',
       title: map['title'] ?? 'No title',
@@ -965,7 +1011,6 @@ class _HomeWorkDetailsState extends State<HomeWorkDetails> {
           'estimatedtime': estimatedtime,
           'docid': docid,
         });
-        print('Generated docid: $docid');
         addHomeworkToFirestore;
         Navigator.pop(context);
       }
@@ -1156,7 +1201,6 @@ class _SubjectFilterButtonState extends State<SubjectFilterButton> {
           selectedsubjectFilter = newValue!;
           _filterSubject = newValue;
           widget.onSelected(newValue!);
-          print(selectedsubjectFilter);
         });
       },
       hint: Text(
