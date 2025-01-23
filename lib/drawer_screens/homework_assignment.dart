@@ -2,10 +2,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:side_sheet/side_sheet.dart';
 import 'package:syncfusion_flutter_datepicker/datepicker.dart';
 import 'package:uuid/uuid.dart';
-
 import 'homework_details.dart';
 
 class HomeWorkScreen extends StatefulWidget {
@@ -16,11 +16,12 @@ class HomeWorkScreen extends StatefulWidget {
 }
 
 class _HomeWorkScreenState extends State<HomeWorkScreen> {
-  static const PAGE_SIZE = 20;
+  static const PAGE_SIZE = 50;
   final FirebaseFirestore firestore = FirebaseFirestore.instance;
   String _filterSubject = 'All';
   String selectedStatus = 'All';
   List<QueryDocumentSnapshot<Map<String, dynamic>>> allRecords = [];
+  String? globalSelectedSubjectFilter = 'All';
 
   Future<DocumentSnapshot<Map<String, dynamic>>> fetchDetails() async {
     return firestore.collection('homeworks').doc(widget.docId).get();
@@ -45,9 +46,7 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
   String _selectedDate = '';
   String _dateCount = '';
   String _range = '';
-  String _rangeCount = '';
-  int _page = 1;
-  List<QueryDocumentSnapshot>? searchResult;
+  String _rangeCount = '';List<QueryDocumentSnapshot>? searchResult;
   List<HomeWorkDetailModel> filteredData = [];
   final TextEditingController Search = TextEditingController();
   String searchText = '';
@@ -57,13 +56,14 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
   List<HomeWorkDetailModel> _originalData = [];
   List<HomeWorkDetailModel> _filteredData = [];
   String _searchText = '';
-
-  int _pageSize = 20;
+  String? role;
+  int _pageSize = 50;
 
   @override
   void initState() {
     super.initState();
     _fetchFirebaseData();
+    loadRole();
     // _searchController.addListener(_onSearchChanged);
   }
 
@@ -81,7 +81,8 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
 
         final matchesSearch = _searchText.isEmpty ||
             homework.title.toLowerCase().contains(_searchText) ||
-            homework.subject.toLowerCase().contains(_searchText);
+            homework.subject.toLowerCase().contains(_searchText) ||
+            homework.status.toLowerCase().contains(_searchText);
 
         final matchesStatus = selectedStatus == 'All' ||
             homework.status.toLowerCase() == selectedStatus.toLowerCase();
@@ -102,59 +103,12 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
     _applyFilters();
   }
 
-  List<String> generateSearchKeywords(String text) {
-    List<String> keywords = [];
-    for (int i = 0; i < text.length; i++) {
-      keywords.add(text.substring(0, i + 1).toLowerCase());
-    }
-    return keywords;
-  }
-
   void _onFilterChanged(String newSubject) {
     setState(() {
       _filterSubject = newSubject;
     });
     _applyFilters();
   }
-
-  void SearchAllData() async {
-    if (searchText.isEmpty) {
-      setState(() {
-        searchResult = null;
-        _applyFilters();
-      });
-      return;
-    }
-
-    try {
-      final snapshots =
-          await FirebaseFirestore.instance.collection('homeworks').get();
-
-      final results = snapshots.docs
-          .where((doc) =>
-              doc['subject'].toString().toLowerCase().contains(searchText) ||
-              doc['title'].toString().toLowerCase().contains(searchText))
-          .toList();
-
-      setState(() {
-        searchResult = results;
-      });
-    } catch (e) {
-      debugPrint('Error during search: $e');
-    }
-  } //sub fltr
-
-  // void _applySubjectFilter() {
-  //   setState(() {
-  //     if (_filterSubject == 'All') {
-  //       filteredSubRecords = allRecords;
-  //     } else {
-  //       filteredSubRecords = allRecords
-  //           .where((doc) => doc['subject'] == _filterSubject)
-  //           .toList();
-  //     }
-  //   });
-  // }
 
 //stats filtr
   void _applystatusFilter() {
@@ -171,36 +125,13 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
     });
   }
 
-//date filter
-  void fetchclearquery(DateTime start, DateTime end) async {
-    setState(() {
-      query = FirebaseFirestore.instance
-          .collection('homeworks')
-          .where('deadline', isGreaterThanOrEqualTo: Timestamp.fromDate(start))
-          .where('deadline', isLessThanOrEqualTo: Timestamp.fromDate(end));
-      _data.clear();
-      _allFetched = false;
-      _lastDocument = null;
-    });
-
-    await _fetchFirebaseData();
-  }
-
 //clearing all serch&flter
   void clearQuery() async {
     setState(() {
-      _searchController.clear();
-      _searchText = '';
       _filterSubject = 'All';
       selectedStatus = 'All';
       startDate = DateTime(2000, 1, 1);
       endDate = DateTime.now().add(Duration(days: 300));
-      query = FirebaseFirestore.instance
-          .collection('homeworks')
-          .orderBy('deadline')
-          .limit(PAGE_SIZE);
-
-      // Clear all data
       _data.clear();
       _originalData.clear();
       _filteredData.clear();
@@ -209,9 +140,12 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
       _isLoading = false;
     });
 
-    await _fetchFirebaseData();
+    // Remove the selected subject from SharedPreferences
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    prefs
+        .remove('selectedSubjectFilter'); // Removes the selected subject filter
 
-    _onSearchChanged('');
+    await _fetchFirebaseData();
   }
 
 //datepicker logic
@@ -232,117 +166,51 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
     });
   }
 
-  // Future<void> _fetchFirebaseData() async {
-  //   if (_isLoading || _allFetched) return;
-  //
-  //   if (_lastDocument == null) {
-  //     // Clear the list for new queries
-  //     _originalData.clear();
-  //   }
-  //
+  // void fetchFilteredData() async {
   //   setState(() {
   //     _isLoading = true;
   //   });
   //
+  //   Query<Map<String, dynamic>> query =
+  //       FirebaseFirestore.instance.collection('homeworks');
+  //
+  //   if (_filterSubject != 'All') {
+  //     query = query.where('subject', isEqualTo: _filterSubject);
+  //   }
+  //
+  //   if (selectedStatus != 'All') {
+  //     query = query.where('status', isEqualTo: selectedStatus);
+  //   }
+  //
+  //   if (startDate != null && endDate != null) {
+  //     query = query
+  //         .where('deadline',
+  //             isGreaterThanOrEqualTo: Timestamp.fromDate(startDate!))
+  //         .where('deadline', isLessThanOrEqualTo: Timestamp.fromDate(endDate!));
+  //   }
+  //
   //   try {
-  //     if (_originalData.isEmpty) {
-  //       final querySnapshot = await FirebaseFirestore.instance
-  //           .collection('homeworks')
-  //           .orderBy('deadline')
-  //           .get();
+  //     final querySnapshot = await query.get();
   //
-  //       setState(() {
-  //         _originalData = querySnapshot.docs
-  //             .map((doc) => HomeWorkDetailModel.fromMap(
-  //                 doc.data() as Map<String, dynamic>))
-  //             .toList();
-  //
-  //         _applyFilters();
-  //       });
-  //     } else {
-  //       Query query = FirebaseFirestore.instance
-  //           .collection('homeworks')
-  //           .orderBy('deadline')
-  //           .limit(_pageSize);
-  //
-  //       if (_lastDocument != null) {
-  //         query = query.startAfterDocument(_lastDocument!);
-  //       }
-  //
-  //       final querySnapshot = await query.get();
-  //
-  //       if (querySnapshot.docs.isEmpty) {
-  //         setState(() {
-  //           _allFetched = true; // No more data to fetch
-  //         });
-  //       } else {
-  //         setState(() {
-  //           _originalData.addAll(querySnapshot.docs
-  //               .map((doc) => HomeWorkDetailModel.fromMap(
-  //                   doc.data() as Map<String, dynamic>))
-  //               .toList());
-  //
-  //           _lastDocument = querySnapshot.docs.last;
-  //           _applyFilters();
-  //         });
-  //       }
-  //     }
-  //   } catch (e) {
-  //     debugPrint('Error fetching data: $e');
-  //   } finally {
   //     setState(() {
-  //       _isLoading = false; // Stop the loading indicator
+  //       _originalData = querySnapshot.docs
+  //           .map((doc) => HomeWorkDetailModel.fromMap(doc.data()))
+  //           .toList();
+  //       _applyFilters();
+  //       _isLoading = false;
+  //     });
+  //   } catch (e) {
+  //     print("Error fetching filtered data: $e");
+  //     setState(() {
+  //       _isLoading = false;
   //     });
   //   }
   // }
 
-  void fetchFilteredData() async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    Query<Map<String, dynamic>> query =
-        FirebaseFirestore.instance.collection('homeworks');
-
-    if (_filterSubject != 'All') {
-      query = query.where('subject', isEqualTo: _filterSubject);
-    }
-
-    if (selectedStatus != 'All') {
-      query = query.where('status', isEqualTo: selectedStatus);
-    }
-
-    if (startDate != null && endDate != null) {
-      query = query
-          .where('deadline',
-              isGreaterThanOrEqualTo: Timestamp.fromDate(startDate!))
-          .where('deadline', isLessThanOrEqualTo: Timestamp.fromDate(endDate!));
-    }
-
-    try {
-      final querySnapshot = await query.get();
-
-      setState(() {
-        _originalData = querySnapshot.docs
-            .map((doc) =>
-                HomeWorkDetailModel.fromMap(doc.data() as Map<String, dynamic>))
-            .toList();
-        _applyFilters();
-        _isLoading = false;
-      });
-    } catch (e) {
-      print("Error fetching filtered data: $e");
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-
-  Future<List<HomeWorkDetailModel>> fetchHomeworkData(
-      int page, int pageSize) async {
-
-    return [];
-  }
+  // Future<List<HomeWorkDetailModel>> fetchHomeworkData(
+  //     int page, int pageSize) async {
+  //   return [];
+  // }
 
   Future<void> _fetchFirebaseData() async {
     if (_isLoading || _allFetched) return;
@@ -358,13 +226,11 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
         final querySnapshot = await FirebaseFirestore.instance
             .collection('homeworks')
             .orderBy('deadline')
-            .limit(_pageSize)
             .get();
 
         setState(() {
           _originalData = querySnapshot.docs
-              .map((doc) => HomeWorkDetailModel.fromMap(
-                  doc.data() as Map<String, dynamic>))
+              .map((doc) => HomeWorkDetailModel.fromMap(doc.data()))
               .toList();
 
           _applyFilters();
@@ -376,8 +242,7 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
       } else {
         Query query = FirebaseFirestore.instance
             .collection('homeworks')
-            .orderBy('deadline')
-            .limit(_pageSize);
+            .orderBy('deadline');
 
         if (_lastDocument != null) {
           query = query.startAfterDocument(_lastDocument!); // Pagination
@@ -393,11 +258,10 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
           setState(() {
             _originalData.addAll(querySnapshot.docs
                 .map((doc) => HomeWorkDetailModel.fromMap(
-                    doc.data() as Map<String, dynamic>))
+                doc.data() as Map<String, dynamic>))
                 .toList());
 
             _lastDocument = querySnapshot.docs.last;
-
 
             _applyFilters();
           });
@@ -412,32 +276,15 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
     }
   }
 
+  Future<void> loadRole() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() {
+      role = prefs.getString('role');
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    List<HomeWorkDetailModel> filteredRecords = searchResult != null
-        ? searchResult!
-            .map((doc) =>
-                HomeWorkDetailModel.fromMap(doc.data() as Map<String, dynamic>))
-            .toList()
-        : _data.where((homeworks) {
-            final subject = homeworks.subject.toLowerCase();
-            final title = homeworks.title.toLowerCase();
-            final deadline =
-                DateFormat('dd-MM-yyyy').format(homeworks.deadline);
-            final status = homeworks.status.toLowerCase();
-
-            final matchesSubject = _filterSubject == 'All' ||
-                subject == _filterSubject.toLowerCase();
-
-            final matchesStatus = selectedStatus == 'All' ||
-                status == selectedStatus.toLowerCase();
-
-            final matchesDate = (startDate == null || endDate == null) ||
-                (homeworks.deadline.isAfter(startDate!) &&
-                    homeworks.deadline.isBefore(endDate!));
-
-            return matchesSubject && matchesStatus && matchesDate;
-          }).toList();
     return Scaffold(
       appBar: AppBar(
         title: Text('Homework and Assignments'),
@@ -461,7 +308,7 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
                                 padding: const EdgeInsets.all(16.0),
                                 child: Row(
                                   mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
+                                  MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text(
                                       "Filters",
@@ -492,33 +339,33 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
                                     Padding(
                                       padding: const EdgeInsets.all(16.0),
                                       child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
+                                        mainAxisAlignment: MainAxisAlignment.start,
+                                        crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
                                           Text(
-                                            "Select a Subject",
+                                            "Select a Subject: ",
                                             style: TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w500,
+                                              fontSize: 16, // Larger font size for improved readability
+                                              fontWeight: FontWeight.w600, // Bold and clear font weight
                                               color: Colors.black87,
                                             ),
                                           ),
-                                          SizedBox(height: 12),
+                                          SizedBox(height: 5,),
                                           SubjectFilterButton(
-                                            onSelected: (value) {
-                                              if (value != null)
-                                                _onFilterChanged(value);
+                                            onSelected: (newValue) {
+                                              _onFilterChanged(newValue);
                                             },
-                                          )
+                                          ),
                                         ],
                                       ),
-                                    ),
+                                    )
+,
                                     // Department Tab
                                     Padding(
                                       padding: const EdgeInsets.all(16.0),
                                       child: Column(
                                         crossAxisAlignment:
-                                            CrossAxisAlignment.start,
+                                        CrossAxisAlignment.start,
                                         children: [
                                           Text(
                                             "Select a Status",
@@ -534,7 +381,7 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
                                           Wrap(
                                             spacing: 14,
                                             alignment:
-                                                WrapAlignment.spaceEvenly,
+                                            WrapAlignment.spaceEvenly,
                                             children: [
                                               ChoiceChip(
                                                 label: Text("All"),
@@ -545,11 +392,11 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
                                                       : Colors.black,
                                                 ),
                                                 selected:
-                                                    selectedStatus == "All",
+                                                selectedStatus == "All",
                                                 selectedColor:
-                                                    Colors.blueGrey.shade600,
+                                                Colors.blueGrey.shade600,
                                                 backgroundColor:
-                                                    Colors.blueGrey.shade200,
+                                                Colors.blueGrey.shade200,
                                                 onSelected: (bool selected) {
                                                   setState(() {
                                                     selectedStatus = selected
@@ -565,16 +412,16 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
                                                 labelStyle: TextStyle(
                                                   fontWeight: FontWeight.bold,
                                                   color: selectedStatus ==
-                                                          "Completed"
+                                                      "Completed"
                                                       ? Colors.white
                                                       : Colors.black,
                                                 ),
                                                 selected: selectedStatus ==
                                                     "Completed",
                                                 selectedColor:
-                                                    Colors.green.shade600,
+                                                Colors.green.shade600,
                                                 backgroundColor:
-                                                    Colors.green.shade200,
+                                                Colors.green.shade200,
                                                 onSelected: (bool selected) {
                                                   setState(() {
                                                     selectedStatus = selected
@@ -590,16 +437,16 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
                                                 labelStyle: TextStyle(
                                                   fontWeight: FontWeight.bold,
                                                   color: selectedStatus ==
-                                                          "Pending"
+                                                      "Pending"
                                                       ? Colors.white
                                                       : Colors.black,
                                                 ),
                                                 selected:
-                                                    selectedStatus == "Pending",
+                                                selectedStatus == "Pending",
                                                 selectedColor:
-                                                    Colors.red.shade600,
+                                                Colors.red.shade600,
                                                 backgroundColor:
-                                                    Colors.red.shade200,
+                                                Colors.red.shade200,
                                                 onSelected: (bool selected) {
                                                   setState(() {
                                                     selectedStatus = selected
@@ -622,7 +469,7 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
                                         decoration: BoxDecoration(
                                           color: Colors.grey[100],
                                           borderRadius:
-                                              BorderRadius.circular(8),
+                                          BorderRadius.circular(8),
                                         ),
                                         child: Padding(
                                           padding: const EdgeInsets.all(16.0),
@@ -630,20 +477,19 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
                                             decoration: BoxDecoration(
                                               color: Colors.grey[100],
                                               borderRadius:
-                                                  BorderRadius.circular(8),
+                                              BorderRadius.circular(8),
                                             ),
                                             child: SfDateRangePicker(
                                               onSelectionChanged:
-                                                  _onSelectionChanged,
+                                              _onSelectionChanged,
                                               selectionMode:
-                                                  DateRangePickerSelectionMode
-                                                      .range,
+                                              DateRangePickerSelectionMode
+                                                  .range,
                                               initialSelectedRange:
-                                                  PickerDateRange(
+                                              PickerDateRange(
                                                 DateTime.now(),
-                                                DateTime.now().add(Duration(
-                                                    days:
-                                                        1)),
+                                                DateTime.now()
+                                                    .add(Duration(days: 1)),
                                               ),
                                             ),
                                           ),
@@ -694,25 +540,13 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
               icon: Icon(Icons.filter_list_sharp))
         ],
       ),
-      body:
-          // NotificationListener<ScrollNotification>(
-          //   onNotification: (scrollEnd) {
-          //     if (scrollEnd.metrics.pixels >=
-          //             scrollEnd.metrics.maxScrollExtent * 0.95 &&
-          //         !_isLoading &&
-          //         !_allFetched) {
-          //       _fetchFirebaseData();
-          //     }
-          //     return false;
-          //   },
-          //   child:
-          NotificationListener<ScrollNotification>(
+      body: NotificationListener<ScrollNotification>(
         onNotification: (scrollNotification) {
           if (scrollNotification is ScrollEndNotification &&
-              scrollNotification.metrics.pixels ==
-                  scrollNotification.metrics.maxScrollExtent) {
+              scrollNotification.metrics.pixels >=
+                  scrollNotification.metrics.maxScrollExtent - 100) {
             if (!_isLoading && !_allFetched) {
-              _fetchFirebaseData(); // Trigger fetching more data
+              _fetchFirebaseData();
             }
           }
           return false;
@@ -737,31 +571,32 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
               height: 5,
             ),
             Expanded(child: _buildHomeworkList(_filteredData)),
-            Container(
-              height: 44,
-              width: MediaQuery.of(context).size.width,
-              margin: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  backgroundColor: Color(0xff3e948e),
-                  elevation: 5,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(6),
+            if (role == 'Admin' || role == 'Teacher')
+              Container(
+                height: 44,
+                width: MediaQuery.of(context).size.width,
+                margin: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    backgroundColor: Color(0xff3e948e),
+                    elevation: 5,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => HomeWorkDetails()));
+                  },
+                  child: const Text(
+                    'Add data',
+                    style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),
-                onPressed: () {
-                  Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => HomeWorkDetails()));
-                },
-                child: const Text(
-                  'Add data',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-              ),
-            )
+              )
           ],
         ),
       ),
@@ -793,7 +628,7 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
     }
 
     return ListView.builder(
-      itemCount: records.length + (_allFetched ? 0 : 1),
+      itemCount: records.length + (_allFetched || records.length < 8 ? 0 : 1),
       itemBuilder: (context, index) {
         if (index == records.length && !_allFetched) {
           return const Padding(
@@ -810,7 +645,7 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
             homework.title,
             DateFormat('dd-MM-yyyy').format(homework.deadline),
             homework.status,
-            () {
+                () {
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -878,7 +713,7 @@ class CustomStudentTile extends StatelessWidget {
         onTap: ontap,
         title: Text(subject,
             style:
-                TextStyle(fontWeight: FontWeight.bold, color: Colors.black87)),
+            TextStyle(fontWeight: FontWeight.bold, color: Colors.black87)),
         subtitle: Container(
           width: MediaQuery.of(context).size.width * 0.7,
           padding: const EdgeInsets.only(bottom: 4.0),
@@ -1117,92 +952,91 @@ class SubjectFilterButton extends StatefulWidget {
 }
 
 class _SubjectFilterButtonState extends State<SubjectFilterButton> {
-  List<String> subject = ['All'];
-  String? selectedsubjectFilter; // Selected value
-  String _filterSubject = '';
-  List<DocumentSnapshot> filteredSubRecords = [];
-  List<DocumentSnapshot> allSubRecords = []; // All fetched records
-
-  void _applyDeptFilter() {
-    setState(() {
-      if (_filterSubject == 'All') {
-        filteredSubRecords = allSubRecords;
-      } else {
-        filteredSubRecords = allSubRecords
-            .where((doc) => doc['homeworks'] == _filterSubject)
-            .toList();
-      }
-    });
-  }
-
-  Future<List<String>> fetchSubject() async {
-    try {
-      final querySnapshot =
-          await FirebaseFirestore.instance.collection('homeworks').get();
-
-      final subjects = querySnapshot.docs
-          .map((doc) => doc.data())
-          .map((data) => data['subject'] as String?)
-          .where((subject) => subject != null)
-          .cast<String>()
-          .toSet()
-          .toList();
-
-      subjects.sort();
-      return subjects;
-    } catch (e) {
-      print('Error fetching departments: $e');
-      return [];
-    }
-  }
+  List<String> subjects = [];
+  String? selectedSubject;
 
   @override
   void initState() {
     super.initState();
-    setState(() {
-      _fetchSubjects();
-    });
-    _fetchSubjects();
+    _loadSubjects();
   }
 
-  Future<void> _fetchSubjects() async {
-    final fetchedDepartments = await fetchSubject();
+  Future<void> _loadSubjects() async {
+    final fetchedSubjects = await _fetchSubjects();
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    final savedSubject = prefs.getString('selectedSubjectFilter') ?? 'All';
+
+    if (!fetchedSubjects.contains('All')) {
+      fetchedSubjects.insert(0, 'All');
+    }
+
     setState(() {
-      subject = ['All'] + fetchedDepartments;
-      selectedsubjectFilter = subject.first;
+      subjects = fetchedSubjects
+          .where((subject) => subject != null)
+          .cast<String>()
+          .toList();
+      selectedSubject = subjects.contains(savedSubject) ? savedSubject : 'All';
     });
   }
+
+  Future<List<String?>> _fetchSubjects() async {
+    try {
+      final querySnapshot =
+      await FirebaseFirestore.instance.collection('homeworks').get();
+      return querySnapshot.docs
+          .map((doc) => doc.data()['subject'] as String?)
+          .where((subject) => subject != null)
+          .toSet()
+          .toList()
+        ..sort();
+    } catch (e) {
+      print('Error fetching subjects: $e');
+      return [];
+    }
+  }
+  Future<void> handleSubjectChange(String? newValue) async {
+    if (newValue != null) {
+      setState(() {
+        selectedSubject = newValue;
+        widget.onSelected(newValue);
+      });
+
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      prefs.setString('selectedSubjectFilter', newValue);
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
-    return DropdownButton<String>(
-      value: selectedsubjectFilter,
-      items: subject.map((String subject) {
-        return DropdownMenuItem<String>(
-          value: subject,
-          child: Text(
-            subject == 'All' ? 'All Subjects' : subject,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-          ),
-        );
-      }).toList(),
-      onChanged: (newValue) {
-        setState(() {
-          selectedsubjectFilter = newValue!;
-          _filterSubject = newValue;
-          widget.onSelected(newValue!);
-        });
-      },
-      hint: Text(
-        'Select Dept',
-        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+    return Container(
+      height: 35,
+      decoration: BoxDecoration(
+        border: Border.all(
+          color: Colors.grey, // Border color
+          width: 1, // Border width
+        ),
+        borderRadius: BorderRadius.circular(4), // Rounded corners for the border
       ),
-      icon: const Icon(
-        Icons.arrow_drop_down,
-        color: Colors.blueGrey,
+      child: DropdownButton<String>(
+        value: selectedSubject,
+        items: subjects.map((subject) {
+          return DropdownMenuItem<String>(
+            value: subject,
+            child: Text(
+              subject == 'All' ? 'All Subjects' : " ${subject}",
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+            ),
+          );
+        }).toList(),
+        onChanged: (newValue) {
+          handleSubjectChange(newValue);
+        },
+
+
+        icon: const Icon(Icons.arrow_drop_down, color: Colors.transparent),
+        dropdownColor: Colors.white,
       ),
-      dropdownColor: Colors.white,
-      underline: Container(height: 0),
     );
   }
 }

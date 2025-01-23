@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:ui';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -5,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
 
 class ProfileDetailsPage extends StatefulWidget {
   const ProfileDetailsPage({super.key});
@@ -17,18 +19,47 @@ class _ProfileDetailsPageState extends State<ProfileDetailsPage> {
   File? selectedImage;
   File? tempImage;
   final picker = ImagePicker();
+  String? imageurl;
 
-  Future _pickImage() async {
+  Future<void> _pickImage() async {
     final returnedImage =
         await ImagePicker().pickImage(source: ImageSource.gallery);
     if (returnedImage != null) {
       setState(() {
         tempImage = File(returnedImage.path);
       });
-      ScaffoldMessenger.of(context).showSnackBar(const SizedBox() as SnackBar);
+      await imageUpload(); // Upload the image to Cloudinary
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('No image selected.')),
+      );
+    }
+  }
+
+  Future<void> imageUpload() async {
+    if (tempImage == null) return; // Ensure an image is selected
+
+    final url = Uri.parse('https://api.cloudinary.com/v1_1/dfcehequr/upload');
+    final request = http.MultipartRequest('POST', url)
+      ..fields['upload_preset'] = 'images' // Cloudinary upload preset
+      ..files.add(await http.MultipartFile.fromPath('file', tempImage!.path));
+
+    final response = await request.send();
+    if (response.statusCode == 200) {
+      final responsedata = await response.stream.toBytes();
+      final responseString = String.fromCharCodes(responsedata);
+      final jsonMap = jsonDecode(responseString);
+
+      setState(() {
+        final uploadedUrl = jsonMap['url'];
+        imageurl = uploadedUrl;
+        print('Uploaded Image URL: $imageurl');
+        saveImagePath(uploadedUrl); // Save image URL to SharedPreferences
+        updateUser(userid!); // Update the user profile with the new image URL
+      });
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to upload image to Cloudinary.')),
       );
     }
   }
@@ -58,14 +89,18 @@ class _ProfileDetailsPageState extends State<ProfileDetailsPage> {
   bool isEditing = false;
   final _db = FirebaseFirestore.instance;
   String? userid;
-
+  Widget buildProfileImage(String imageUrl) {
+    return imageUrl.startsWith('http')
+        ? Image.network(imageUrl, fit: BoxFit.cover)
+        : Image.asset('assets/default_profile_image.png', fit: BoxFit.cover);
+  }
   Future<void> updateUser(String userId) async {
     final updatedData = {
       "username": nameController.text,
       "email": emailController.text,
       "address": addressController.text,
       "phone": phoneController.text,
-      "url": selectedImage != null ? selectedImage!.path : "null"
+      "url": imageurl ?? "null"  // Use Cloudinary URL or fallback to "null"
     };
 
     try {
@@ -100,6 +135,24 @@ class _ProfileDetailsPageState extends State<ProfileDetailsPage> {
     if (userid != null) {
       _loadProfileData();
       _loadImage();
+    }
+  }
+
+  Future<void> imageUplod() async {
+    final url = Uri.parse('https://api.cloudinary.com/v1_1/dfcehequr/upload');
+    final request = http.MultipartRequest('POST', url)
+      ..fields['upload_preset'] = 'images'
+      ..files.add(await http.MultipartFile.fromPath('file', imageurl!));
+    final response = await request.send();
+    if (response.statusCode == 200) {
+      final responsedata = await response.stream.toBytes();
+      final responseString = String.fromCharCodes(responsedata);
+      final jsonMap = jsonDecode(responseString);
+      setState(() {
+        final url = jsonMap['url'];
+        imageurl = url;
+        print(imageurl);
+      });
     }
   }
 
@@ -191,7 +244,8 @@ class _ProfileDetailsPageState extends State<ProfileDetailsPage> {
             phoneController.text = data["phone"] ?? 'N/A';
             _controllersInitialized = true;
           }
-
+          var userData = snapshot.data!.data();
+          String profileImageUrl = userData?['url'] ?? '';
           return SingleChildScrollView(
             child: Column(
               children: [
@@ -200,11 +254,7 @@ class _ProfileDetailsPageState extends State<ProfileDetailsPage> {
                   child: CircleAvatar(
                     radius: 90,
                     backgroundColor: Colors.blueGrey.shade100,
-                    backgroundImage: tempImage != null
-                        ? FileImage(tempImage!)
-                        : selectedImage != null
-                            ? FileImage(selectedImage!)
-                            : NetworkImage(data['url'] ?? '') as ImageProvider,
+                    backgroundImage: NetworkImage(profileImageUrl),
                     child: tempImage == null && selectedImage == null
                         ? const Icon(Icons.camera_alt,
                             size: 50, color: Colors.white)
@@ -221,12 +271,13 @@ class _ProfileDetailsPageState extends State<ProfileDetailsPage> {
                         "${data["role"] ?? 'N/A'} Details :",
                         style: const TextStyle(
                             fontWeight: FontWeight.w600,
-                            fontSize: 18,
+                            fontSize: 16,
                             color: Colors.black87),
                       ),
                     ],
                   ),
                 ),
+                SizedBox(height: 5,),
                 buildEditableRow(
                   'Name',
                   nameController,
@@ -254,7 +305,7 @@ class _ProfileDetailsPageState extends State<ProfileDetailsPage> {
                 Padding(
                   padding: const EdgeInsets.all(8.0),
                   child: Container(
-                    width: MediaQuery.of(context).size.width ,
+                    width: MediaQuery.of(context).size.width,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         foregroundColor: Colors.white,
@@ -303,7 +354,7 @@ class _ProfileDetailsPageState extends State<ProfileDetailsPage> {
 Widget buildEditableRow(String label, TextEditingController controller,
     bool isEditing, String details) {
   return Padding(
-    padding: const EdgeInsets.symmetric(vertical: 8.0,horizontal: 8),
+    padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 8),
     child: TextField(
       minLines: 1,
       maxLines: 4,
