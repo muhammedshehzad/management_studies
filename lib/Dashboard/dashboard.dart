@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:new_school/drawer_screens/academic_records.dart';
+import 'package:new_school/drawer_screens/canteen_page.dart';
 import 'package:new_school/drawer_screens/homework_assignment.dart';
 import 'package:new_school/screens/profile_page.dart';
 import 'package:new_school/screens/sign_in_page.dart';
@@ -197,7 +198,8 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
           print("Data: ${snapshot.data!.data()}");
           final data = snapshot.data!.data()!;
           final String role = data["role"] ?? 'N/A';
-
+          var userData = snapshot.data!.data();
+          String profileImageUrl = userData?['url'] ?? '';
           return Scaffold(
             appBar: AppBar(
               actions: [
@@ -217,17 +219,15 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
                               builder: (context) => ProfilePage()));
                     },
                     icon: Container(
-                        height: 33,
-                        width: 33,
-                        decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            image: DecorationImage(
-                              image: (selectedImage != null)
-                                  ? FileImage(File(data['url'] ?? ""))
-                                      as ImageProvider
-                                  : AssetImage('lib/assets/pandy.jpeg'),
-                              fit: BoxFit.cover,
-                            ))),
+                      height: 33,
+                      width: 33,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        image: DecorationImage(
+                          image: NetworkImage(profileImageUrl),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -241,8 +241,7 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
                     child: DrawerHeader(
                       decoration: BoxDecoration(
                         image: DecorationImage(
-                          image: FileImage(File(data!['url'] ?? ""))
-                              as ImageProvider,
+                          image: NetworkImage(profileImageUrl),
                           fit: BoxFit.cover,
                           colorFilter: ColorFilter.mode(
                             Colors.black.withOpacity(0.5),
@@ -336,7 +335,9 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
                       ListTile(
                         title: CustomTile(
                           label: 'Canteen',
-                          onPressed: () {},
+                          onPressed: () {
+                            Navigator.pushNamed(context, '/canteenpage');
+                          },
                           image: 'lib/assets/canteen.png',
                         ),
                       ),

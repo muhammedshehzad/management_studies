@@ -19,6 +19,7 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   File? selectedImage;
   String uid = FirebaseAuth.instance.currentUser!.uid;
+
   Future<void> saveImagePath(String path) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('profileImagePath', path);
@@ -57,6 +58,10 @@ class _ProfilePageState extends State<ProfilePage> {
           if (snapshot.hasData) {
             final data = snapshot.data!.data()!;
             final String role = data["role"] ?? 'N/A';
+            var userData = snapshot.data!.data();
+
+            String profileImageUrl = userData?['url'] ?? '';
+
             return Scaffold(
               appBar: AppBar(
                 leading: IconButton(
@@ -103,8 +108,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
                                     image: DecorationImage(
-                                      image: FileImage(File(data!['url'] ?? ""))
-                                              as ImageProvider,
+                                      image: NetworkImage(profileImageUrl),
                                       fit: BoxFit.cover,
                                     ),
                                     border: Border.all(
@@ -116,10 +120,11 @@ class _ProfilePageState extends State<ProfilePage> {
                               ),
                               Expanded(
                                 child: Padding(
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 16.0),
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 16.0),
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     mainAxisAlignment:
                                         MainAxisAlignment.spaceEvenly,
                                     children: [
@@ -205,10 +210,10 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
             );
           } else {
-            return Scaffold(backgroundColor: Colors.black ,
+            return Scaffold(
+              backgroundColor: Colors.black,
               body: const Center(
                 child: CircularProgressIndicator(
-
                   color: Colors.yellowAccent,
                 ),
               ),

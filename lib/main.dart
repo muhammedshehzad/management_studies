@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import 'package:new_school/drawer_screens/canteen_page.dart';
 import 'package:new_school/firebase_auth_implementation/firebase_options.dart';
 import 'package:new_school/screens/login_page.dart';
 import 'package:new_school/screens/profile_details_page.dart';
@@ -11,6 +13,7 @@ import 'package:new_school/settings/settings_page.dart';
 import 'package:new_school/settings/two-factor_authentication.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'Dashboard/dashboard.dart';
+import 'drawer_screens/cart_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,14 +26,19 @@ Future<void> main() async {
   final String? role = prefs.getString('role');
 
   runApp(
-    MyApp(
-      initialRoute: email == null
-          ? '/signin'
-          : role == 'Admin'
-              ? '/dashboardAdmin'
-              : role == 'Teacher'
-                  ? '/dashboardTeacher'
-                  : '/dashboardStudent',
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => CartProvider()),
+      ],
+      child: MyApp(
+        initialRoute: email == null
+            ? '/signin'
+            : role == 'Admin'
+                ? '/dashboardAdmin'
+                : role == 'Teacher'
+                    ? '/dashboardTeacher'
+                    : '/dashboardStudent',
+      ),
     ),
   );
 }
@@ -63,6 +71,7 @@ class MyApp extends StatelessWidget {
         '/profileDetails': (context) => const ProfileDetailsPage(),
         '/settings': (context) => const SettingsPage(),
         '/twoFactorAuth': (context) => const TwoFactorAuth(),
+        '/canteenpage': (context) => const CanteenMenuPage(),
       },
     );
   }
