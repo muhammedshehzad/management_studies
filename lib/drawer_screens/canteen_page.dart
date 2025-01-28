@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../sliding_transition.dart';
 import 'checkout_page.dart';
 import 'package:badges/badges.dart' as badges;
 import 'cart_provider.dart';
@@ -130,9 +131,7 @@ class _CanteenMenuPageState extends State<CanteenMenuPage> {
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(
-                      builder: (context) => CheckOutPage(),
-                    ),
+                    SlidingPageTransitionRL(page: CheckOutPage()),
                   );
                 },
                 icon: Image.asset(
@@ -191,8 +190,7 @@ class _CanteenMenuPageState extends State<CanteenMenuPage> {
                               Padding(
                                 padding: const EdgeInsets.all(8.0),
                                 child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
                                       item['name'],
@@ -254,8 +252,7 @@ class _CanteenMenuPageState extends State<CanteenMenuPage> {
                                                       String itemName =
                                                           item['name'];
                                                       context
-                                                          .read<
-                                                              CartProvider>()
+                                                          .read<CartProvider>()
                                                           .removeItem(
                                                             itemName,
                                                           );
@@ -263,8 +260,7 @@ class _CanteenMenuPageState extends State<CanteenMenuPage> {
                                                     child: Container(
                                                       padding:
                                                           EdgeInsets.all(6),
-                                                      decoration:
-                                                          BoxDecoration(
+                                                      decoration: BoxDecoration(
                                                         color:
                                                             Color(0xffe0e0e0),
                                                         borderRadius:
@@ -283,14 +279,14 @@ class _CanteenMenuPageState extends State<CanteenMenuPage> {
                                                     padding: const EdgeInsets
                                                         .symmetric(
                                                         horizontal: 12),
-                                                    child: Consumer<
-                                                            CartProvider>(
-                                                        builder: (context,
-                                                            cartProvider, _) {
+                                                    child:
+                                                        Consumer<CartProvider>(
+                                                            builder: (context,
+                                                                cartProvider,
+                                                                _) {
                                                       int quantity = cartProvider
                                                                       .cart[
-                                                                  item[
-                                                                      'name']]
+                                                                  item['name']]
                                                               ?['quantity'] ??
                                                           0;
                                                       return Text(
@@ -299,16 +295,14 @@ class _CanteenMenuPageState extends State<CanteenMenuPage> {
                                                           fontSize: 14.0,
                                                           fontWeight:
                                                               FontWeight.bold,
-                                                          color:
-                                                              Colors.black87,
+                                                          color: Colors.black87,
                                                         ),
                                                       );
                                                     }),
                                                   ),
                                                   Consumer<CartProvider>(
                                                     builder: (context,
-                                                            cartProvider,
-                                                            _) =>
+                                                            cartProvider, _) =>
                                                         GestureDetector(
                                                       onTap: () {
                                                         String itemName =
@@ -319,8 +313,7 @@ class _CanteenMenuPageState extends State<CanteenMenuPage> {
                                                             .addItem(
                                                               itemName,
                                                               item['price'],
-                                                              item[
-                                                                  'discount'],
+                                                              item['discount'],
                                                             );
                                                       },
                                                       child: Container(
@@ -328,18 +321,17 @@ class _CanteenMenuPageState extends State<CanteenMenuPage> {
                                                             EdgeInsets.all(6),
                                                         decoration:
                                                             BoxDecoration(
-                                                          color: Color(
-                                                              0xffe0e0e0),
+                                                          color:
+                                                              Color(0xffe0e0e0),
                                                           borderRadius:
                                                               BorderRadius
-                                                                  .circular(
-                                                                      6),
+                                                                  .circular(6),
                                                         ),
                                                         child: Icon(
                                                           Icons.add,
                                                           size: 14,
-                                                          color: Color(
-                                                              0xff3e948e),
+                                                          color:
+                                                              Color(0xff3e948e),
                                                         ),
                                                       ),
                                                     ),
