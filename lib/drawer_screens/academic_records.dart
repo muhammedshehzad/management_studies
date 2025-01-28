@@ -7,6 +7,7 @@ import 'package:shimmer/shimmer.dart';
 import 'package:side_sheet/side_sheet.dart';
 import 'package:syncfusion_flutter_datepicker/datepicker.dart';
 
+import '../sliding_transition.dart';
 import 'homework_assignment.dart';
 
 class AcademicRecords extends StatefulWidget {
@@ -488,10 +489,7 @@ class _AcademicRecordsState extends State<AcademicRecords> {
                         () {
                           Navigator.push(
                             context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  StudentDetails(docId: record.id),
-                            ),
+                            SlidingPageTransitionRL(page: StudentDetails(docId: record.id)),
                           );
                         },
                       );
