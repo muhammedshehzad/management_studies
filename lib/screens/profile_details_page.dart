@@ -28,7 +28,7 @@ class _ProfileDetailsPageState extends State<ProfileDetailsPage> {
       setState(() {
         tempImage = File(returnedImage.path);
       });
-      await imageUpload(); // Upload the image to Cloudinary
+      await imageUpload();
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('No image selected.')),
@@ -37,11 +37,11 @@ class _ProfileDetailsPageState extends State<ProfileDetailsPage> {
   }
 
   Future<void> imageUpload() async {
-    if (tempImage == null) return; // Ensure an image is selected
+    if (tempImage == null) return;
 
     final url = Uri.parse('https://api.cloudinary.com/v1_1/dfcehequr/upload');
     final request = http.MultipartRequest('POST', url)
-      ..fields['upload_preset'] = 'images' // Cloudinary upload preset
+      ..fields['upload_preset'] = 'images'
       ..files.add(await http.MultipartFile.fromPath('file', tempImage!.path));
 
     final response = await request.send();
@@ -54,8 +54,8 @@ class _ProfileDetailsPageState extends State<ProfileDetailsPage> {
         final uploadedUrl = jsonMap['url'];
         imageurl = uploadedUrl;
         print('Uploaded Image URL: $imageurl');
-        saveImagePath(uploadedUrl); // Save image URL to SharedPreferences
-        updateUser(userid!); // Update the user profile with the new image URL
+        saveImagePath(uploadedUrl);
+        updateUser(userid!);
       });
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -89,18 +89,20 @@ class _ProfileDetailsPageState extends State<ProfileDetailsPage> {
   bool isEditing = false;
   final _db = FirebaseFirestore.instance;
   String? userid;
+
   Widget buildProfileImage(String imageUrl) {
     return imageUrl.startsWith('http')
         ? Image.network(imageUrl, fit: BoxFit.cover)
         : Image.asset('assets/default_profile_image.png', fit: BoxFit.cover);
   }
+
   Future<void> updateUser(String userId) async {
     final updatedData = {
       "username": nameController.text,
       "email": emailController.text,
       "address": addressController.text,
       "phone": phoneController.text,
-      "url": imageurl ?? "null"  // Use Cloudinary URL or fallback to "null"
+      "url": imageurl ?? "null"
     };
 
     try {
@@ -131,7 +133,6 @@ class _ProfileDetailsPageState extends State<ProfileDetailsPage> {
       userid = uid;
     });
 
-    // Load profile data immediately
     if (userid != null) {
       _loadProfileData();
       _loadImage();
@@ -277,7 +278,9 @@ class _ProfileDetailsPageState extends State<ProfileDetailsPage> {
                     ],
                   ),
                 ),
-                SizedBox(height: 5,),
+                SizedBox(
+                  height: 5,
+                ),
                 buildEditableRow(
                   'Name',
                   nameController,
@@ -340,8 +343,6 @@ class _ProfileDetailsPageState extends State<ProfileDetailsPage> {
                     ),
                   ),
                 )
-
-
               ],
             ),
           );
