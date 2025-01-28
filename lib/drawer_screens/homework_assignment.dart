@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:side_sheet/side_sheet.dart';
 import 'package:syncfusion_flutter_datepicker/datepicker.dart';
 import 'package:uuid/uuid.dart';
+import '../sliding_transition.dart';
 import 'homework_details.dart';
 
 class HomeWorkScreen extends StatefulWidget {
@@ -646,12 +647,11 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
             DateFormat('dd-MM-yyyy').format(homework.deadline),
             homework.status,
                 () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => HomeworkDetails(docId: homework.docid),
-                ),
-              );
+                  Navigator.push(
+                    context,
+                    SlidingPageTransitionRL(page: HomeworkDetails(docId: homework.docid)),
+                  );
+             
             },
           ),
         );
