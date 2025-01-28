@@ -65,7 +65,8 @@ class _SchoolDetailsPageState extends State<SchoolDetailsPage> {
 
   Future<void> updateSchool(String schoolId) async {
     try {
-      final currentData = await _db.collection("School").doc("9NekuNXmyxdNxWekn282").get();
+      final currentData =
+          await _db.collection("School").doc("9NekuNXmyxdNxWekn282").get();
 
       if (currentData.exists) {
         final lasturl = currentData.data()?['url'] ?? "null";
@@ -80,14 +81,18 @@ class _SchoolDetailsPageState extends State<SchoolDetailsPage> {
           "url": selectedNewImage != null ? selectedNewImage!.path : lasturl,
         };
 
-        await _db.collection("School").doc("9NekuNXmyxdNxWekn282").update(updatedSchoolData);
+        await _db
+            .collection("School")
+            .doc("9NekuNXmyxdNxWekn282")
+            .update(updatedSchoolData);
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("School details updated successfully!")),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Failed to fetch existing school data.")),
+          const SnackBar(
+              content: Text("Failed to fetch existing school data.")),
         );
       }
     } catch (e) {
@@ -96,7 +101,6 @@ class _SchoolDetailsPageState extends State<SchoolDetailsPage> {
       );
     }
   }
-
 
   final TextEditingController schoolNameController = TextEditingController();
   final TextEditingController schoolTypeController = TextEditingController();
@@ -205,19 +209,17 @@ class _SchoolDetailsPageState extends State<SchoolDetailsPage> {
                         }
                       : null,
                   child: Container(
-                    height: MediaQuery.of(context).size.height*.475,
-                    width: MediaQuery.of(context).size.width*.95,
+                    height: MediaQuery.of(context).size.height * .475,
+                    width: MediaQuery.of(context).size.width * .95,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(24),
                       shape: BoxShape.rectangle,
                       border: Border.all(color: Colors.black, width: 1),
                       image: DecorationImage(
-                        image:
-
-                                     FileImage(File(schooldata['url'] ?? "")),
+                        image: FileImage(File(schooldata['url'] ?? "")),
                         // temporaryImage != null
-                                    // : NetworkImage(schooldata['url'] ?? '')
-                                    //     as ImageProvider,
+                        // : NetworkImage(schooldata['url'] ?? '')
+                        //     as ImageProvider,
                         fit: BoxFit.cover,
                       ),
                     ),
@@ -328,7 +330,7 @@ Widget buildEditableRow(String image, String label,
   return Padding(
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
     child: Container(
-      height: 70,
+      height: 80,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(6),
         border: Border.all(color: Colors.grey, width: 1.0),
@@ -364,23 +366,29 @@ Widget buildEditableRow(String image, String label,
                   ),
                 ),
                 isEditing
-                    ? TextField(
-                        decoration: InputDecoration(
-                          border: InputBorder.none,
-                          focusedBorder: InputBorder.none,
-                          enabledBorder: InputBorder.none,
-                          errorBorder: InputBorder.none,
-                          disabledBorder: InputBorder.none,
-                        ),
-                        controller: controller,
-                        style: const TextStyle(
-                            fontSize: 17, fontWeight: FontWeight.w400),
-                      )
-                    : Text(
-                        details,
-                        style: const TextStyle(
-                            fontSize: 17, fontWeight: FontWeight.w400),
-                      ),
+                    ? Flexible(
+                      child: TextField(
+                                        decoration: InputDecoration(
+                      border: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      errorBorder: InputBorder.none,
+                      disabledBorder: InputBorder.none,
+                                        ),
+                                        controller: controller,
+                                        style: const TextStyle(
+                        fontSize: 17, fontWeight: FontWeight.w400),
+                                      ),
+                    )
+                    : Flexible( // Wrap the Text widget with Flexible
+                  child: Text(
+                    details,
+                    style: const TextStyle(
+                        fontSize: 17, fontWeight: FontWeight.w400),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               ],
             ),
           ),
