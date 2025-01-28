@@ -8,6 +8,7 @@ import 'package:new_school/screens/school_details.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../settings/settings_page.dart';
+import '../sliding_transition.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -170,8 +171,8 @@ class _ProfilePageState extends State<ProfilePage> {
                         onPressed: () async {
                           final updatedPath = await Navigator.push(
                             context,
-                            MaterialPageRoute(
-                              builder: (context) => ProfileDetailsPage(),
+                            SlidingPageTransitionRL(
+                              page: ProfileDetailsPage(),
                             ),
                           );
                           if (updatedPath != null) {}
@@ -183,8 +184,8 @@ class _ProfilePageState extends State<ProfilePage> {
                           onPressed: () async {
                             final updatedNewPath = await Navigator.push(
                               context,
-                              MaterialPageRoute(
-                                builder: (context) => SchoolDetailsPage(
+                              SlidingPageTransitionRL(
+                                page: SchoolDetailsPage(
                                   role: role,
                                 ),
                               ),
@@ -197,8 +198,8 @@ class _ProfilePageState extends State<ProfilePage> {
                         onPressed: () async {
                           final settingsPath = await Navigator.push(
                             context,
-                            MaterialPageRoute(
-                              builder: (context) => SettingsPage(),
+                            SlidingPageTransitionRL(
+                              page: SettingsPage(),
                             ),
                           );
                           if (settingsPath != null) {}
