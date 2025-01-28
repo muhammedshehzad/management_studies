@@ -17,7 +17,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 
 import '../assets/widgets/homeworkdatamodel.dart';
+import '../drawer_screens/leaves_page.dart';
 import '../settings/two-factor_authentication.dart';
+import '../sliding_transition.dart';
 
 class Dashboard extends StatefulWidget {
   final String role;
@@ -214,9 +216,9 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
                   child: IconButton(
                     onPressed: () {
                       Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => ProfilePage()));
+                        context,
+                        SlidingPageTransitionRL(page: ProfilePage()),
+                      );
                     },
                     icon: Container(
                       height: 33,
@@ -254,10 +256,10 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
                       ),
                       child: GestureDetector(
                         onTap: () async {
-                          await Navigator.pushNamed(context, '/profile');
-                          setState(() {
-                            _loadImage();
-                          });
+                          await Navigator.push(
+                            context,
+                            SlidingPageTransitionLR(page: ProfilePage()),
+                          );
                         },
                         child: Padding(
                           padding: const EdgeInsets.all(8.0),
@@ -275,7 +277,6 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
                                 overflow: TextOverflow.ellipsis,
                               ),
                               const SizedBox(height: 8),
-                              // Added space between text widgets
                               Text(
                                 data["email"] ?? 'N/A',
                                 style: const TextStyle(
@@ -286,7 +287,6 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
                                 overflow: TextOverflow.ellipsis,
                               ),
                               const SizedBox(height: 8),
-                              // Added space between text widgets
                               Text(
                                 role,
                                 style: const TextStyle(
@@ -310,9 +310,7 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
                           onPressed: () {
                             Navigator.push(
                               context,
-                              MaterialPageRoute(
-                                builder: (context) => AcademicRecords(),
-                              ),
+                              SlidingPageTransitionLR(page: AcademicRecords()),
                             );
                           },
                           image: 'lib/assets/academicrecords.png',
@@ -324,9 +322,7 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
                           onPressed: () {
                             Navigator.push(
                               context,
-                              MaterialPageRoute(
-                                builder: (context) => HomeWorkScreen(),
-                              ),
+                              SlidingPageTransitionLR(page: HomeWorkScreen()),
                             );
                           },
                           image: 'lib/assets/homeworkandassignment.png',
@@ -336,7 +332,10 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
                         title: CustomTile(
                           label: 'Canteen',
                           onPressed: () {
-                            Navigator.pushNamed(context, '/canteenpage');
+                            Navigator.push(
+                              context,
+                              SlidingPageTransitionLR(page: CanteenMenuPage()),
+                            );
                           },
                           image: 'lib/assets/canteen.png',
                         ),
@@ -344,7 +343,12 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
                       ListTile(
                         title: CustomTile(
                           label: 'Leaves',
-                          onPressed: () {},
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              SlidingPageTransitionLR(page: LeavesPage()),
+                            );
+                          },
                           image: 'lib/assets/leaves.png',
                         ),
                       ),
@@ -462,28 +466,39 @@ class _ContentAreaState extends State<ContentArea> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    SizedBox(height: 50),
-                    CircularIndicator(0.82, "82.0%", "Average Attendance",
-                        Colors.yellowAccent.shade700),
-                    CircularIndicator(0.18, "18.0%", "Average Leave Taken",
-                        Colors.purpleAccent.shade700),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SizedBox(
-                          height: 15,
-                        ),
-                        Text(
-                            "Total Attendance = \nDays Present / Total No.Of Working Days"),
-                        Text(
-                          "109 / 120",
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        SizedBox(
-                          height: 10,
-                        ),
-                      ],
+                    // Attendance Indicators
+                    CircularIndicator(0.82, "82.0%", "Average Attendance", Colors.yellowAccent.shade700),
+                    SizedBox(height: 8),
+                    CircularIndicator(0.18, "18.0%", "Average Leave Taken", Colors.purpleAccent.shade700),
+                    SizedBox(height: 10),
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                "Total Attendance = \nDays Present / \nTotal No. Of Working Days",
+                                style: TextStyle(fontSize: 16, color: Colors.grey[700]),
+                              ),
+                              Text(
+                                "109 / 120",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 18,
+                                  color: Colors.green.shade600,
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          SizedBox(height: 12),
+                        ],
+                      ),
                     ),
+
+                    // Linear Progress Indicator for Attendance
                     Center(
                       child: Container(
                         width: MediaQuery.of(context).size.width * .7,
@@ -491,14 +506,117 @@ class _ContentAreaState extends State<ContentArea> {
                           width: MediaQuery.of(context).size.width * .7,
                           lineHeight: 36.0,
                           percent: 0.82,
-                          backgroundColor: Colors.grey,
+                          backgroundColor: Colors.grey.shade300,
                           progressColor: Colors.blue.shade500,
-                          center: Text('90.83%'),
+                          center: Text(
+                            '82.0%',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                              fontSize: 18,
+                            ),
+                          ),
                         ),
                       ),
                     ),
+                    SizedBox(height: 30),
+
+                    // Recent Activities/Assignments
+                    // Padding(
+                    //   padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    //   child: Column(
+                    //     crossAxisAlignment: CrossAxisAlignment.start,
+                    //     children: [
+                    //       Text(
+                    //         "Recent Activities/Assignments",
+                    //         style: TextStyle(
+                    //           fontSize: 18,
+                    //           fontWeight: FontWeight.bold,
+                    //           color: Colors.blue.shade700,
+                    //         ),
+                    //       ),
+                    //       SizedBox(height: 10),
+                    //       ListTile(
+                    //         leading: Icon(Icons.assignment, color: Colors.blue),
+                    //         title: Text("Math Homework - Due 3 days ago"),
+                    //         subtitle: Text("Status: Completed"),
+                    //       ),
+                    //       ListTile(
+                    //         leading: Icon(Icons.assignment_late, color: Colors.orange),
+                    //         title: Text("Science Project - Due 1 week ago"),
+                    //         subtitle: Text("Status: Pending"),
+                    //       ),
+                    //       ListTile(
+                    //         leading: Icon(Icons.assignment_turned_in, color: Colors.green),
+                    //         title: Text("English Essay - Due 5 days ago"),
+                    //         subtitle: Text("Status: Completed"),
+                    //       ),
+                    //     ],
+                    //   ),
+                    // ),
+                    SizedBox(height: 15),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "Performance Summary",
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.green.shade700,
+                            ),
+                          ),
+                          SizedBox(height: 10),
+                          ListTile(
+                            leading: Icon(Icons.trending_up, color: Colors.green),
+                            title: Text("Overall Grade: A"),
+                            subtitle: Text("You have consistently performed well in all subjects."),
+                          ),
+                          ListTile(
+                            leading: Icon(Icons.trending_down, color: Colors.red),
+                            title: Text("Math: C+ (Needs Improvement)"),
+                            subtitle: Text("Focus on improving your Math scores."),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Upcoming Exams
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "Upcoming Exams",
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                          SizedBox(height: 10),
+                          ListTile(
+                            leading: Icon(Icons.calendar_today, color: Colors.red),
+                            title: Text("Math Exam - 25th Jan"),
+                            subtitle: Text("Duration: 2 hours"),
+                          ),
+                          ListTile(
+                            leading: Icon(Icons.calendar_today, color: Colors.red),
+                            title: Text("Science Exam - 30th Jan"),
+                            subtitle: Text("Duration: 3 hours"),
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(height: 30),
+
+                    // Performance Summary
+
                   ],
-                ),
+                )
+,
               if (isTeacher)
                 Column(
                   children: [
@@ -510,7 +628,6 @@ class _ContentAreaState extends State<ContentArea> {
                               "Average Attendance", Colors.green),
                         ),
                         SizedBox(width: 8),
-                        // Adds space between the two indicators
                         Expanded(
                           child: CircularIndicator(0.25, "25.0%",
                               "Average Leave Taken", Colors.redAccent.shade700),
@@ -518,9 +635,7 @@ class _ContentAreaState extends State<ContentArea> {
                       ],
                     ),
                     SizedBox(height: 8),
-                    // Adds space between the row and chart
                     BoysGirlsChart(),
-                    // Only visible if isTeacher is true
                   ],
                 ),
               SizedBox(height: 20),
