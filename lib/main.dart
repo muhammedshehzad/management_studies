@@ -71,7 +71,7 @@ class MyApp extends StatelessWidget {
         '/profileDetails': (context) => const ProfileDetailsPage(),
         '/settings': (context) => const SettingsPage(),
         '/twoFactorAuth': (context) => const TwoFactorAuth(),
-        '/canteenpage': (context) => const CanteenMenuPage(),
+        '/canteenpage': (context) =>  CanteenMenuPage(),
       },
     );
   }
