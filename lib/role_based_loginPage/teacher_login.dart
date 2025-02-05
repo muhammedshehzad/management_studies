@@ -55,6 +55,7 @@ class _TeacherLoginState extends State<TeacherLogin> {
       backgroundColor: Color(0xfff2e7dc),
       appBar: AppBar(
         title: const Text("Teacher's Login Page"),
+        backgroundColor: Color(0xfff2e7dc),
       ),
       body: SingleChildScrollView(
         child: Padding(

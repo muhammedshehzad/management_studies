@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:new_school/drawer_screens/academic_records.dart';
-import 'package:new_school/drawer_screens/canteen_page.dart';
+import 'package:new_school/drawer_screens/Canteen/canteen_page.dart';
 import 'package:new_school/drawer_screens/homework_assignment.dart';
 import 'package:new_school/screens/profile_page.dart';
 import 'package:new_school/screens/sign_in_page.dart';
@@ -18,6 +18,7 @@ import 'package:syncfusion_flutter_charts/charts.dart';
 
 import '../assets/widgets/homeworkdatamodel.dart';
 import '../drawer_screens/leaves_page.dart';
+import '../screens/notifications_page.dart';
 import '../settings/two-factor_authentication.dart';
 import '../sliding_transition.dart';
 
@@ -206,10 +207,16 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
             appBar: AppBar(
               actions: [
                 IconButton(
-                    onPressed: () {},
-                    icon: Icon(
-                      Icons.notifications,
-                      size: 33,
+                    onPressed: () {
+                      Navigator.push(context, SlidingPageTransitionRL(page: NotificationsPage()));
+                    },
+                    icon: Container(
+                      height: 33,
+                      width: 33,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                      ),
+                      child: Image.asset('lib/assets/notification(1).png'),
                     )),
                 Padding(
                   padding: const EdgeInsets.only(right: 5.0),
@@ -226,7 +233,8 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         image: DecorationImage(
-                          image: NetworkImage(profileImageUrl),
+                          image: NetworkImage(profileImageUrl,),
+                          fit: BoxFit.cover
                         ),
                       ),
                     ),
@@ -318,7 +326,7 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
                       ),
                       ListTile(
                         title: CustomTile(
-                          label: 'Homework and \nAssignments',
+                          label: 'Homeworks',
                           onPressed: () {
                             Navigator.push(
                               context,
@@ -383,18 +391,22 @@ class CustomTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onPressed,
-      child: SizedBox(
-        height: 60,
-        child: Card(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(6.0),
-          ),
-          elevation: 1,
-          child: Padding(
-            padding: const EdgeInsets.all(6.0),
-            child: Row(
-              children: [
-                Container(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 0.0, vertical: 0.0),
+        child: SizedBox(
+          height: 60,
+          child: Card(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12.0),
+            ),
+            elevation: 3,
+            color: Colors.blueGrey.shade100,
+            shadowColor: Colors.black.withOpacity(0.2),
+            child: Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Row(
+                children: [
+                  Container(
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                     ),
@@ -403,17 +415,21 @@ class CustomTile extends StatelessWidget {
                     child: Image.asset(
                       image,
                       fit: BoxFit.cover,
-                    )),
-                const SizedBox(width: 12),
-                Text(
-                  label,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
+                      color: Colors.blueGrey.shade700,
+                    ),
                   ),
-                  overflow: TextOverflow.visible,
-                ),
-              ],
+                  const SizedBox(width: 20),
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                      color: Colors.blueGrey,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -467,9 +483,11 @@ class _ContentAreaState extends State<ContentArea> {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     // Attendance Indicators
-                    CircularIndicator(0.82, "82.0%", "Average Attendance", Colors.yellowAccent.shade700),
+                    CircularIndicator(0.82, "82.0%", "Average Attendance",
+                        Colors.yellowAccent.shade700),
                     SizedBox(height: 8),
-                    CircularIndicator(0.18, "18.0%", "Average Leave Taken", Colors.purpleAccent.shade700),
+                    CircularIndicator(0.18, "18.0%", "Average Leave Taken",
+                        Colors.purpleAccent.shade700),
                     SizedBox(height: 10),
                     Padding(
                       padding: const EdgeInsets.all(16.0),
@@ -480,7 +498,8 @@ class _ContentAreaState extends State<ContentArea> {
                             children: [
                               Text(
                                 "Total Attendance = \nDays Present / \nTotal No. Of Working Days",
-                                style: TextStyle(fontSize: 16, color: Colors.grey[700]),
+                                style: TextStyle(
+                                    fontSize: 16, color: Colors.grey[700]),
                               ),
                               Text(
                                 "109 / 120",
@@ -492,7 +511,6 @@ class _ContentAreaState extends State<ContentArea> {
                               ),
                             ],
                           ),
-
                           SizedBox(height: 12),
                         ],
                       ),
@@ -570,14 +588,18 @@ class _ContentAreaState extends State<ContentArea> {
                           ),
                           SizedBox(height: 10),
                           ListTile(
-                            leading: Icon(Icons.trending_up, color: Colors.green),
+                            leading:
+                                Icon(Icons.trending_up, color: Colors.green),
                             title: Text("Overall Grade: A"),
-                            subtitle: Text("You have consistently performed well in all subjects."),
+                            subtitle: Text(
+                                "You have consistently performed well in all subjects."),
                           ),
                           ListTile(
-                            leading: Icon(Icons.trending_down, color: Colors.red),
+                            leading:
+                                Icon(Icons.trending_down, color: Colors.red),
                             title: Text("Math: C+ (Needs Improvement)"),
-                            subtitle: Text("Focus on improving your Math scores."),
+                            subtitle:
+                                Text("Focus on improving your Math scores."),
                           ),
                         ],
                       ),
@@ -598,12 +620,14 @@ class _ContentAreaState extends State<ContentArea> {
                           ),
                           SizedBox(height: 10),
                           ListTile(
-                            leading: Icon(Icons.calendar_today, color: Colors.red),
+                            leading:
+                                Icon(Icons.calendar_today, color: Colors.red),
                             title: Text("Math Exam - 25th Jan"),
                             subtitle: Text("Duration: 2 hours"),
                           ),
                           ListTile(
-                            leading: Icon(Icons.calendar_today, color: Colors.red),
+                            leading:
+                                Icon(Icons.calendar_today, color: Colors.red),
                             title: Text("Science Exam - 30th Jan"),
                             subtitle: Text("Duration: 3 hours"),
                           ),
@@ -613,10 +637,8 @@ class _ContentAreaState extends State<ContentArea> {
                     SizedBox(height: 30),
 
                     // Performance Summary
-
                   ],
-                )
-,
+                ),
               if (isTeacher)
                 Column(
                   children: [

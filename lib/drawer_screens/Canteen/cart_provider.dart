@@ -5,6 +5,10 @@ class CartProvider with ChangeNotifier {
 
   Map<String, Map<String, dynamic>> get cart => _cart;
 
+  String generateUniqueOrderId() {
+    return DateTime.now().millisecondsSinceEpoch.toString(); // Unique ID
+  }
+
   double calculateDiscountedPrice(double price, double discount) {
     return price - (price * discount);
   }
@@ -24,6 +28,23 @@ class CartProvider with ChangeNotifier {
 
   void clearCart() {
     _cart.clear();
+    notifyListeners();
+  }
+
+  void addToCart(
+      String name, int quantity, double price, double discountedPrice) {
+    String orderId = generateUniqueOrderId(); // Generate unique ID
+    if (_cart.containsKey(name)) {
+      _cart[name]!['quantity'] = (_cart[name]!['quantity'] as int) + quantity;
+    } else {
+      _cart[name] = {
+        'orderId': orderId, // Add order ID
+        'name': name,
+        'price': price,
+        'discountedPrice': discountedPrice,
+        'quantity': quantity,
+      };
+    }
     notifyListeners();
   }
 

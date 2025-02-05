@@ -7,6 +7,9 @@ import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
+import '../../sliding_transition.dart';
+import 'cart_page.dart';
+
 class DownloadInvoice extends StatelessWidget {
   final String userId;
 
@@ -162,8 +165,6 @@ class DownloadInvoice extends StatelessWidget {
                 ],
               ),
               pw.SizedBox(height: 16),
-
-              // Footer
               pw.Divider(),
               pw.SizedBox(height: 8),
               pw.Spacer(),
@@ -192,7 +193,19 @@ class DownloadInvoice extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Transaction Details'),
+        title: Text('Invoice Download'),
+        // actions: [
+        //   IconButton(
+        //       onPressed: () {
+        //         Navigator.push(
+        //           context,
+        //           SlidingPageTransitionRL(
+        //             page: RecentTransactions(),
+        //           ),
+        //         );
+        //       },
+        //       icon: Icon(Icons.history)),
+        // ],
       ),
       body: FutureBuilder<Map<String, dynamic>>(
         future: fetchTransaction(),
@@ -225,6 +238,7 @@ class DownloadInvoice extends StatelessWidget {
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
@@ -287,11 +301,9 @@ class DownloadInvoice extends StatelessWidget {
                                       MainAxisAlignment.spaceBetween,
                                   children: [
                                     Expanded(
-                                      // Ensures the first text doesn't overflow and can wrap if necessary
                                       child: Text(
                                         '${item['name']} x${item['quantity']}',
-                                        overflow: TextOverflow
-                                            .ellipsis, // Ensures text truncates with "..."
+                                        overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
                                     Text(
@@ -332,6 +344,7 @@ class DownloadInvoice extends StatelessWidget {
                         SizedBox(height: 20),
                         SizedBox(
                           width: MediaQuery.of(context).size.width,
+                          height: 44,
                           child: ElevatedButton.icon(
                             style: ElevatedButton.styleFrom(
                               foregroundColor: Colors.white,
@@ -343,8 +356,9 @@ class DownloadInvoice extends StatelessWidget {
                               ),
                             ),
                             icon: const Text(
-                              'Download Invoice',
-                              style: TextStyle(fontSize: 16),
+                              'Download',
+                              style: TextStyle(
+                                  fontSize: 12, fontWeight: FontWeight.bold),
                             ),
                             label: const Icon(
                               Icons.download,

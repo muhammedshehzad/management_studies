@@ -5,6 +5,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:new_school/sliding_transition.dart';
+import 'package:photo_view/photo_view.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 
@@ -36,8 +38,14 @@ class _ProfileDetailsPageState extends State<ProfileDetailsPage> {
     }
   }
 
+  bool isUploading = false;
+
   Future<void> imageUpload() async {
     if (tempImage == null) return;
+
+    setState(() {
+      isUploading = true;
+    });
 
     final url = Uri.parse('https://api.cloudinary.com/v1_1/dfcehequr/upload');
     final request = http.MultipartRequest('POST', url)
@@ -49,19 +57,59 @@ class _ProfileDetailsPageState extends State<ProfileDetailsPage> {
       final responsedata = await response.stream.toBytes();
       final responseString = String.fromCharCodes(responsedata);
       final jsonMap = jsonDecode(responseString);
-
       setState(() {
-        final uploadedUrl = jsonMap['url'];
+        final uploadedUrl = jsonMap['url'] ?? '';
         imageurl = uploadedUrl;
         print('Uploaded Image URL: $imageurl');
         saveImagePath(uploadedUrl);
         updateUser(userid!);
+        isUploading = false; // Stop loading
       });
     } else {
+      setState(() {
+        isUploading = false; // Stop loading on failure
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Failed to upload image to Cloudinary.')),
       );
     }
+  }
+
+  Widget buildPhotoView(String imageurl) {
+    return Scaffold(
+      body: Center(
+        child: SizedBox(
+          height: double.infinity,
+          width: double.infinity,
+          child: Stack(
+            children: [
+              PhotoView(
+                imageProvider: NetworkImage(imageurl!),
+                minScale: PhotoViewComputedScale.contained,
+                maxScale: PhotoViewComputedScale.covered * 2.0,
+                backgroundDecoration: const BoxDecoration(
+                  color: Colors.black,
+                ),
+              ),
+              Positioned(
+                top: 30,
+                right: 0,
+                child: IconButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  icon: Icon(
+                    Icons.close,
+                    size: 30,
+                    color: Colors.black,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> saveImagePath(String path) async {
@@ -251,15 +299,32 @@ class _ProfileDetailsPageState extends State<ProfileDetailsPage> {
             child: Column(
               children: [
                 GestureDetector(
-                  onTap: isEditing ? _pickImage : null,
+                  onTap: isEditing
+                      ? _pickImage
+                      : () {
+                          if (profileImageUrl.isNotEmpty) {
+                            Navigator.push(
+                                context,
+                                SlidingPageTransitionRL(
+                                  page: PhotoViewScreen(
+                                      imageUrl: profileImageUrl),
+                                ));
+                          }
+                        },
                   child: CircleAvatar(
                     radius: 90,
                     backgroundColor: Colors.blueGrey.shade100,
-                    backgroundImage: NetworkImage(profileImageUrl),
-                    child: tempImage == null && selectedImage == null
-                        ? const Icon(Icons.camera_alt,
-                            size: 50, color: Colors.white)
+                    backgroundImage: profileImageUrl.isNotEmpty
+                        ? NetworkImage(profileImageUrl)
                         : null,
+                    child: isUploading // Show loading indicator while uploading
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : (profileImageUrl.isEmpty &&
+                                tempImage == null &&
+                                selectedImage == null)
+                            ? const Icon(Icons.camera_alt,
+                                size: 50, color: Colors.white)
+                            : null,
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -368,4 +433,48 @@ Widget buildEditableRow(String label, TextEditingController controller,
       style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w400),
     ),
   );
+}
+
+class PhotoViewScreen extends StatelessWidget {
+  final String imageUrl;
+
+  const PhotoViewScreen({Key? key, required this.imageUrl}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: SizedBox(
+          height: double.infinity,
+          width: double.infinity,
+          child: Stack(
+            children: [
+              PhotoView(
+                imageProvider: NetworkImage(imageUrl),
+                minScale: PhotoViewComputedScale.contained,
+                maxScale: PhotoViewComputedScale.covered * 2.0,
+                backgroundDecoration: const BoxDecoration(
+                  color: Colors.black,
+                ),
+              ),
+              Positioned(
+                top: 30,
+                right: 0,
+                child: IconButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  icon: const Icon(
+                    Icons.close,
+                    size: 30,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
