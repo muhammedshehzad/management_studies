@@ -5,6 +5,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 
+import '../screens/notifications_page.dart';
+
 class LeavesPage extends StatefulWidget {
   const LeavesPage({super.key});
 
@@ -365,18 +367,6 @@ class _LeavesPageState extends State<LeavesPage> {
         .orderBy("createdAt", descending: true)
         .snapshots();
   }
-
-  // Stream<List<Map<String, dynamic>>> streamTeacherLeaves() {
-  //   return FirebaseFirestore.instance
-  //       .collection('Leaves')
-  //       .where("creator_role", isEqualTo: "teacher")
-  //       .orderBy("startDate")
-  //       .snapshots()
-  //       .map((snapshot) => snapshot.docs
-  //           .map((doc) =>
-  //               {"leavesid": doc.id, ...doc.data() as Map<String, dynamic>})
-  //           .toList());
-  // }
 
   @override
   void initState() {
@@ -1516,7 +1506,7 @@ class _SubmitLeavePageState extends State<SubmitLeavePage> {
       setState(() {
         currentData = querySnapshot.docs
             .map((doc) => {
-                  ...doc.data() as Map<String, dynamic>,
+                  ...doc.data(),
                   "leavesid": doc.id,
                 })
             .toList();
@@ -1540,7 +1530,7 @@ class _SubmitLeavePageState extends State<SubmitLeavePage> {
       setState(() {
         currentData = querySnapshot.docs
             .map((doc) => {
-                  ...doc.data() as Map<String, dynamic>,
+                  ...doc.data(),
                   "leavesid": doc.id,
                 })
             .toList();
@@ -1809,7 +1799,7 @@ class _SubmitLeavePageState extends State<SubmitLeavePage> {
                         borderRadius: BorderRadius.circular(6),
                       ),
                     ),
-                    onPressed:  submitLeaveData,
+                    onPressed: submitLeaveData,
                     child: isLoading
                         ? SizedBox(
                             width: 20,
@@ -1884,6 +1874,53 @@ class _customstatusButtonState extends State<customstatusButton> {
         _status = newStatus;
         showstatusButtons = false;
       });
+
+      DocumentSnapshot leaveDoc = await FirebaseFirestore.instance
+          .collection('Leaves')
+          .doc(widget.leaveId)
+          .get();
+
+      if (leaveDoc.exists) {
+        Map<String, dynamic> leaveData =
+            leaveDoc.data() as Map<String, dynamic>;
+        String userId = leaveData['userId'] ?? "Unknown";
+        String username = leaveData['username'] ?? "Unknown";
+        String role = leaveData['creator_role'] ?? "Unknown";
+        String leaveType = leaveData['leaveType'] ?? "Unknown";
+        String reason = leaveData['leaveReason'] ?? "No reason provided";
+        String startDate = leaveData['startDate'] != null
+            ? (leaveData['startDate'] as Timestamp)
+                .toDate()
+                .toLocal()
+                .toString()
+                .split(' ')[0]
+            : "Unknown";
+        String endDate = leaveData['endDate'] != null
+            ? (leaveData['endDate'] as Timestamp)
+                .toDate()
+                .toLocal()
+                .toString()
+                .split(' ')[0]
+            : "Unknown";
+
+        await sendNotification(
+          userId: userId,
+          title: "Leave Status Updated",
+          message:
+              "Your leave request for $reason from $startDate to $endDate has been $newStatus.",
+          type: "LeaveStatus",
+          payload: {
+            "User Name": username,
+            "User Role": role,
+            "Leave Type": leaveType,
+            "Leave Status": newStatus,
+            "Leave Reason": reason,
+            "Start Date": startDate,
+            "End Date": endDate,
+            // "Leave Id": widget.leaveId,
+          },
+        );
+      }
 
       if (widget.closesheet) {
         Navigator.pop(context);

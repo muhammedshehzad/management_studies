@@ -38,13 +38,13 @@ class _ProfileDetailsPageState extends State<ProfileDetailsPage> {
     }
   }
 
-  bool isUploading = false; // Track upload status
+  bool isUploading = false;
 
   Future<void> imageUpload() async {
     if (tempImage == null) return;
 
     setState(() {
-      isUploading = true; // Start loading
+      isUploading = true;
     });
 
     final url = Uri.parse('https://api.cloudinary.com/v1_1/dfcehequr/upload');

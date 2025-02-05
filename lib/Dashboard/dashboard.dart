@@ -18,6 +18,7 @@ import 'package:syncfusion_flutter_charts/charts.dart';
 
 import '../assets/widgets/homeworkdatamodel.dart';
 import '../drawer_screens/leaves_page.dart';
+import '../screens/notifications_page.dart';
 import '../settings/two-factor_authentication.dart';
 import '../sliding_transition.dart';
 
@@ -206,10 +207,16 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
             appBar: AppBar(
               actions: [
                 IconButton(
-                    onPressed: () {},
-                    icon: Icon(
-                      Icons.notifications,
-                      size: 33,
+                    onPressed: () {
+                      Navigator.push(context, SlidingPageTransitionRL(page: NotificationsPage()));
+                    },
+                    icon: Container(
+                      height: 33,
+                      width: 33,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                      ),
+                      child: Image.asset('lib/assets/notification(1).png'),
                     )),
                 Padding(
                   padding: const EdgeInsets.only(right: 5.0),
@@ -226,7 +233,8 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         image: DecorationImage(
-                          image: NetworkImage(profileImageUrl),
+                          image: NetworkImage(profileImageUrl,),
+                          fit: BoxFit.cover
                         ),
                       ),
                     ),
