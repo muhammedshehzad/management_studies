@@ -1,4 +1,3 @@
-
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:new_school/settings/terms_of_use.dart';
@@ -6,8 +5,8 @@ import 'package:new_school/settings/two-factor_authentication.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
-
 import '../screens/sign_in_page.dart';
+import '../sliding_transition.dart';
 import 'change_password.dart';
 import 'privacy_policy.dart';
 
@@ -57,32 +56,48 @@ class _SettingsPageState extends State<SettingsPage> {
             CustomTile(
               label: 'Change password',
               onPressed: () {
-                Navigator.push(context,
-                    MaterialPageRoute(builder: (context) => ChangePassword()));
+                Navigator.push(
+                  context,
+                  SlidingPageTransitionRL(
+                    page: ChangePassword(),
+                  ),
+                );
               },
               image: 'lib/assets/changepassword.png',
             ),
             CustomTile(
               label: 'Two-factor authentication',
               onPressed: () {
-                Navigator.push(context,
-                    MaterialPageRoute(builder: (context) => TwoFactorAuth()));
+                Navigator.push(
+                  context,
+                  SlidingPageTransitionRL(
+                    page: TwoFactorAuth(),
+                  ),
+                );
               },
               image: 'lib/assets/two-factor-authentication.png',
             ),
             CustomTile(
               label: 'Privacy Policy',
               onPressed: () {
-                Navigator.push(context,
-                    MaterialPageRoute(builder: (context) => PrivacyPolicy()));
+                Navigator.push(
+                  context,
+                  SlidingPageTransitionRL(
+                    page: PrivacyPolicy(),
+                  ),
+                );
               },
               image: 'lib/assets/privacy.png',
             ),
             CustomTile(
               label: 'Terms of use',
               onPressed: () {
-                Navigator.push(context,
-                    MaterialPageRoute(builder: (context) => TermsOfUse()));
+                Navigator.push(
+                  context,
+                  SlidingPageTransitionRL(
+                    page: TermsOfUse(),
+                  ),
+                );
               },
               image: 'lib/assets/terms.png',
             ),
@@ -128,34 +143,33 @@ class CustomTile extends StatelessWidget {
     return GestureDetector(
       onTap: onPressed,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+        padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
         child: SizedBox(
           height: 60,
           child: Card(
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(6.0),
+              borderRadius: BorderRadius.circular(12.0),
             ),
-            elevation: 1,
+            elevation: 3,
+            color: Colors.blueGrey.shade100,
+            shadowColor: Colors.black.withOpacity(0.2),
             child: Padding(
-              padding: const EdgeInsets.all(8.0),
+              padding: const EdgeInsets.all(12.0),
               child: Row(
                 children: [
-                  Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                      ),
-                      height: 28,
-                      width: 28,
-                      child: Image.asset(
-                        image,
-                        fit: BoxFit.cover,
-                      )),
-                  const SizedBox(width: 15),
+                  Image.asset(
+                    image,
+                    height: 25,
+                    width: 25,
+                    color: Colors.blueGrey.shade700,
+                  ),
+                  const SizedBox(width: 20),
                   Text(
                     label,
                     style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                      color: Colors.blueGrey,
                     ),
                   ),
                 ],

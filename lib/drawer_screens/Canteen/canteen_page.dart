@@ -1,9 +1,20 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:new_school/drawer_screens/Canteen/orders_page.dart';
 import 'package:provider/provider.dart';
-import '../sliding_transition.dart';
-import 'checkout_page.dart';
-import 'package:badges/badges.dart' as badges;
+import '../../sliding_transition.dart';
 import 'cart_provider.dart';
+import 'cart_page.dart';
+import 'package:badges/badges.dart' as badges;
+import 'dart:convert';
+import 'dart:typed_data';
+import 'package:flutter/services.dart';
+
+Future<String> encodeImageToBase64(String imagePath) async {
+  final ByteData data = await rootBundle.load(imagePath);
+  final List<int> bytes = data.buffer.asUint8List();
+  return base64Encode(bytes);
+}
 
 class CanteenMenuPage extends StatefulWidget {
   const CanteenMenuPage({super.key});
@@ -106,6 +117,45 @@ class _CanteenMenuPageState extends State<CanteenMenuPage> {
     },
   ];
 
+  Future<void> saveMenuItemsToFirestore() async {
+    try {
+      // Reference to the Firestore 'menuItems' collection
+      CollectionReference menuCollection =
+          FirebaseFirestore.instance.collection('menuItems');
+
+      for (var item in menuItems) {
+        await menuCollection.add({
+          'name': item['name'],
+          'price': item['price'],
+          'discount': item['discount'],
+          'image': item['image'], // Store local image path relative to assets
+        });
+      }
+      print("Menu items saved successfully!");
+    } catch (e) {
+      print('Error saving menu items to Firestore: $e');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getMenuItemsFromFirestore() async {
+    try {
+      QuerySnapshot snapshot =
+          await FirebaseFirestore.instance.collection('menuItems').get();
+      List<Map<String, dynamic>> items = snapshot.docs.map((doc) {
+        return {
+          'name': doc['name'],
+          'price': doc['price'],
+          'discount': doc['discount'],
+          'image': doc['image'], // The image path is retrieved
+        };
+      }).toList();
+      return items;
+    } catch (e) {
+      print('Error fetching menu items: $e');
+      return [];
+    }
+  }
+
   Map<String, Map<String, dynamic>> cart = {};
 
   @override
@@ -115,6 +165,18 @@ class _CanteenMenuPageState extends State<CanteenMenuPage> {
         title: Text('Canteen Menu'),
         centerTitle: true,
         actions: [
+          IconButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  SlidingPageTransitionRL(page: OrdersPage()),
+                );
+              },
+              icon: Image.asset(
+                'lib/assets/clipboard.png',
+                height: 25,
+                width: 25,
+              )),
           Consumer<CartProvider>(
             builder: (context, cartProvider, _) => badges.Badge(
               badgeAnimation: badges.BadgeAnimation.fade(),
@@ -131,7 +193,7 @@ class _CanteenMenuPageState extends State<CanteenMenuPage> {
                 onPressed: () {
                   Navigator.push(
                     context,
-                    SlidingPageTransitionRL(page: CheckOutPage()),
+                    SlidingPageTransitionRL(page: CartPage()),
                   );
                 },
                 icon: Image.asset(

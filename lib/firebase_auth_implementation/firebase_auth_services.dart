@@ -73,23 +73,29 @@ class usermodel {
   final String role;
   final String phone;
   final String address;
+  final String department;
+  final String profileImage; // New field added
 
   const usermodel({
-    required this.phone,
-    required this.address,
     this.id,
     required this.username,
     required this.email,
     required this.role,
+    required this.phone,
+    required this.address,
+    required this.department,
+    this.profileImage = '', // Default to empty string if not provided
   });
 
-  toJson() {
+  Map<String, dynamic> toJson() {
     return {
-      "UserName": username,
-      "Email": email,
-      "Role": role,
-      "Phone": phone,
-      "Address": address,
+      "username": username,
+      "email": email,
+      "role": role,
+      "phone": phone,
+      "address": address,
+      "department": department,
+      "profileImage": profileImage, // Include the image URL
     };
   }
 
@@ -97,10 +103,15 @@ class usermodel {
       DocumentSnapshot<Map<String, dynamic>> document) {
     final data = document.data();
     return usermodel(
-        phone: "Phone",
-        address: "Address",
-        username: "Username",
-        email: "Email",
-        role: "Role");
+      id: document.id,
+      username: data?["username"],
+      email: data?["email"],
+      role: data?["role"],
+      phone: data?["phone"],
+      address: data?["address"],
+      department: data?["department"],
+      profileImage:
+          data?["profileImage"] ?? '', // Provide default value if null
+    );
   }
 }

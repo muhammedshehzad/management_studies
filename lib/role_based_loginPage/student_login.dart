@@ -55,6 +55,8 @@ class _StudentLoginState extends State<StudentLogin> {
       backgroundColor: Color(0xfff5dada),
       appBar: AppBar(
         title: const Text("Student's Login Page"),
+        backgroundColor:Color(0xfff5dada),
+
       ),
       body: SingleChildScrollView(
         child: Padding(

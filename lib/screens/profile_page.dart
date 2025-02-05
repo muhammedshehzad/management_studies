@@ -241,25 +241,32 @@ class CustomTile extends StatelessWidget {
     return GestureDetector(
       onTap: onPressed,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+        padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
         child: SizedBox(
           height: 60,
           child: Card(
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(6.0),
+              borderRadius: BorderRadius.circular(12.0),
             ),
-            elevation: 1,
+            elevation: 3,
+            color: Colors.blueGrey.shade100,
+            shadowColor: Colors.black.withOpacity(0.2),
             child: Padding(
-              padding: const EdgeInsets.all(8.0),
+              padding: const EdgeInsets.all(12.0),
               child: Row(
                 children: [
-                  Icon(icon),
-                  const SizedBox(width: 15),
+                  Icon(
+                    icon,
+                    size: 25,
+                    color: Colors.blueGrey.shade700,
+                  ),
+                  const SizedBox(width: 20),
                   Text(
                     label,
                     style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                      color: Colors.blueGrey,
                     ),
                   ),
                 ],
@@ -269,5 +276,6 @@ class CustomTile extends StatelessWidget {
         ),
       ),
     );
+
   }
 }

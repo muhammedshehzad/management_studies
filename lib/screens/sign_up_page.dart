@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:new_school/screens/sign_in_page.dart';
+import 'package:new_school/sliding_transition.dart';
 import '../firebase_auth_implementation/firebase_auth_services.dart';
 import 'login_page.dart';
 
@@ -21,9 +23,11 @@ class _SignUpState extends State<SignUp> {
   final TextEditingController _confirmPassword = TextEditingController();
   final TextEditingController _phone = TextEditingController();
   final TextEditingController _address = TextEditingController();
+  final TextEditingController _department = TextEditingController();
 
   final List<String> items = ['Student', 'Teacher'];
   String dropdownvalue = 'Student';
+  String? selectedDepartment;
 
   @override
   void dispose() {
@@ -51,7 +55,6 @@ class _SignUpState extends State<SignUp> {
             ),
           ),
         );
-        print('User is an admin');
       } else {
         print('User is not an admin');
       }
@@ -78,6 +81,7 @@ class _SignUpState extends State<SignUp> {
       phone: _phone.text.trim(),
       address: _address.text.trim(),
       role: dropdownvalue,
+      department: selectedDepartment!,
     );
 
     try {
@@ -91,13 +95,7 @@ class _SignUpState extends State<SignUp> {
         await FirebaseFirestore.instance
             .collection('Users')
             .doc(userCredential.uid)
-            .set({
-          'username': user.username,
-          'email': user.email,
-          'role': user.role,
-          'phone': user.phone,
-          'address': user.address,
-        });
+            .set(user.toJson());
 
         print('User details added to Firestore.');
 
@@ -132,154 +130,256 @@ class _SignUpState extends State<SignUp> {
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
-        title: const Text("Sign Up Page"),
-        leading: IconButton(
-            onPressed: () {
-              Navigator.popAndPushNamed(context, '/signin');
-            },
-            icon: Icon(Icons.arrow_back)),
+        title: const Text(
+          "Sign Up",
+        ),
+
       ),
       body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                DropdownButtonFormField<String>(
-                  value: dropdownvalue,
-                  items: items.map((String role) {
-                    return DropdownMenuItem<String>(
-                      value: role,
-                      child: Text(role),
-                    );
-                  }).toList(),
-                  onChanged: (String? newValue) {
-                    setState(() {
-                      dropdownvalue = newValue!;
-                    });
-                  },
-                  decoration: InputDecoration(
-                    labelText: 'Select Role',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 16.0),
-                TextFormField(
-                  controller: _username,
-                  decoration: const InputDecoration(
-                    labelText: 'Username',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter your username';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16.0),
-                TextFormField(
-                  controller: _emailController,
-                  decoration: const InputDecoration(
-                    labelText: 'Email',
-                    border: OutlineInputBorder(),
-                  ),
-                  keyboardType: TextInputType.emailAddress,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter your email';
-                    }
-                    if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
-                      return 'Please enter a valid email';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16.0),
-                TextFormField(
-                  controller: _phone,
-                  decoration: const InputDecoration(
-                    labelText: 'Phone Number',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter your Phone Number';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16.0),
-                TextFormField(
-                  controller: _address,
-                  decoration: const InputDecoration(
-                    labelText: 'Address',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter your Address';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16.0),
-                TextFormField(
-                  controller: _passwordController,
-                  obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Password',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter your password';
-                    }
-                    if (value.length < 6) {
-                      return 'Password must be at least 6 characters';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16.0),
-                TextFormField(
-                  controller: _confirmPassword,
-                  obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Confirm Password',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please confirm your password';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 30.0),
-                Container(
-                  height: 40,
-                  width: MediaQuery.of(context).size.width,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      foregroundColor: Colors.white,
-                      backgroundColor: Color(0xff3e948e),
-                      elevation: 5,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(6),
-                      ),
+        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+        child: Column(
+          children: [
+            const SizedBox(height: 10),
+            Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  DropdownButtonFormField<String>(
+                    value: dropdownvalue,
+                    items: items.map((String role) {
+                      return DropdownMenuItem<String>(
+                        value: role,
+                        child: Text(role),
+                      );
+                    }).toList(),
+                    onChanged: (String? newValue) {
+                      setState(() {
+                        dropdownvalue = newValue!;
+                      });
+                    },
+                    decoration: InputDecoration(
+                      labelText: 'Select Role',
+                      prefixIcon: Icon(Icons.person, color: Colors.black54),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10)),
                     ),
-                    onPressed: _signUp,
-                    child: const Text('SignUp'),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 12.0),
+                  TextFormField(
+                    controller: _username,
+                    decoration: InputDecoration(
+                      labelText: 'Username',
+                      prefixIcon: Icon(Icons.person, color: Colors.black54),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10)),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter your username';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12.0),
+                  TextFormField(
+                    controller: _emailController,
+                    decoration: InputDecoration(
+                      labelText: 'Email',
+                      prefixIcon: Icon(Icons.email, color: Colors.black54),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10)),
+                    ),
+                    keyboardType: TextInputType.emailAddress,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter your email';
+                      }
+                      if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
+                        return 'Please enter a valid email';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12.0),
+                  TextFormField(
+                    controller: _phone,
+                    decoration: InputDecoration(
+                      labelText: 'Phone Number',
+                      prefixIcon: Icon(Icons.phone, color: Colors.black54),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10)),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter your phone number';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12.0),
+                  DropdownButtonFormField<String>(
+                    value: selectedDepartment,
+                    onChanged: (String? newValue) {
+                      setState(() {
+                        selectedDepartment = newValue;
+                      });
+                    },
+                    decoration: InputDecoration(
+                      labelText: 'Department',
+                      prefixIcon: Icon(Icons.school, color: Colors.black54),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10)),
+                    ),
+                    items: [
+                      'Maths',
+                      'Physics',
+                      'Chemistry',
+                      'Economics',
+                      'English',
+                      'Computer Science',
+                      'Data Science',
+                      'Advertising',
+                      'Management Studies',
+                      'Commerce'
+                    ].map<DropdownMenuItem<String>>((String value) {
+                      return DropdownMenuItem<String>(
+                        value: value,
+                        child: Text(value),
+                      );
+                    }).toList(),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please select your department';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12.0),
+                  TextFormField(
+                    controller: _address,
+                    decoration: InputDecoration(
+                      labelText: 'Address',
+                      prefixIcon:
+                          Icon(Icons.location_on, color: Colors.black54),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10)),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter your address';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12.0),
+                  TextFormField(
+                    controller: _passwordController,
+                    obscureText: true,
+                    decoration: InputDecoration(
+                      labelText: 'Password',
+                      prefixIcon: Icon(Icons.lock, color: Colors.black54),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10)),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter your password';
+                      }
+                      if (value.length < 6) {
+                        return 'Password must be at least 6 characters';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12.0),
+                  TextFormField(
+                    controller: _confirmPassword,
+                    obscureText: true,
+                    decoration: InputDecoration(
+                      labelText: 'Confirm Password',
+                      prefixIcon: Icon(Icons.lock, color: Colors.black54),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10)),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please confirm your password';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 20.0),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 45,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Color(0xff3e948e),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10)),
+                      ),
+                      onPressed: _signUp,
+                      child: const Text('Sign Up',
+                          style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Already have an account?',
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pushReplacement(
+                              context, SlidingPageTransitionLR(page: SignIn()));
+                        },
+                        child: Text(
+                          'Sign In',
+                          style: TextStyle(color: Color(0xff3e948e),fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );
+  }
+}
+
+class usermodel {
+  final String username;
+  final String email;
+  final String phone;
+  final String address;
+  final String role;
+  final String department;
+
+  usermodel({
+    required this.username,
+    required this.email,
+    required this.phone,
+    required this.address,
+    required this.role,
+    required this.department,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'username': username,
+      'email': email,
+      'phone': phone,
+      'address': address,
+      'role': role,
+      'department': department,
+    };
   }
 }
