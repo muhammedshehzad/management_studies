@@ -62,7 +62,7 @@ class NotificationsPage extends StatefulWidget {
 }
 
 class _NotificationsPageState extends State<NotificationsPage> {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseFirestore firestor = FirebaseFirestore.instance;
   final User? _currentUser = FirebaseAuth.instance.currentUser;
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
 
@@ -70,7 +70,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
   void initState() {
     super.initState();
     getToken();
-    _setupPushNotifications();
+    setupPushNotifications();
   }
 
   void saveTokenToFirestore(String token) async {
@@ -81,7 +81,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
     });
   }
 
-  Future<void> _setupPushNotifications() async {
+  Future<void> setupPushNotifications() async {
     NotificationSettings settings = await _firebaseMessaging.requestPermission(
       alert: true,
       badge: true,
@@ -100,7 +100,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
 
     String? token = await _firebaseMessaging.getToken();
     if (token != null && _currentUser != null) {
-      await _firestore.collection('users').doc(_currentUser!.uid).update({
+      await firestor.collection('users').doc(_currentUser!.uid).update({
         'fcmTokens': FieldValue.arrayUnion([token])
       });
     }
@@ -114,6 +114,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(message.notification?.title ?? 'New notification'),
+          duration: Duration(seconds: 10),
           action: SnackBarAction(
             label: 'View',
             onPressed: () => _showNotificationDialog(message),
@@ -140,13 +141,13 @@ class _NotificationsPageState extends State<NotificationsPage> {
   }
 
   Future<void> MarkReaded(String notificationId) async {
-    await _firestore.collection('notifications').doc(notificationId).update({
+    await firestor.collection('notifications').doc(notificationId).update({
       'isRead': true,
     });
   }
 
   Future<void> deleteTile(String notificationId) async {
-    await _firestore.collection('notifications').doc(notificationId).delete();
+    await firestor.collection('notifications').doc(notificationId).delete();
   }
 
   void getToken() async {
@@ -170,7 +171,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
         ],
       ),
       body: StreamBuilder<QuerySnapshot>(
-        stream: _firestore
+        stream: firestor
             .collection('notifications')
             .where('userId', isEqualTo: currentUserId)
             .orderBy('timestamp', descending: true)
@@ -196,7 +197,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
 
               return Dismissible(
                 key: Key(notification.id),
-                direction: DismissDirection.horizontal,
+                direction: DismissDirection.none,
                 background: Container(
                   color: Colors.red,
                   alignment: Alignment.centerRight,
@@ -207,7 +208,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                 child: Card(
                   elevation: 2,
                   margin:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -243,7 +244,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          _formatDate(notification.timestamp),
+                          currrentDate(notification.timestamp),
                           style: const TextStyle(
                             fontSize: 12,
                             color: Colors.grey,
@@ -265,13 +266,13 @@ class _NotificationsPageState extends State<NotificationsPage> {
     );
   }
 
-  String _formatDate(DateTime date) {
+  String currrentDate(DateTime date) {
     return '${date.day}/${date.month}/${date.year} ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
   }
 
   Future<void> markAllread() async {
-    final batch = _firestore.batch();
-    final notifications = await _firestore
+    final batch = firestor.batch();
+    final notifications = await firestor
         .collection('notifications')
         .where('userId', isEqualTo: _currentUser!.uid)
         .where('isRead', isEqualTo: false)
@@ -288,49 +289,101 @@ class _NotificationsPageState extends State<NotificationsPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(notification.title),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        titlePadding: const EdgeInsets.all(16),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        actionsPadding: const EdgeInsets.only(bottom: 12, right: 12),
+        title: Text(
+          notification.title,
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
+          ),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(notification.message),
+            Text(
+              notification.message,
+              style: const TextStyle(fontSize: 16, color: Colors.black87),
+            ),
             if (notification.payload != null) ...[
-              const SizedBox(height: 20),
-              const Text('Additional Details:',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 5),
-              Padding(
-                padding: const EdgeInsets.all(8.0),
+              const SizedBox(height: 16),
+              const Text(
+                'Additional Details:',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.blueGrey.shade200),
+                ),
                 child: Text(
                   _formatPayload(notification.payload!),
                   style: const TextStyle(
                     fontSize: 14,
+                    color: Colors.black87,
                   ),
                 ),
               ),
             ],
-            const SizedBox(height: 12),
+            const SizedBox(height: 20),
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
+                const Text(
                   'Received:',
-                  style: const TextStyle(fontSize: 13, color: Colors.black54),
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.black87,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
                 Text(
-                  ' ${_formatDate(notification.timestamp)}',
+                  currrentDate(notification.timestamp),
                   style: const TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey,
-                      fontWeight: FontWeight.bold),
-                )
+                    fontSize: 14,
+                    color: Colors.blueGrey,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ],
             ),
           ],
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
+          Align(
+            alignment: Alignment.centerRight,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xff3e948e),
+                foregroundColor: Colors.white,
+                elevation: 3,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              onPressed: () => Navigator.pop(context),
+              child: const Text(
+                'Close',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
           ),
         ],
       ),

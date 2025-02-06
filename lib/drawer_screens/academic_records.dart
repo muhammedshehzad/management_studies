@@ -379,28 +379,45 @@ class _AcademicRecordsState extends State<AcademicRecords> {
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return Center(child: Center(
-                    child: Shimmer.fromColors(
-                      baseColor: Colors.grey[300]!,
-                      highlightColor: Colors.grey[100]!,
-                      child: ListView.builder(
-                        itemCount: 7,
-                        itemBuilder: (context, index) {
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 10.0),
-                            child: ListTile(
-                              title: Container(
-                                width: 150.0,
-                                height: 20.0,
-                                color: Colors.white,
+                    child: Material(
+                      child: Shimmer.fromColors(
+                        baseColor: Colors.grey[400]!,
+                        highlightColor: Colors.grey[100]!,
+                        child: ListView.builder(
+                          itemCount: 7,
+                          itemBuilder: (context, index) {
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 10.0),
+                              child: ListTile(
+                                contentPadding: EdgeInsets.symmetric(horizontal: 15),
+                                leading: Container(
+                                  width: 50.0,
+                                  height: 50.0,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                title: Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: Container(
+                                    width: double.infinity,
+                                    height: 20.0,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                subtitle: Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: Container(
+                                    width: 100.0,
+                                    height: 15.0,
+                                    color: Colors.white,
+                                  ),
+                                ),
                               ),
-                              subtitle: Container(
-                                width: 100.0,
-                                height: 15.0,
-                                color: Colors.white,
-                              ),
-                            ),
-                          );
-                        },
+                            );
+                          },
+                        ),
                       ),
                     ),
                   ));

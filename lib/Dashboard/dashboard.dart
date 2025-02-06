@@ -8,14 +8,15 @@ import 'package:flutter/services.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:new_school/drawer_screens/academic_records.dart';
 import 'package:new_school/drawer_screens/homework_assignment.dart';
+import 'package:new_school/firebase_auth_implementation/firebase_auth_services.dart';
 import 'package:new_school/screens/profile_page.dart';
 import 'package:new_school/screens/sign_in_page.dart';
 import 'package:percent_indicator/circular_percent_indicator.dart';
 import 'package:percent_indicator/linear_percent_indicator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
-
-
+import 'package:badges/badges.dart' as badges;
 import '../drawer_screens/Canteen/canteen_page.dart';
 import '../drawer_screens/leaves_page.dart';
 import '../screens/notifications_page.dart';
@@ -173,7 +174,83 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
           }
 
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return Center(
+                child: Center(
+              child: Material(
+                child: Shimmer.fromColors(
+                  baseColor: Colors.grey[400]!,
+                  highlightColor: Colors.grey[100]!,
+                  child: Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(height: 50),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Container(
+                                width: 150,
+                                height: 100,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              Container(
+                                width: 150,
+                                height: 100,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 16),
+                          Container(
+                            width: double.infinity,
+                            height: 120,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          SizedBox(height: 16),
+                          Container(
+                            width: double.infinity,
+                            height: 250,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          SizedBox(height: 16),
+                          Container(
+                            width: double.infinity,
+                            height: 150,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          SizedBox(height: 16),
+                          Container(
+                            width: double.infinity,
+                            height: 50,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ));
           }
 
           if (!snapshot.hasData || snapshot.data?.data() == null) {
@@ -203,21 +280,78 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
           final String role = data["role"] ?? 'N/A';
           var userData = snapshot.data!.data();
           String profileImageUrl = userData?['url'] ?? '';
+          final String currentUserId =
+              FirebaseAuth.instance.currentUser?.uid ?? "";
+
           return Scaffold(
             appBar: AppBar(
               actions: [
-                IconButton(
-                    onPressed: () {
-                      Navigator.push(context, SlidingPageTransitionRL(page: NotificationsPage()));
-                    },
-                    icon: Container(
-                      height: 33,
-                      width: 33,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
+                StreamBuilder<QuerySnapshot>(
+                  stream: firestore
+                      .collection('notifications')
+                      .where('userId', isEqualTo: currentUserId)
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    if (snapshot.hasError) {
+                      return Center(child: Text('Error: ${snapshot.error}'));
+                    }
+
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return Center(
+                          child: IconButton(
+                        onPressed: () {
+                          Navigator.push(
+                              context,
+                              SlidingPageTransitionRL(
+                                  page: NotificationsPage()));
+                        },
+                        icon: Image.asset(
+                          'lib/assets/notification(1).png',
+                          height: 25,
+                          width: 25,
+                        ),
+                      ));
+                    }
+
+                    if (!snapshot.hasData) {
+                      return const Center(
+                          child: Text('No notifications found'));
+                    }
+
+                    // Count unread notifications
+                    final unreadCount = snapshot.data!.docs
+                        .where((doc) => (doc['isRead'] == false))
+                        .length;
+
+                    return badges.Badge(
+                      badgeAnimation: badges.BadgeAnimation.fade(),
+                      showBadge: unreadCount > 0,
+                      // Hide badge if there are no unread notifications
+                      badgeContent: Text(
+                        unreadCount.toString(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                      child: Image.asset('lib/assets/notification(1).png'),
-                    )),
+                      position: badges.BadgePosition.topEnd(top: 5, end: 13),
+                      child: IconButton(
+                        onPressed: () {
+                          Navigator.push(
+                              context,
+                              SlidingPageTransitionRL(
+                                  page: NotificationsPage()));
+                        },
+                        icon: Image.asset(
+                          'lib/assets/notification(1).png',
+                          height: 25,
+                          width: 25,
+                        ),
+                      ),
+                    );
+                  },
+                ),
                 Padding(
                   padding: const EdgeInsets.only(right: 5.0),
                   child: IconButton(
@@ -232,11 +366,27 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
                       width: 33,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        image: DecorationImage(
-                            image: NetworkImage(profileImageUrl,),
-                            fit: BoxFit.cover
-                        ),
                       ),
+                      child:
+                          profileImageUrl != null && profileImageUrl!.isNotEmpty
+                              ? ClipOval(
+                                  child: Image.network(
+                                    profileImageUrl!,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Icon(
+                                        Icons.account_circle,
+                                        size: 33,
+                                        color: Colors.grey,
+                                      );
+                                    },
+                                  ),
+                                )
+                              : Icon(
+                                  Icons.account_circle,
+                                  size: 33,
+                                  color: Colors.grey,
+                                ),
                     ),
                   ),
                 ),
@@ -461,227 +611,227 @@ class _ContentAreaState extends State<ContentArea> {
 
     return SingleChildScrollView(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Center(
-                child: Text(
-                  'Welcome to the ${widget.role} Dashboard!',
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                ),
-              ),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Center(
+            child: Text(
+              'Welcome to the ${widget.role} Dashboard!',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
-            SizedBox(
-              height: 15,
-            ),
-            Center(
-              child: Column(
-                children: [
-                  if (isStudent)
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        // Attendance Indicators
-                        CircularIndicator(0.82, "82.0%", "Average Attendance",
-                            Colors.yellowAccent.shade700),
-                        SizedBox(height: 8),
-                        CircularIndicator(0.18, "18.0%", "Average Leave Taken",
-                            Colors.purpleAccent.shade700),
-                        SizedBox(height: 10),
-                        Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Text(
-                                    "Total Attendance = \nDays Present / \nTotal No. Of Working Days",
-                                    style: TextStyle(
-                                        fontSize: 16, color: Colors.grey[700]),
-                                  ),
-                                  Text(
-                                    "109 / 120",
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 18,
-                                      color: Colors.green.shade600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              SizedBox(height: 12),
-                            ],
-                          ),
-                        ),
-
-                        // Linear Progress Indicator for Attendance
-                        Center(
-                          child: Container(
-                            width: MediaQuery.of(context).size.width * .7,
-                            child: LinearPercentIndicator(
-                              width: MediaQuery.of(context).size.width * .7,
-                              lineHeight: 36.0,
-                              percent: 0.82,
-                              backgroundColor: Colors.grey.shade300,
-                              progressColor: Colors.blue.shade500,
-                              center: Text(
-                                '82.0%',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        SizedBox(height: 30),
-
-                        // Recent Activities/Assignments
-                        // Padding(
-                        //   padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                        //   child: Column(
-                        //     crossAxisAlignment: CrossAxisAlignment.start,
-                        //     children: [
-                        //       Text(
-                        //         "Recent Activities/Assignments",
-                        //         style: TextStyle(
-                        //           fontSize: 18,
-                        //           fontWeight: FontWeight.bold,
-                        //           color: Colors.blue.shade700,
-                        //         ),
-                        //       ),
-                        //       SizedBox(height: 10),
-                        //       ListTile(
-                        //         leading: Icon(Icons.assignment, color: Colors.blue),
-                        //         title: Text("Math Homework - Due 3 days ago"),
-                        //         subtitle: Text("Status: Completed"),
-                        //       ),
-                        //       ListTile(
-                        //         leading: Icon(Icons.assignment_late, color: Colors.orange),
-                        //         title: Text("Science Project - Due 1 week ago"),
-                        //         subtitle: Text("Status: Pending"),
-                        //       ),
-                        //       ListTile(
-                        //         leading: Icon(Icons.assignment_turned_in, color: Colors.green),
-                        //         title: Text("English Essay - Due 5 days ago"),
-                        //         subtitle: Text("Status: Completed"),
-                        //       ),
-                        //     ],
-                        //   ),
-                        // ),
-                        SizedBox(height: 15),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+          ),
+        ),
+        SizedBox(
+          height: 15,
+        ),
+        Center(
+          child: Column(
+            children: [
+              if (isStudent)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    // Attendance Indicators
+                    CircularIndicator(0.82, "82.0%", "Average Attendance",
+                        Colors.yellowAccent.shade700),
+                    SizedBox(height: 8),
+                    CircularIndicator(0.18, "18.0%", "Average Leave Taken",
+                        Colors.purpleAccent.shade700),
+                    SizedBox(height: 10),
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
                             children: [
                               Text(
-                                "Performance Summary",
+                                "Total Attendance = \nDays Present / \nTotal No. Of Working Days",
                                 style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.green.shade700,
-                                ),
+                                    fontSize: 16, color: Colors.grey[700]),
                               ),
-                              SizedBox(height: 10),
-                              ListTile(
-                                leading:
-                                Icon(Icons.trending_up, color: Colors.green),
-                                title: Text("Overall Grade: A"),
-                                subtitle: Text(
-                                    "You have consistently performed well in all subjects."),
-                              ),
-                              ListTile(
-                                leading:
-                                Icon(Icons.trending_down, color: Colors.red),
-                                title: Text("Math: C+ (Needs Improvement)"),
-                                subtitle:
-                                Text("Focus on improving your Math scores."),
-                              ),
-                            ],
-                          ),
-                        ),
-                        // Upcoming Exams
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
                               Text(
-                                "Upcoming Exams",
+                                "109 / 120",
                                 style: TextStyle(
-                                  fontSize: 18,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.grey.shade700,
+                                  fontSize: 18,
+                                  color: Colors.green.shade600,
                                 ),
-                              ),
-                              SizedBox(height: 10),
-                              ListTile(
-                                leading:
-                                Icon(Icons.calendar_today, color: Colors.red),
-                                title: Text("Math Exam - 25th Jan"),
-                                subtitle: Text("Duration: 2 hours"),
-                              ),
-                              ListTile(
-                                leading:
-                                Icon(Icons.calendar_today, color: Colors.red),
-                                title: Text("Science Exam - 30th Jan"),
-                                subtitle: Text("Duration: 3 hours"),
                               ),
                             ],
                           ),
-                        ),
-                        SizedBox(height: 30),
+                          SizedBox(height: 12),
+                        ],
+                      ),
+                    ),
 
-                        // Performance Summary
-                      ],
-                    ),
-                  if (isTeacher)
-                    Column(
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Expanded(
-                              child: CircularIndicator(0.75, "75.0%",
-                                  "Average Attendance", Colors.green),
-                            ),
-                            SizedBox(width: 8),
-                            Expanded(
-                              child: CircularIndicator(0.25, "25.0%",
-                                  "Average Leave Taken", Colors.redAccent.shade700),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 8),
-                        BoysGirlsChart(),
-                      ],
-                    ),
-                  SizedBox(height: 20),
-                  if (isAdmin)
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Text(
-                            'Department-wise Teachers Details',
+                    // Linear Progress Indicator for Attendance
+                    Center(
+                      child: Container(
+                        width: MediaQuery.of(context).size.width * .7,
+                        child: LinearPercentIndicator(
+                          width: MediaQuery.of(context).size.width * .7,
+                          lineHeight: 36.0,
+                          percent: 0.82,
+                          backgroundColor: Colors.grey.shade300,
+                          progressColor: Colors.blue.shade500,
+                          center: Text(
+                            '82.0%',
                             style: TextStyle(
-                                fontSize: 18, fontWeight: FontWeight.bold),
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                              fontSize: 18,
+                            ),
                           ),
                         ),
-                        TeachersChart(),
-                        TeacherDashboard(),
+                      ),
+                    ),
+                    SizedBox(height: 30),
+
+                    // Recent Activities/Assignments
+                    // Padding(
+                    //   padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    //   child: Column(
+                    //     crossAxisAlignment: CrossAxisAlignment.start,
+                    //     children: [
+                    //       Text(
+                    //         "Recent Activities/Assignments",
+                    //         style: TextStyle(
+                    //           fontSize: 18,
+                    //           fontWeight: FontWeight.bold,
+                    //           color: Colors.blue.shade700,
+                    //         ),
+                    //       ),
+                    //       SizedBox(height: 10),
+                    //       ListTile(
+                    //         leading: Icon(Icons.assignment, color: Colors.blue),
+                    //         title: Text("Math Homework - Due 3 days ago"),
+                    //         subtitle: Text("Status: Completed"),
+                    //       ),
+                    //       ListTile(
+                    //         leading: Icon(Icons.assignment_late, color: Colors.orange),
+                    //         title: Text("Science Project - Due 1 week ago"),
+                    //         subtitle: Text("Status: Pending"),
+                    //       ),
+                    //       ListTile(
+                    //         leading: Icon(Icons.assignment_turned_in, color: Colors.green),
+                    //         title: Text("English Essay - Due 5 days ago"),
+                    //         subtitle: Text("Status: Completed"),
+                    //       ),
+                    //     ],
+                    //   ),
+                    // ),
+                    SizedBox(height: 15),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "Performance Summary",
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.green.shade700,
+                            ),
+                          ),
+                          SizedBox(height: 10),
+                          ListTile(
+                            leading:
+                                Icon(Icons.trending_up, color: Colors.green),
+                            title: Text("Overall Grade: A"),
+                            subtitle: Text(
+                                "You have consistently performed well in all subjects."),
+                          ),
+                          ListTile(
+                            leading:
+                                Icon(Icons.trending_down, color: Colors.red),
+                            title: Text("Math: C+ (Needs Improvement)"),
+                            subtitle:
+                                Text("Focus on improving your Math scores."),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Upcoming Exams
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "Upcoming Exams",
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                          SizedBox(height: 10),
+                          ListTile(
+                            leading:
+                                Icon(Icons.calendar_today, color: Colors.red),
+                            title: Text("Math Exam - 25th Jan"),
+                            subtitle: Text("Duration: 2 hours"),
+                          ),
+                          ListTile(
+                            leading:
+                                Icon(Icons.calendar_today, color: Colors.red),
+                            title: Text("Science Exam - 30th Jan"),
+                            subtitle: Text("Duration: 3 hours"),
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(height: 30),
+
+                    // Performance Summary
+                  ],
+                ),
+              if (isTeacher)
+                Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Expanded(
+                          child: CircularIndicator(0.75, "75.0%",
+                              "Average Attendance", Colors.green),
+                        ),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: CircularIndicator(0.25, "25.0%",
+                              "Average Leave Taken", Colors.redAccent.shade700),
+                        ),
                       ],
                     ),
-                ],
-              ),
-            ),
-          ],
-        ));
+                    SizedBox(height: 8),
+                    BoysGirlsChart(),
+                  ],
+                ),
+              SizedBox(height: 20),
+              if (isAdmin)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Text(
+                        'Department-wise Teachers Details',
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    TeachersChart(),
+                    TeacherDashboard(),
+                  ],
+                ),
+            ],
+          ),
+        ),
+      ],
+    ));
   }
 
   Widget CircularIndicator(
@@ -778,7 +928,7 @@ class BoysGirlsChart extends StatelessWidget {
           textStyle: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
         ),
         tooltipBehavior:
-        TooltipBehavior(enable: true, header: '', canShowMarker: false),
+            TooltipBehavior(enable: true, header: '', canShowMarker: false),
         primaryXAxis: CategoryAxis(
           title: AxisTitle(
             text: 'Year',
@@ -1031,7 +1181,7 @@ class TeachersChart extends StatelessWidget {
           titlesData: FlTitlesData(
             leftTitles: AxisTitles(
               sideTitles:
-              SideTitles(showTitles: true, interval: 5, reservedSize: 35),
+                  SideTitles(showTitles: true, interval: 5, reservedSize: 35),
             ),
             bottomTitles: AxisTitles(
               sideTitles: SideTitles(
@@ -1050,7 +1200,7 @@ class TeachersChart extends StatelessWidget {
                       return const Text('BBA');
                     case 5:
                       return const Text('Bcom');
-                  // Add more labels for other departments
+                    // Add more labels for other departments
                     default:
                       return const Text('');
                   }
