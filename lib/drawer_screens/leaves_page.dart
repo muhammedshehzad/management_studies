@@ -5,7 +5,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 
-import 'notifications.dart';
+import '../screens/notifications_page.dart';
+
 
 class LeavesPage extends StatefulWidget {
   const LeavesPage({super.key});

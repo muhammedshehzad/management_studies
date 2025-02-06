@@ -49,7 +49,7 @@ class _SignInState extends State<SignIn> {
       String password = _passwordController.text.trim();
 
       User? userCredential =
-          await _auth.signInWithEmailAndPassword(email, password);
+      await _auth.signInWithEmailAndPassword(email, password);
 
       if (userCredential != null) {
         var userDoc = await FirebaseFirestore.instance
@@ -68,7 +68,7 @@ class _SignInState extends State<SignIn> {
         await prefs.setString('email', email);
         await prefs.setString('role', role);
         final route =
-            MaterialPageRoute(builder: (context) => Dashboard(role: role));
+        MaterialPageRoute(builder: (context) => Dashboard(role: role));
         Navigator.pushReplacement(context, route);
 
         print('Sign-in successful for role: $role');
@@ -156,28 +156,28 @@ class _SignInState extends State<SignIn> {
                 const SizedBox(height: 30.0),
                 isloading
                     ? Center(
-                        child: CircularProgressIndicator(
-                          strokeWidth: 5,
-                          strokeAlign: .01,
-                          color: Color(0xff3e948e),
-                        ),
-                      )
+                  child: CircularProgressIndicator(
+                    strokeWidth: 5,
+                    strokeAlign: .01,
+                    color: Color(0xff3e948e),
+                  ),
+                )
                     : Container(
-                        height: 40,
-                        width: MediaQuery.of(context).size.width,
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            foregroundColor: Colors.white,
-                            backgroundColor: Color(0xff3e948e),
-                            elevation: 5,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                          ),
-                          onPressed: _signIn,
-                          child: const Text('Sign In'),
-                        ),
+                  height: 40,
+                  width: MediaQuery.of(context).size.width,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      backgroundColor: Color(0xff3e948e),
+                      elevation: 5,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(6),
                       ),
+                    ),
+                    onPressed: _signIn,
+                    child: const Text('Sign In'),
+                  ),
+                ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [

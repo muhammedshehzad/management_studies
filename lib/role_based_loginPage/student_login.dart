@@ -26,7 +26,7 @@ class _StudentLoginState extends State<StudentLogin> {
       }
 
       final UserCredential userCredential =
-          await _auth.signInWithEmailAndPassword(
+      await _auth.signInWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
@@ -55,6 +55,8 @@ class _StudentLoginState extends State<StudentLogin> {
       backgroundColor: Color(0xfff5dada),
       appBar: AppBar(
         title: const Text("Student's Login Page"),
+        backgroundColor:Color(0xfff5dada),
+
       ),
       body: SingleChildScrollView(
         child: Padding(

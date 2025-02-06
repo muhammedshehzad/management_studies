@@ -15,8 +15,12 @@ import 'package:percent_indicator/linear_percent_indicator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 
-import '../assets/widgets/homeworkdatamodel.dart';
+
+import '../drawer_screens/Canteen/canteen_page.dart';
+import '../drawer_screens/leaves_page.dart';
+import '../screens/notifications_page.dart';
 import '../settings/two-factor_authentication.dart';
+import '../sliding_transition.dart';
 
 class Dashboard extends StatefulWidget {
   final String role;
@@ -197,37 +201,43 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
           print("Data: ${snapshot.data!.data()}");
           final data = snapshot.data!.data()!;
           final String role = data["role"] ?? 'N/A';
-
+          var userData = snapshot.data!.data();
+          String profileImageUrl = userData?['url'] ?? '';
           return Scaffold(
             appBar: AppBar(
               actions: [
                 IconButton(
-                    onPressed: () {},
-                    icon: Icon(
-                      Icons.notifications,
-                      size: 33,
+                    onPressed: () {
+                      Navigator.push(context, SlidingPageTransitionRL(page: NotificationsPage()));
+                    },
+                    icon: Container(
+                      height: 33,
+                      width: 33,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                      ),
+                      child: Image.asset('lib/assets/notification(1).png'),
                     )),
                 Padding(
                   padding: const EdgeInsets.only(right: 5.0),
                   child: IconButton(
                     onPressed: () {
                       Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => ProfilePage()));
+                        context,
+                        SlidingPageTransitionRL(page: ProfilePage()),
+                      );
                     },
                     icon: Container(
-                        height: 33,
-                        width: 33,
-                        decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            image: DecorationImage(
-                              image: (selectedImage != null)
-                                  ? FileImage(File(data['url'] ?? ""))
-                                      as ImageProvider
-                                  : AssetImage('lib/assets/pandy.jpeg'),
-                              fit: BoxFit.cover,
-                            ))),
+                      height: 33,
+                      width: 33,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        image: DecorationImage(
+                            image: NetworkImage(profileImageUrl,),
+                            fit: BoxFit.cover
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -241,8 +251,7 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
                     child: DrawerHeader(
                       decoration: BoxDecoration(
                         image: DecorationImage(
-                          image: FileImage(File(data!['url'] ?? ""))
-                              as ImageProvider,
+                          image: NetworkImage(profileImageUrl),
                           fit: BoxFit.cover,
                           colorFilter: ColorFilter.mode(
                             Colors.black.withOpacity(0.5),
@@ -255,10 +264,10 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
                       ),
                       child: GestureDetector(
                         onTap: () async {
-                          await Navigator.pushNamed(context, '/profile');
-                          setState(() {
-                            _loadImage();
-                          });
+                          await Navigator.push(
+                            context,
+                            SlidingPageTransitionLR(page: ProfilePage()),
+                          );
                         },
                         child: Padding(
                           padding: const EdgeInsets.all(8.0),
@@ -276,7 +285,6 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
                                 overflow: TextOverflow.ellipsis,
                               ),
                               const SizedBox(height: 8),
-                              // Added space between text widgets
                               Text(
                                 data["email"] ?? 'N/A',
                                 style: const TextStyle(
@@ -287,7 +295,6 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
                                 overflow: TextOverflow.ellipsis,
                               ),
                               const SizedBox(height: 8),
-                              // Added space between text widgets
                               Text(
                                 role,
                                 style: const TextStyle(
@@ -311,9 +318,7 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
                           onPressed: () {
                             Navigator.push(
                               context,
-                              MaterialPageRoute(
-                                builder: (context) => AcademicRecords(),
-                              ),
+                              SlidingPageTransitionLR(page: AcademicRecords()),
                             );
                           },
                           image: 'lib/assets/academicrecords.png',
@@ -321,13 +326,11 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
                       ),
                       ListTile(
                         title: CustomTile(
-                          label: 'Homework and \nAssignments',
+                          label: 'Homeworks',
                           onPressed: () {
                             Navigator.push(
                               context,
-                              MaterialPageRoute(
-                                builder: (context) => HomeWorkScreen(),
-                              ),
+                              SlidingPageTransitionLR(page: HomeWorkScreen()),
                             );
                           },
                           image: 'lib/assets/homeworkandassignment.png',
@@ -336,14 +339,24 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
                       ListTile(
                         title: CustomTile(
                           label: 'Canteen',
-                          onPressed: () {},
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              SlidingPageTransitionLR(page: CanteenMenuPage()),
+                            );
+                          },
                           image: 'lib/assets/canteen.png',
                         ),
                       ),
                       ListTile(
                         title: CustomTile(
                           label: 'Leaves',
-                          onPressed: () {},
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              SlidingPageTransitionLR(page: LeavesPage()),
+                            );
+                          },
                           image: 'lib/assets/leaves.png',
                         ),
                       ),
@@ -378,18 +391,22 @@ class CustomTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onPressed,
-      child: SizedBox(
-        height: 60,
-        child: Card(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(6.0),
-          ),
-          elevation: 1,
-          child: Padding(
-            padding: const EdgeInsets.all(6.0),
-            child: Row(
-              children: [
-                Container(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 0.0, vertical: 0.0),
+        child: SizedBox(
+          height: 60,
+          child: Card(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12.0),
+            ),
+            elevation: 3,
+            color: Colors.blueGrey.shade100,
+            shadowColor: Colors.black.withOpacity(0.2),
+            child: Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Row(
+                children: [
+                  Container(
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                     ),
@@ -398,17 +415,21 @@ class CustomTile extends StatelessWidget {
                     child: Image.asset(
                       image,
                       fit: BoxFit.cover,
-                    )),
-                const SizedBox(width: 12),
-                Text(
-                  label,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
+                      color: Colors.blueGrey.shade700,
+                    ),
                   ),
-                  overflow: TextOverflow.visible,
-                ),
-              ],
+                  const SizedBox(width: 20),
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                      color: Colors.blueGrey,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -440,110 +461,227 @@ class _ContentAreaState extends State<ContentArea> {
 
     return SingleChildScrollView(
         child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Center(
-            child: Text(
-              'Welcome to the ${widget.role} Dashboard!',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Center(
+                child: Text(
+                  'Welcome to the ${widget.role} Dashboard!',
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                ),
+              ),
             ),
-          ),
-        ),
-        SizedBox(
-          height: 15,
-        ),
-        Center(
-          child: Column(
-            children: [
-              if (isStudent)
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    SizedBox(height: 50),
-                    CircularIndicator(0.82, "82.0%", "Average Attendance",
-                        Colors.yellowAccent.shade700),
-                    CircularIndicator(0.18, "18.0%", "Average Leave Taken",
-                        Colors.purpleAccent.shade700),
+            SizedBox(
+              height: 15,
+            ),
+            Center(
+              child: Column(
+                children: [
+                  if (isStudent)
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        // Attendance Indicators
+                        CircularIndicator(0.82, "82.0%", "Average Attendance",
+                            Colors.yellowAccent.shade700),
+                        SizedBox(height: 8),
+                        CircularIndicator(0.18, "18.0%", "Average Leave Taken",
+                            Colors.purpleAccent.shade700),
+                        SizedBox(height: 10),
+                        Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Text(
+                                    "Total Attendance = \nDays Present / \nTotal No. Of Working Days",
+                                    style: TextStyle(
+                                        fontSize: 16, color: Colors.grey[700]),
+                                  ),
+                                  Text(
+                                    "109 / 120",
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 18,
+                                      color: Colors.green.shade600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: 12),
+                            ],
+                          ),
+                        ),
+
+                        // Linear Progress Indicator for Attendance
+                        Center(
+                          child: Container(
+                            width: MediaQuery.of(context).size.width * .7,
+                            child: LinearPercentIndicator(
+                              width: MediaQuery.of(context).size.width * .7,
+                              lineHeight: 36.0,
+                              percent: 0.82,
+                              backgroundColor: Colors.grey.shade300,
+                              progressColor: Colors.blue.shade500,
+                              center: Text(
+                                '82.0%',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(height: 30),
+
+                        // Recent Activities/Assignments
+                        // Padding(
+                        //   padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                        //   child: Column(
+                        //     crossAxisAlignment: CrossAxisAlignment.start,
+                        //     children: [
+                        //       Text(
+                        //         "Recent Activities/Assignments",
+                        //         style: TextStyle(
+                        //           fontSize: 18,
+                        //           fontWeight: FontWeight.bold,
+                        //           color: Colors.blue.shade700,
+                        //         ),
+                        //       ),
+                        //       SizedBox(height: 10),
+                        //       ListTile(
+                        //         leading: Icon(Icons.assignment, color: Colors.blue),
+                        //         title: Text("Math Homework - Due 3 days ago"),
+                        //         subtitle: Text("Status: Completed"),
+                        //       ),
+                        //       ListTile(
+                        //         leading: Icon(Icons.assignment_late, color: Colors.orange),
+                        //         title: Text("Science Project - Due 1 week ago"),
+                        //         subtitle: Text("Status: Pending"),
+                        //       ),
+                        //       ListTile(
+                        //         leading: Icon(Icons.assignment_turned_in, color: Colors.green),
+                        //         title: Text("English Essay - Due 5 days ago"),
+                        //         subtitle: Text("Status: Completed"),
+                        //       ),
+                        //     ],
+                        //   ),
+                        // ),
+                        SizedBox(height: 15),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "Performance Summary",
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.green.shade700,
+                                ),
+                              ),
+                              SizedBox(height: 10),
+                              ListTile(
+                                leading:
+                                Icon(Icons.trending_up, color: Colors.green),
+                                title: Text("Overall Grade: A"),
+                                subtitle: Text(
+                                    "You have consistently performed well in all subjects."),
+                              ),
+                              ListTile(
+                                leading:
+                                Icon(Icons.trending_down, color: Colors.red),
+                                title: Text("Math: C+ (Needs Improvement)"),
+                                subtitle:
+                                Text("Focus on improving your Math scores."),
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Upcoming Exams
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "Upcoming Exams",
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.grey.shade700,
+                                ),
+                              ),
+                              SizedBox(height: 10),
+                              ListTile(
+                                leading:
+                                Icon(Icons.calendar_today, color: Colors.red),
+                                title: Text("Math Exam - 25th Jan"),
+                                subtitle: Text("Duration: 2 hours"),
+                              ),
+                              ListTile(
+                                leading:
+                                Icon(Icons.calendar_today, color: Colors.red),
+                                title: Text("Science Exam - 30th Jan"),
+                                subtitle: Text("Duration: 3 hours"),
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(height: 30),
+
+                        // Performance Summary
+                      ],
+                    ),
+                  if (isTeacher)
+                    Column(
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Expanded(
+                              child: CircularIndicator(0.75, "75.0%",
+                                  "Average Attendance", Colors.green),
+                            ),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: CircularIndicator(0.25, "25.0%",
+                                  "Average Leave Taken", Colors.redAccent.shade700),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 8),
+                        BoysGirlsChart(),
+                      ],
+                    ),
+                  SizedBox(height: 20),
+                  if (isAdmin)
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        SizedBox(
-                          height: 15,
+                        Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Text(
+                            'Department-wise Teachers Details',
+                            style: TextStyle(
+                                fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
                         ),
-                        Text(
-                            "Total Attendance = \nDays Present / Total No.Of Working Days"),
-                        Text(
-                          "109 / 120",
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        SizedBox(
-                          height: 10,
-                        ),
+                        TeachersChart(),
+                        TeacherDashboard(),
                       ],
                     ),
-                    Center(
-                      child: Container(
-                        width: MediaQuery.of(context).size.width * .7,
-                        child: LinearPercentIndicator(
-                          width: MediaQuery.of(context).size.width * .7,
-                          lineHeight: 36.0,
-                          percent: 0.82,
-                          backgroundColor: Colors.grey,
-                          progressColor: Colors.blue.shade500,
-                          center: Text('90.83%'),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              if (isTeacher)
-                Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Expanded(
-                          child: CircularIndicator(0.75, "75.0%",
-                              "Average Attendance", Colors.green),
-                        ),
-                        SizedBox(width: 8),
-                        // Adds space between the two indicators
-                        Expanded(
-                          child: CircularIndicator(0.25, "25.0%",
-                              "Average Leave Taken", Colors.redAccent.shade700),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 8),
-                    // Adds space between the row and chart
-                    BoysGirlsChart(),
-                    // Only visible if isTeacher is true
-                  ],
-                ),
-              SizedBox(height: 20),
-              if (isAdmin)
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Text(
-                        'Department-wise Teachers Details',
-                        style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                    TeachersChart(),
-                    TeacherDashboard(),
-                  ],
-                ),
-            ],
-          ),
-        ),
-      ],
-    ));
+                ],
+              ),
+            ),
+          ],
+        ));
   }
 
   Widget CircularIndicator(
@@ -640,7 +778,7 @@ class BoysGirlsChart extends StatelessWidget {
           textStyle: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
         ),
         tooltipBehavior:
-            TooltipBehavior(enable: true, header: '', canShowMarker: false),
+        TooltipBehavior(enable: true, header: '', canShowMarker: false),
         primaryXAxis: CategoryAxis(
           title: AxisTitle(
             text: 'Year',
@@ -893,7 +1031,7 @@ class TeachersChart extends StatelessWidget {
           titlesData: FlTitlesData(
             leftTitles: AxisTitles(
               sideTitles:
-                  SideTitles(showTitles: true, interval: 5, reservedSize: 35),
+              SideTitles(showTitles: true, interval: 5, reservedSize: 35),
             ),
             bottomTitles: AxisTitles(
               sideTitles: SideTitles(
@@ -912,7 +1050,7 @@ class TeachersChart extends StatelessWidget {
                       return const Text('BBA');
                     case 5:
                       return const Text('Bcom');
-                    // Add more labels for other departments
+                  // Add more labels for other departments
                     default:
                       return const Text('');
                   }

@@ -8,6 +8,7 @@ import 'package:new_school/screens/school_details.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../settings/settings_page.dart';
+import '../sliding_transition.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -19,6 +20,7 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   File? selectedImage;
   String uid = FirebaseAuth.instance.currentUser!.uid;
+
   Future<void> saveImagePath(String path) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('profileImagePath', path);
@@ -48,7 +50,7 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget build(BuildContext context) {
     return StreamBuilder(
         stream:
-            FirebaseFirestore.instance.collection('Users').doc(uid).snapshots(),
+        FirebaseFirestore.instance.collection('Users').doc(uid).snapshots(),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
             return const Center(child: Text('An error occurred'));
@@ -57,6 +59,10 @@ class _ProfilePageState extends State<ProfilePage> {
           if (snapshot.hasData) {
             final data = snapshot.data!.data()!;
             final String role = data["role"] ?? 'N/A';
+            var userData = snapshot.data!.data();
+
+            String profileImageUrl = userData?['url'] ?? '';
+
             return Scaffold(
               appBar: AppBar(
                 leading: IconButton(
@@ -103,8 +109,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
                                     image: DecorationImage(
-                                      image: FileImage(File(data!['url'] ?? ""))
-                                              as ImageProvider,
+                                      image: NetworkImage(profileImageUrl),
                                       fit: BoxFit.cover,
                                     ),
                                     border: Border.all(
@@ -116,12 +121,13 @@ class _ProfilePageState extends State<ProfilePage> {
                               ),
                               Expanded(
                                 child: Padding(
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 16.0),
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 16.0),
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                    CrossAxisAlignment.start,
                                     mainAxisAlignment:
-                                        MainAxisAlignment.spaceEvenly,
+                                    MainAxisAlignment.spaceEvenly,
                                     children: [
                                       Text(
                                         data["username"] ?? 'N/A',
@@ -165,8 +171,8 @@ class _ProfilePageState extends State<ProfilePage> {
                         onPressed: () async {
                           final updatedPath = await Navigator.push(
                             context,
-                            MaterialPageRoute(
-                              builder: (context) => ProfileDetailsPage(),
+                            SlidingPageTransitionRL(
+                              page: ProfileDetailsPage(),
                             ),
                           );
                           if (updatedPath != null) {}
@@ -178,8 +184,8 @@ class _ProfilePageState extends State<ProfilePage> {
                           onPressed: () async {
                             final updatedNewPath = await Navigator.push(
                               context,
-                              MaterialPageRoute(
-                                builder: (context) => SchoolDetailsPage(
+                              SlidingPageTransitionRL(
+                                page: SchoolDetailsPage(
                                   role: role,
                                 ),
                               ),
@@ -192,8 +198,8 @@ class _ProfilePageState extends State<ProfilePage> {
                         onPressed: () async {
                           final settingsPath = await Navigator.push(
                             context,
-                            MaterialPageRoute(
-                              builder: (context) => SettingsPage(),
+                            SlidingPageTransitionRL(
+                              page: SettingsPage(),
                             ),
                           );
                           if (settingsPath != null) {}
@@ -205,10 +211,10 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
             );
           } else {
-            return Scaffold(backgroundColor: Colors.black ,
+            return Scaffold(
+              backgroundColor: Colors.black,
               body: const Center(
                 child: CircularProgressIndicator(
-
                   color: Colors.yellowAccent,
                 ),
               ),
@@ -235,25 +241,32 @@ class CustomTile extends StatelessWidget {
     return GestureDetector(
       onTap: onPressed,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+        padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
         child: SizedBox(
           height: 60,
           child: Card(
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(6.0),
+              borderRadius: BorderRadius.circular(12.0),
             ),
-            elevation: 1,
+            elevation: 3,
+            color: Colors.blueGrey.shade100,
+            shadowColor: Colors.black.withOpacity(0.2),
             child: Padding(
-              padding: const EdgeInsets.all(8.0),
+              padding: const EdgeInsets.all(12.0),
               child: Row(
                 children: [
-                  Icon(icon),
-                  const SizedBox(width: 15),
+                  Icon(
+                    icon,
+                    size: 25,
+                    color: Colors.blueGrey.shade700,
+                  ),
+                  const SizedBox(width: 20),
                   Text(
                     label,
                     style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                      color: Colors.blueGrey,
                     ),
                   ),
                 ],
@@ -263,5 +276,6 @@ class CustomTile extends StatelessWidget {
         ),
       ),
     );
+
   }
 }
