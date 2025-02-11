@@ -50,7 +50,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
           content:
-          Text('Payment not completed. Your order is saved as a draft.')),
+              Text('Payment not completed. Your order is saved as a draft.')),
     );
   }
 
@@ -127,9 +127,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
         // Generate order ID only if new transaction
         final generatedOrderId =
-        (currentTransactionId == null && orderId == null)
-            ? generateUniqueOrderId()
-            : orderId;
+            (currentTransactionId == null && orderId == null)
+                ? generateUniqueOrderId()
+                : orderId;
 
         await transactionRef.set({
           'userId': user.uid,
@@ -141,7 +141,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
           'timestamp': FieldValue.serverTimestamp(),
           'status': status,
           'orderId':
-          generatedOrderId ?? await getExistingOrderId(transactionRef),
+              generatedOrderId ?? await getExistingOrderId(transactionRef),
         }, SetOptions(merge: true));
 
         if (status == 'draft') {
@@ -216,7 +216,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
       'name': userName.isNotEmpty ? userName : 'Test Customer',
       'order_id': orderResponse['id'],
       'description':
-      'Payment for Order #${DateTime.now().millisecondsSinceEpoch}',
+          'Payment for Order #${DateTime.now().millisecondsSinceEpoch}',
       'prefill': {'contact': '9999999999', 'email': 'example@gmail.com'},
       'theme': {'color': '#3e948e'},
     };
@@ -266,7 +266,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
       try {
         final transactionRef =
-        FirebaseFirestore.instance.collection('Transactions').doc();
+            FirebaseFirestore.instance.collection('Transactions').doc();
 
         await transactionRef.set({
           'userId': user.uid,
@@ -307,7 +307,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
       try {
         final transactionRef =
-        FirebaseFirestore.instance.collection('Transactions').doc();
+            FirebaseFirestore.instance.collection('Transactions').doc();
 
         await transactionRef.set({
           'userId': user.uid,
@@ -352,22 +352,22 @@ class _CheckoutPageState extends State<CheckoutPage> {
   Widget _buildLoadingOverlay() {
     return isLoading
         ? Positioned.fill(
-      child: Stack(
-        children: [
-          BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
-            child: Container(
-              color: Colors.black.withOpacity(0.5),
+            child: Stack(
+              children: [
+                BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
+                  child: Container(
+                    color: Colors.black.withOpacity(0.5),
+                  ),
+                ),
+                Center(
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                  ),
+                ),
+              ],
             ),
-          ),
-          Center(
-            child: CircularProgressIndicator(
-              color: Colors.white,
-            ),
-          ),
-        ],
-      ),
-    )
+          )
         : Container();
   }
 
@@ -441,15 +441,15 @@ class _CheckoutPageState extends State<CheckoutPage> {
                             return Expanded(
                               child: ListView(
                                 children:
-                                cartProvider.cart.entries.map((entry) {
+                                    cartProvider.cart.entries.map((entry) {
                                   final item = entry.value;
                                   return Column(
                                     crossAxisAlignment:
-                                    CrossAxisAlignment.start,
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Row(
                                         mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
+                                            MainAxisAlignment.spaceBetween,
                                         children: [
                                           Expanded(
                                             child: Text(
