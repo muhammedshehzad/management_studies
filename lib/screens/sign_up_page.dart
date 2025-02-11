@@ -89,7 +89,7 @@ class _SignUpState extends State<SignUp> {
       String password = _passwordController.text.trim();
 
       User? userCredential =
-      await _auth.signUpWithEmailAndPassword(email, password);
+          await _auth.signUpWithEmailAndPassword(email, password);
 
       if (userCredential != null) {
         await FirebaseFirestore.instance
@@ -98,6 +98,7 @@ class _SignUpState extends State<SignUp> {
             .set(user.toJson());
 
         print('User details added to Firestore.');
+        // await NotificationService.initializeNotifications();
 
         await _checkIfAdmin(userCredential.uid);
 
@@ -133,7 +134,6 @@ class _SignUpState extends State<SignUp> {
         title: const Text(
           "Sign Up",
         ),
-
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 24.0),
@@ -261,7 +261,7 @@ class _SignUpState extends State<SignUp> {
                     decoration: InputDecoration(
                       labelText: 'Address',
                       prefixIcon:
-                      Icon(Icons.location_on, color: Colors.black54),
+                          Icon(Icons.location_on, color: Colors.black54),
                       border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10)),
                     ),
@@ -340,7 +340,9 @@ class _SignUpState extends State<SignUp> {
                         },
                         child: Text(
                           'Sign In',
-                          style: TextStyle(color: Color(0xff3e948e),fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                              color: Color(0xff3e948e),
+                              fontWeight: FontWeight.bold),
                         ),
                       ),
                     ],

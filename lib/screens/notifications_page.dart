@@ -1,203 +1,61 @@
-import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
-
-Future<void> sendNotification({
-  required String userId,
-  required String title,
-  required String message,
-  required String type,
-  Map<String, dynamic>? payload,
-}) async {
-  await FirebaseFirestore.instance.collection('notifications').add({
-    'userId': userId,
-    'title': title,
-    'message': message,
-    'type': type,
-    'timestamp': FieldValue.serverTimestamp(),
-    'isRead': false,
-    'payload': payload,
-  });
-}
-
-class NotificationModel {
-  final String id;
-  final String title;
-  final String message;
-  final String type;
-  final DateTime timestamp;
-  final bool isRead;
-  final Map<String, dynamic>? payload;
-
-  NotificationModel({
-    required this.id,
-    required this.title,
-    required this.message,
-    required this.type,
-    required this.timestamp,
-    this.isRead = false,
-    this.payload,
-  });
-
-  factory NotificationModel.fromFirestore(DocumentSnapshot doc) {
-    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-    return NotificationModel(
-      id: doc.id,
-      title: data['title'],
-      message: data['message'],
-      type: data['type'],
-      timestamp: (data['timestamp'] as Timestamp).toDate(),
-      isRead: data['isRead'] ?? false,
-      payload: data['payload'],
-    );
-  }
-}
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
+import 'notification_model.dart';
 
 class NotificationsPage extends StatefulWidget {
-  const NotificationsPage({super.key});
+  const NotificationsPage({Key? key}) : super(key: key);
 
   @override
   State<NotificationsPage> createState() => _NotificationsPageState();
 }
 
 class _NotificationsPageState extends State<NotificationsPage> {
-  final FirebaseFirestore firestor = FirebaseFirestore.instance;
-  final User? _currentUser = FirebaseAuth.instance.currentUser;
-  final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
+  final FirebaseFirestore firestore = FirebaseFirestore.instance;
+  final User? currentUser = FirebaseAuth.instance.currentUser;
 
-  @override
-  void initState() {
-    super.initState();
-    getToken();
-    setupPushNotifications();
-  }
-
-  void saveTokenToFirestore(String token) async {
-    String userId = FirebaseAuth.instance.currentUser!.uid;
-
-    await FirebaseFirestore.instance.collection('users').doc(userId).update({
-      'fcmToken': token,
-    });
-  }
-
-  Future<void> setupPushNotifications() async {
-    NotificationSettings settings = await _firebaseMessaging.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
-
-    if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-        _handlePushNotification(message);
-      });
-
-      FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-        _handlePushNotification(message, fromBackground: true);
-      });
-    }
-
-    String? token = await _firebaseMessaging.getToken();
-    if (token != null && _currentUser != null) {
-      await firestor.collection('users').doc(_currentUser!.uid).update({
-        'fcmTokens': FieldValue.arrayUnion([token])
-      });
-    }
-  }
-
-  void _handlePushNotification(RemoteMessage message,
-      {bool fromBackground = false}) {
-    if (fromBackground) {
-      _showNotificationDialog(message);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message.notification?.title ?? 'New notification'),
-          duration: Duration(seconds: 10),
-          action: SnackBarAction(
-            label: 'View',
-            onPressed: () => _showNotificationDialog(message),
-          ),
-        ),
-      );
-    }
-  }
-
-  void _showNotificationDialog(RemoteMessage message) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(message.notification?.title ?? 'Notification'),
-        content: Text(message.notification?.body ?? ''),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> MarkReaded(String notificationId) async {
-    await firestor.collection('notifications').doc(notificationId).update({
+  Future<void> markRead(String notificationId) async {
+    await firestore.collection('notifications').doc(notificationId).update({
       'isRead': true,
     });
   }
 
   Future<void> deleteTile(String notificationId) async {
-    await firestor.collection('notifications').doc(notificationId).delete();
+    await firestore.collection('notifications').doc(notificationId).delete();
   }
 
-  void getToken() async {
-    String? token = await FirebaseMessaging.instance.getToken();
-    print("FCM Token: $token");
+  String currentDate(DateTime date) {
+    return '${date.day}/${date.month}/${date.year} ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
   }
-
-  final String currentUserId = FirebaseAuth.instance.currentUser?.uid ?? "";
 
   @override
   Widget build(BuildContext context) {
+    final String currentUserId = currentUser?.uid ?? "";
     return Scaffold(
       appBar: AppBar(
         title: const Text('Notifications'),
-        actions: [
-          IconButton(
-              icon: const Icon(Icons.mark_as_unread),
-              onPressed: () {
-                markAllread();
-              }),
-        ],
       ),
       body: StreamBuilder<QuerySnapshot>(
-        stream: firestor
+        stream: firestore
             .collection('notifications')
             .where('userId', isEqualTo: currentUserId)
             .orderBy('timestamp', descending: true)
             .snapshots(),
         builder: (context, snapshot) {
-          if (snapshot.hasError) {
+          if (snapshot.hasError)
             return Center(child: Text('Error: ${snapshot.error}'));
-          }
-
-          if (snapshot.connectionState == ConnectionState.waiting) {
+          if (snapshot.connectionState == ConnectionState.waiting)
             return const Center(child: CircularProgressIndicator());
-          }
-
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty)
             return const Center(child: Text('No notifications found'));
-          }
-
           return ListView.builder(
             itemCount: snapshot.data!.docs.length,
             itemBuilder: (context, index) {
               var doc = snapshot.data!.docs[index];
               var notification = NotificationModel.fromFirestore(doc);
-
               return Dismissible(
                 key: Key(notification.id),
-                direction: DismissDirection.none,
+                direction: DismissDirection.startToEnd,
                 background: Container(
                   color: Colors.red,
                   alignment: Alignment.centerRight,
@@ -215,9 +73,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                   color: notification.isRead ? Colors.grey[200] : Colors.white,
                   child: ListTile(
                     contentPadding: const EdgeInsets.all(12),
-                    leading: Icon(
-                      Icons.notifications,
-                    ),
+                    leading: const Icon(Icons.notifications),
                     title: Text(
                       notification.title,
                       style: TextStyle(
@@ -234,27 +90,22 @@ class _NotificationsPageState extends State<NotificationsPage> {
                       padding: const EdgeInsets.only(top: 5),
                       child: Text(
                         notification.message,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey[800],
-                        ),
+                        style: TextStyle(fontSize: 13, color: Colors.grey[800]),
                       ),
                     ),
                     trailing: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          currrentDate(notification.timestamp),
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey,
-                          ),
+                          currentDate(notification.timestamp),
+                          style:
+                              const TextStyle(fontSize: 12, color: Colors.grey),
                         ),
                       ],
                     ),
                     onTap: () {
-                      MarkReaded(notification.id);
-                      notificationpopUp(notification);
+                      markRead(notification.id);
+                      notificationPopUp(notification);
                     },
                   ),
                 ),
@@ -266,26 +117,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
     );
   }
 
-  String currrentDate(DateTime date) {
-    return '${date.day}/${date.month}/${date.year} ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
-  }
-
-  Future<void> markAllread() async {
-    final batch = firestor.batch();
-    final notifications = await firestor
-        .collection('notifications')
-        .where('userId', isEqualTo: _currentUser!.uid)
-        .where('isRead', isEqualTo: false)
-        .get();
-
-    for (var doc in notifications.docs) {
-      batch.update(doc.reference, {'isRead': true});
-    }
-
-    await batch.commit();
-  }
-
-  void notificationpopUp(NotificationModel notification) {
+  void notificationPopUp(NotificationModel notification) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -353,7 +185,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                   ),
                 ),
                 Text(
-                  currrentDate(notification.timestamp),
+                  currentDate(notification.timestamp),
                   style: const TextStyle(
                     fontSize: 14,
                     color: Colors.blueGrey,

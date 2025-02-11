@@ -9,6 +9,7 @@ import 'package:local_auth/local_auth.dart';
 import 'package:new_school/drawer_screens/academic_records.dart';
 import 'package:new_school/drawer_screens/homework_assignment.dart';
 import 'package:new_school/firebase_auth_implementation/firebase_auth_services.dart';
+import 'package:new_school/screens/notification_services.dart';
 import 'package:new_school/screens/profile_page.dart';
 import 'package:new_school/screens/sign_in_page.dart';
 import 'package:percent_indicator/circular_percent_indicator.dart';
@@ -20,7 +21,6 @@ import 'package:badges/badges.dart' as badges;
 import '../drawer_screens/Canteen/canteen_page.dart';
 import '../drawer_screens/leaves_page.dart';
 import '../screens/notifications_page.dart';
-import '../settings/two-factor_authentication.dart';
 import '../sliding_transition.dart';
 
 class Dashboard extends StatefulWidget {
@@ -145,6 +145,8 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
     _loadImage();
     WidgetsBinding.instance.addObserver(this);
     _checkAuthenticationOnStartup();
+
+
   }
 
   @override
@@ -390,6 +392,13 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
                     ),
                   ),
                 ),
+                IconButton(
+                  onPressed: () {
+                    // This will display a notification with title "Hi" and body "hello"
+                    NotificationService.showInstantNotification("Hi", "hello");
+                  },
+                  icon: Icon(Icons.add_a_photo),
+                )
               ],
             ),
             drawer: Drawer(

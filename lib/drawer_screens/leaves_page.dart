@@ -5,8 +5,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 
-import '../screens/notifications_page.dart';
-
 
 class LeavesPage extends StatefulWidget {
   const LeavesPage({super.key});
@@ -19,26 +17,26 @@ class _LeavesPageState extends State<LeavesPage> {
   User? user = FirebaseAuth.instance.currentUser;
 
   final TextEditingController submitLeavetypeController =
-  TextEditingController();
+      TextEditingController();
   final TextEditingController submitStartDateController =
-  TextEditingController();
+      TextEditingController();
   final TextEditingController submitEndDateController = TextEditingController();
   final TextEditingController submitLeaveReasonController =
-  TextEditingController();
+      TextEditingController();
   String role = "";
   String name = "";
   List currentData = [];
   final TextEditingController detailNameController = TextEditingController();
   final TextEditingController detailLeavetypeController =
-  TextEditingController();
+      TextEditingController();
   final TextEditingController detailStatusController = TextEditingController();
   final TextEditingController detailStartDateController =
-  TextEditingController();
+      TextEditingController();
   final TextEditingController detailEndDateController = TextEditingController();
   final TextEditingController detailDurationController =
-  TextEditingController();
+      TextEditingController();
   final TextEditingController detailDepartmentController =
-  TextEditingController();
+      TextEditingController();
   String userName = '';
   bool isLoading = false;
   final TextEditingController _searchController = TextEditingController();
@@ -175,7 +173,7 @@ class _LeavesPageState extends State<LeavesPage> {
                             decoration: InputDecoration(
                               labelText: 'status',
                               labelStyle:
-                              TextStyle(color: Colors.blueGrey.shade700),
+                                  TextStyle(color: Colors.blueGrey.shade700),
                               enabledBorder: OutlineInputBorder(
                                 borderSide: BorderSide(
                                     color: Colors.transparent, width: 0),
@@ -190,10 +188,10 @@ class _LeavesPageState extends State<LeavesPage> {
                             items: ['All', 'Pending', 'Approved', 'Rejected']
                                 .map(
                                   (status) => DropdownMenuItem(
-                                value: status,
-                                child: Text(status),
-                              ),
-                            )
+                                    value: status,
+                                    child: Text(status),
+                                  ),
+                                )
                                 .toList(),
                             onChanged: (value) {
                               setState(() {
@@ -269,8 +267,8 @@ class _LeavesPageState extends State<LeavesPage> {
     }
 
     return (username.contains(searchLower) ||
-        leaveType.contains(searchLower) ||
-        status.contains(searchLower)) &&
+            leaveType.contains(searchLower) ||
+            status.contains(searchLower)) &&
         dateMatches &&
         statusMatches;
   }
@@ -586,7 +584,7 @@ class _LeavesPageState extends State<LeavesPage> {
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                               borderSide:
-                              BorderSide(color: Colors.black54, width: 1.5),
+                                  BorderSide(color: Colors.black54, width: 1.5),
                             ),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -650,303 +648,303 @@ class _LeavesPageState extends State<LeavesPage> {
                                     children: [
                                       isLoading
                                           ? const Center(
-                                          child:
-                                          CircularProgressIndicator())
+                                              child:
+                                                  CircularProgressIndicator())
                                           : currentData.isEmpty
-                                          ? const Center(
-                                          child: Text(
-                                              'No student leave requests found.'))
-                                          : StreamBuilder<
-                                          Map<String, dynamic>>(
-                                        stream: fetchUserDetails(),
-                                        builder:
-                                            (context, userSnapshot) {
-                                          if (userSnapshot
-                                              .connectionState ==
-                                              ConnectionState
-                                                  .waiting) {
-                                            return const Center(
-                                                child:
-                                                CircularProgressIndicator());
-                                          }
-                                          if (userSnapshot.hasError) {
-                                            return Center(
-                                                child: Text(
-                                                    'Error: ${userSnapshot.error}'));
-                                          }
-                                          if (!userSnapshot.hasData) {
-                                            return const Center(
-                                                child: Text(
-                                                    'No user details found.'));
-                                          }
-
-                                          final userData =
-                                          userSnapshot.data!;
-                                          final role = userData[
-                                          'role']
-                                              ?.toLowerCase() ??
-                                              '';
-
-                                          final isTeacher =
-                                              role == 'Teacher';
-
-                                          if (isTeacher) {
-                                            if (isLoading) {
-                                              return const Center(
-                                                  child:
-                                                  CircularProgressIndicator());
-                                            }
-                                            if (currentData.isEmpty) {
-                                              return const Center(
+                                              ? const Center(
                                                   child: Text(
-                                                      'No student leave requests found.'));
-                                            }
-                                            return ListView.builder(
-                                              itemCount:
-                                              currentData.length,
-                                              itemBuilder:
-                                                  (context, index) {
-                                                var doc = currentData[
-                                                index];
-                                                Map<String, dynamic>
-                                                leave = doc.data()
-                                                as Map<String,
-                                                    dynamic>;
-                                                if (!searchFunctn(
-                                                    leave,
-                                                    _searchText)) {
-                                                  return SizedBox
-                                                      .shrink();
-                                                }
-                                                final startDate =
-                                                (leave["startDate"]
-                                                as Timestamp)
-                                                    .toDate();
-                                                final endDate = (leave[
-                                                "endDate"]
-                                                as Timestamp)
-                                                    .toDate();
-                                                final duration = endDate
-                                                    .difference(
-                                                    startDate)
-                                                    .inDays +
-                                                    1;
-
-                                                return Padding(
-                                                  padding:
-                                                  const EdgeInsets
-                                                      .symmetric(
-                                                      horizontal:
-                                                      8.0),
-                                                  child: Card(
-                                                    margin:
-                                                    const EdgeInsets
-                                                        .symmetric(
-                                                        vertical:
-                                                        8),
-                                                    child: ListTile(
-                                                      contentPadding:
-                                                      const EdgeInsets
-                                                          .all(
-                                                          16),
-                                                      onTap: () =>
-                                                          bottomsheet(
-                                                              context,
-                                                              leave),
-                                                      subtitle: Text(
-                                                        'User: ${leave["username"]}\n'
-                                                            'Leave Type: ${leave["leaveType"]}\n'
-                                                            'Status: ${leave["status"] ?? "Pending"}\n'
-                                                            'From: ${startDate.toLocal().toString().split(' ')[0]}, '
-                                                            'To: ${endDate.toLocal().toString().split(' ')[0]}\n'
-                                                            'Duration: $duration days',
-                                                      ),
-                                                      trailing:
-                                                      const Icon(Icons
-                                                          .arrow_forward_ios),
-                                                    ),
-                                                  ),
-                                                );
-                                              },
-                                            );
-                                          } else {
-                                            return StreamBuilder<
-                                                QuerySnapshot>(
-                                              stream: fetchLeaves(),
-                                              builder: (context,
-                                                  snapshot) {
-                                                if (snapshot
-                                                    .connectionState ==
-                                                    ConnectionState
-                                                        .waiting) {
-                                                  return const Center(
-                                                      child:
-                                                      CircularProgressIndicator());
-                                                }
-                                                if (snapshot
-                                                    .hasError) {
-                                                  return Center(
-                                                      child: Text(
-                                                          'Error: ${snapshot.error}'));
-                                                }
-                                                if (!snapshot
-                                                    .hasData ||
-                                                    snapshot
-                                                        .data!
-                                                        .docs
-                                                        .isEmpty) {
-                                                  return const Center(
-                                                      child: Text(
-                                                          'No leave requests found.'));
-                                                }
-                                                final filteredDocs =
-                                                snapshot
-                                                    .data!.docs
-                                                    .where((doc) {
-                                                  final data = doc
-                                                      .data()
-                                                  as Map<String,
-                                                      dynamic>;
-                                                  return searchFunctn(
-                                                      data,
-                                                      _searchText);
-                                                }).toList();
-                                                snapshot.data!.docs
-                                                    .map((doc) => doc
-                                                    .data()
-                                                as Map<String,
-                                                    dynamic>)
-                                                    .toList();
-                                                if (filteredDocs
-                                                    .isEmpty) {
-                                                  return const Center(
-                                                      child: Text(
-                                                          'No leave requests found.'));
-                                                }
-                                                return ListView
-                                                    .builder(
-                                                  itemCount:
-                                                  filteredDocs
-                                                      .length,
-                                                  itemBuilder:
-                                                      (context,
-                                                      index) {
-                                                    final doc =
-                                                    filteredDocs[
-                                                    index];
-                                                    final data = doc
-                                                        .data()
-                                                    as Map<String,
-                                                        dynamic>;
-
-                                                    final startDate = doc[
-                                                    "startDate"]
-                                                    is Timestamp
-                                                        ? (doc["startDate"]
-                                                    as Timestamp)
-                                                        .toDate()
-                                                        : null;
-                                                    final endDate = doc[
-                                                    "endDate"]
-                                                    is Timestamp
-                                                        ? (doc["endDate"]
-                                                    as Timestamp)
-                                                        .toDate()
-                                                        : null;
-                                                    String duration =
-                                                        "Unknown";
-                                                    if (startDate !=
-                                                        null &&
-                                                        endDate !=
-                                                            null) {
-                                                      final diffDays = endDate
-                                                          .difference(
-                                                          startDate)
-                                                          .inDays;
-                                                      duration =
-                                                      diffDays ==
-                                                          0
-                                                          ? '1 day'
-                                                          : '$diffDays days';
+                                                      'No student leave requests found.'))
+                                              : StreamBuilder<
+                                                  Map<String, dynamic>>(
+                                                  stream: fetchUserDetails(),
+                                                  builder:
+                                                      (context, userSnapshot) {
+                                                    if (userSnapshot
+                                                            .connectionState ==
+                                                        ConnectionState
+                                                            .waiting) {
+                                                      return const Center(
+                                                          child:
+                                                              CircularProgressIndicator());
                                                     }
-                                                    if (filteredDocs
-                                                        .isEmpty) {
+                                                    if (userSnapshot.hasError) {
+                                                      return Center(
+                                                          child: Text(
+                                                              'Error: ${userSnapshot.error}'));
+                                                    }
+                                                    if (!userSnapshot.hasData) {
                                                       return const Center(
                                                           child: Text(
-                                                              'No leave requests found.'));
+                                                              'No user details found.'));
                                                     }
-                                                    return Padding(
-                                                      padding: const EdgeInsets
-                                                          .symmetric(
-                                                          horizontal:
-                                                          8.0),
-                                                      child: Card(
-                                                        margin: const EdgeInsets
-                                                            .symmetric(
-                                                            vertical:
-                                                            8),
-                                                        child:
-                                                        ListTile(
-                                                          contentPadding:
-                                                          const EdgeInsets
-                                                              .all(
-                                                              16),
-                                                          onTap: () =>
-                                                              bottomsheet(
-                                                                  context,
-                                                                  data),
-                                                          subtitle:
-                                                          Column(
-                                                            crossAxisAlignment:
-                                                            CrossAxisAlignment
-                                                                .start,
-                                                            children: [
-                                                              Text(
-                                                                'Leave Type: ${doc["leaveType"]}\n'
-                                                                    'From: ${startDate?.toLocal().toString().split(' ')[0] ?? "Unknown"},  '
-                                                                    'To: ${endDate?.toLocal().toString().split(' ')[0] ?? "Unknown"}\n'
-                                                                    'Duration: $duration',
-                                                                style:
-                                                                TextStyle(
-                                                                  fontFamily:
-                                                                  GoogleFonts.montserrat().fontFamily,
+
+                                                    final userData =
+                                                        userSnapshot.data!;
+                                                    final role = userData[
+                                                                'role']
+                                                            ?.toLowerCase() ??
+                                                        '';
+
+                                                    final isTeacher =
+                                                        role == 'Teacher';
+
+                                                    if (isTeacher) {
+                                                      if (isLoading) {
+                                                        return const Center(
+                                                            child:
+                                                                CircularProgressIndicator());
+                                                      }
+                                                      if (currentData.isEmpty) {
+                                                        return const Center(
+                                                            child: Text(
+                                                                'No student leave requests found.'));
+                                                      }
+                                                      return ListView.builder(
+                                                        itemCount:
+                                                            currentData.length,
+                                                        itemBuilder:
+                                                            (context, index) {
+                                                          var doc = currentData[
+                                                              index];
+                                                          Map<String, dynamic>
+                                                              leave = doc.data()
+                                                                  as Map<String,
+                                                                      dynamic>;
+                                                          if (!searchFunctn(
+                                                              leave,
+                                                              _searchText)) {
+                                                            return SizedBox
+                                                                .shrink();
+                                                          }
+                                                          final startDate =
+                                                              (leave["startDate"]
+                                                                      as Timestamp)
+                                                                  .toDate();
+                                                          final endDate = (leave[
+                                                                      "endDate"]
+                                                                  as Timestamp)
+                                                              .toDate();
+                                                          final duration = endDate
+                                                                  .difference(
+                                                                      startDate)
+                                                                  .inDays +
+                                                              1;
+
+                                                          return Padding(
+                                                            padding:
+                                                                const EdgeInsets
+                                                                    .symmetric(
+                                                                    horizontal:
+                                                                        8.0),
+                                                            child: Card(
+                                                              margin:
+                                                                  const EdgeInsets
+                                                                      .symmetric(
+                                                                      vertical:
+                                                                          8),
+                                                              child: ListTile(
+                                                                contentPadding:
+                                                                    const EdgeInsets
+                                                                        .all(
+                                                                        16),
+                                                                onTap: () =>
+                                                                    bottomsheet(
+                                                                        context,
+                                                                        leave),
+                                                                subtitle: Text(
+                                                                  'User: ${leave["username"]}\n'
+                                                                  'Leave Type: ${leave["leaveType"]}\n'
+                                                                  'Status: ${leave["status"] ?? "Pending"}\n'
+                                                                  'From: ${startDate.toLocal().toString().split(' ')[0]}, '
+                                                                  'To: ${endDate.toLocal().toString().split(' ')[0]}\n'
+                                                                  'Duration: $duration days',
                                                                 ),
+                                                                trailing:
+                                                                    const Icon(Icons
+                                                                        .arrow_forward_ios),
                                                               ),
-                                                              Row(
-                                                                mainAxisSize:
-                                                                MainAxisSize.min,
-                                                                children: [
-                                                                  Text(
-                                                                    'Status: ',
-                                                                    style: TextStyle(
-                                                                      fontFamily: GoogleFonts.montserrat().fontFamily,
+                                                            ),
+                                                          );
+                                                        },
+                                                      );
+                                                    } else {
+                                                      return StreamBuilder<
+                                                          QuerySnapshot>(
+                                                        stream: fetchLeaves(),
+                                                        builder: (context,
+                                                            snapshot) {
+                                                          if (snapshot
+                                                                  .connectionState ==
+                                                              ConnectionState
+                                                                  .waiting) {
+                                                            return const Center(
+                                                                child:
+                                                                    CircularProgressIndicator());
+                                                          }
+                                                          if (snapshot
+                                                              .hasError) {
+                                                            return Center(
+                                                                child: Text(
+                                                                    'Error: ${snapshot.error}'));
+                                                          }
+                                                          if (!snapshot
+                                                                  .hasData ||
+                                                              snapshot
+                                                                  .data!
+                                                                  .docs
+                                                                  .isEmpty) {
+                                                            return const Center(
+                                                                child: Text(
+                                                                    'No leave requests found.'));
+                                                          }
+                                                          final filteredDocs =
+                                                              snapshot
+                                                                  .data!.docs
+                                                                  .where((doc) {
+                                                            final data = doc
+                                                                    .data()
+                                                                as Map<String,
+                                                                    dynamic>;
+                                                            return searchFunctn(
+                                                                data,
+                                                                _searchText);
+                                                          }).toList();
+                                                          snapshot.data!.docs
+                                                              .map((doc) => doc
+                                                                      .data()
+                                                                  as Map<String,
+                                                                      dynamic>)
+                                                              .toList();
+                                                          if (filteredDocs
+                                                              .isEmpty) {
+                                                            return const Center(
+                                                                child: Text(
+                                                                    'No leave requests found.'));
+                                                          }
+                                                          return ListView
+                                                              .builder(
+                                                            itemCount:
+                                                                filteredDocs
+                                                                    .length,
+                                                            itemBuilder:
+                                                                (context,
+                                                                    index) {
+                                                              final doc =
+                                                                  filteredDocs[
+                                                                      index];
+                                                              final data = doc
+                                                                      .data()
+                                                                  as Map<String,
+                                                                      dynamic>;
+
+                                                              final startDate = doc[
+                                                                          "startDate"]
+                                                                      is Timestamp
+                                                                  ? (doc["startDate"]
+                                                                          as Timestamp)
+                                                                      .toDate()
+                                                                  : null;
+                                                              final endDate = doc[
+                                                                          "endDate"]
+                                                                      is Timestamp
+                                                                  ? (doc["endDate"]
+                                                                          as Timestamp)
+                                                                      .toDate()
+                                                                  : null;
+                                                              String duration =
+                                                                  "Unknown";
+                                                              if (startDate !=
+                                                                      null &&
+                                                                  endDate !=
+                                                                      null) {
+                                                                final diffDays = endDate
+                                                                    .difference(
+                                                                        startDate)
+                                                                    .inDays;
+                                                                duration =
+                                                                    diffDays ==
+                                                                            0
+                                                                        ? '1 day'
+                                                                        : '$diffDays days';
+                                                              }
+                                                              if (filteredDocs
+                                                                  .isEmpty) {
+                                                                return const Center(
+                                                                    child: Text(
+                                                                        'No leave requests found.'));
+                                                              }
+                                                              return Padding(
+                                                                padding: const EdgeInsets
+                                                                    .symmetric(
+                                                                    horizontal:
+                                                                        8.0),
+                                                                child: Card(
+                                                                  margin: const EdgeInsets
+                                                                      .symmetric(
+                                                                      vertical:
+                                                                          8),
+                                                                  child:
+                                                                      ListTile(
+                                                                    contentPadding:
+                                                                        const EdgeInsets
+                                                                            .all(
+                                                                            16),
+                                                                    onTap: () =>
+                                                                        bottomsheet(
+                                                                            context,
+                                                                            data),
+                                                                    subtitle:
+                                                                        Column(
+                                                                      crossAxisAlignment:
+                                                                          CrossAxisAlignment
+                                                                              .start,
+                                                                      children: [
+                                                                        Text(
+                                                                          'Leave Type: ${doc["leaveType"]}\n'
+                                                                          'From: ${startDate?.toLocal().toString().split(' ')[0] ?? "Unknown"},  '
+                                                                          'To: ${endDate?.toLocal().toString().split(' ')[0] ?? "Unknown"}\n'
+                                                                          'Duration: $duration',
+                                                                          style:
+                                                                              TextStyle(
+                                                                            fontFamily:
+                                                                                GoogleFonts.montserrat().fontFamily,
+                                                                          ),
+                                                                        ),
+                                                                        Row(
+                                                                          mainAxisSize:
+                                                                              MainAxisSize.min,
+                                                                          children: [
+                                                                            Text(
+                                                                              'Status: ',
+                                                                              style: TextStyle(
+                                                                                fontFamily: GoogleFonts.montserrat().fontFamily,
+                                                                              ),
+                                                                            ),
+                                                                            Text(
+                                                                              '${doc["status"] ?? "Pending"}',
+                                                                              style: TextStyle(
+                                                                                fontWeight: FontWeight.bold,
+                                                                                color: (doc["status"] == "Approved")
+                                                                                    ? Colors.green
+                                                                                    : (doc["status"] == "Rejected")
+                                                                                        ? Colors.red
+                                                                                        : Colors.orange,
+                                                                              ),
+                                                                            ),
+                                                                          ],
+                                                                        ),
+                                                                      ],
                                                                     ),
                                                                   ),
-                                                                  Text(
-                                                                    '${doc["status"] ?? "Pending"}',
-                                                                    style: TextStyle(
-                                                                      fontWeight: FontWeight.bold,
-                                                                      color: (doc["status"] == "Approved")
-                                                                          ? Colors.green
-                                                                          : (doc["status"] == "Rejected")
-                                                                          ? Colors.red
-                                                                          : Colors.orange,
-                                                                    ),
-                                                                  ),
-                                                                ],
-                                                              ),
-                                                            ],
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    );
+                                                                ),
+                                                              );
+                                                            },
+                                                          );
+                                                        },
+                                                      );
+                                                    }
                                                   },
-                                                );
-                                              },
-                                            );
-                                          }
-                                        },
-                                      ),
+                                                ),
                                       StreamBuilder<QuerySnapshot>(
                                         stream: fetchStudentLeaves(),
                                         builder: (context, snapshot) {
@@ -954,7 +952,7 @@ class _LeavesPageState extends State<LeavesPage> {
                                               ConnectionState.waiting) {
                                             return const Center(
                                                 child:
-                                                CircularProgressIndicator());
+                                                    CircularProgressIndicator());
                                           }
                                           if (snapshot.hasError) {
                                             return Center(
@@ -969,9 +967,9 @@ class _LeavesPageState extends State<LeavesPage> {
                                           }
 
                                           final filteredDocs =
-                                          snapshot.data!.docs.where((doc) {
+                                              snapshot.data!.docs.where((doc) {
                                             final data = doc.data()
-                                            as Map<String, dynamic>;
+                                                as Map<String, dynamic>;
                                             return searchFunctn(
                                                 data, _searchText);
                                           }).toList();
@@ -987,22 +985,22 @@ class _LeavesPageState extends State<LeavesPage> {
                                             itemBuilder: (context, index) {
                                               final doc = filteredDocs[index];
                                               final leave =
-                                              Map<String, dynamic>.from(
-                                                  doc.data() as Map);
+                                                  Map<String, dynamic>.from(
+                                                      doc.data() as Map);
 
                                               final startDate =
-                                              leave["startDate"]
-                                              is Timestamp
-                                                  ? (leave["startDate"]
-                                              as Timestamp)
-                                                  .toDate()
-                                                  : null;
+                                                  leave["startDate"]
+                                                          is Timestamp
+                                                      ? (leave["startDate"]
+                                                              as Timestamp)
+                                                          .toDate()
+                                                      : null;
                                               final endDate =
-                                              leave["endDate"] is Timestamp
-                                                  ? (leave["endDate"]
-                                              as Timestamp)
-                                                  .toDate()
-                                                  : null;
+                                                  leave["endDate"] is Timestamp
+                                                      ? (leave["endDate"]
+                                                              as Timestamp)
+                                                          .toDate()
+                                                      : null;
 
                                               String duration = "Unknown";
                                               if (startDate != null &&
@@ -1017,35 +1015,35 @@ class _LeavesPageState extends State<LeavesPage> {
 
                                               return Padding(
                                                 padding:
-                                                const EdgeInsets.symmetric(
-                                                    horizontal: 8.0),
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 8.0),
                                                 child: Card(
                                                   margin: const EdgeInsets
                                                       .symmetric(vertical: 8),
                                                   child: ListTile(
                                                     contentPadding:
-                                                    const EdgeInsets.all(
-                                                        16),
+                                                        const EdgeInsets.all(
+                                                            16),
                                                     onTap: () => bottomsheet(
                                                         context, leave),
                                                     subtitle: Column(
                                                       crossAxisAlignment:
-                                                      CrossAxisAlignment
-                                                          .start,
+                                                          CrossAxisAlignment
+                                                              .start,
                                                       children: [
                                                         Text(
                                                           'Student Name: ${leave["username"]}\n'
-                                                              'Leave Type: ${leave["leaveType"]}\n'
-                                                              'From: ${startDate?.toLocal().toString().split(' ')[0] ?? "Unknown"}, '
-                                                              'To: ${endDate?.toLocal().toString().split(' ')[0] ?? "Unknown"}\n'
-                                                              'Duration: $duration',
+                                                          'Leave Type: ${leave["leaveType"]}\n'
+                                                          'From: ${startDate?.toLocal().toString().split(' ')[0] ?? "Unknown"}, '
+                                                          'To: ${endDate?.toLocal().toString().split(' ')[0] ?? "Unknown"}\n'
+                                                          'Duration: $duration',
                                                         ),
                                                         customstatusButton(
                                                           initialStatus:
-                                                          leave['status'] ??
-                                                              'Pending',
+                                                              leave['status'] ??
+                                                                  'Pending',
                                                           leaveId:
-                                                          leave['leavesid'],
+                                                              leave['leavesid'],
                                                         ),
                                                       ],
                                                     ),
@@ -1077,11 +1075,11 @@ class _LeavesPageState extends State<LeavesPage> {
                                   ),
                                   onPressed: () async {
                                     final bool? shouldRefresh =
-                                    await Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                            builder: (context) =>
-                                            const SubmitLeavePage()));
+                                        await Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                                builder: (context) =>
+                                                    const SubmitLeavePage()));
                                     if (shouldRefresh == true) {
                                       getData();
                                     }
@@ -1089,7 +1087,7 @@ class _LeavesPageState extends State<LeavesPage> {
                                   child: Text(
                                     'Add Leave',
                                     style:
-                                    TextStyle(fontWeight: FontWeight.bold),
+                                        TextStyle(fontWeight: FontWeight.bold),
                                   ),
                                 ),
                               ),
@@ -1114,7 +1112,7 @@ class _LeavesPageState extends State<LeavesPage> {
                               snapshot.data!.docs.isEmpty) {
                             return const Center(
                                 child:
-                                Text('No teacher leave requests found.'));
+                                    Text('No teacher leave requests found.'));
                           }
 
                           final filteredDocs = snapshot.data!.docs.where((doc) {
@@ -1138,31 +1136,31 @@ class _LeavesPageState extends State<LeavesPage> {
                                 final diffDays =
                                     endDate.difference(startDate).inDays;
                                 duration =
-                                diffDays == 0 ? '1 day' : '$diffDays days';
+                                    diffDays == 0 ? '1 day' : '$diffDays days';
                               }
                               return Padding(
                                 padding:
-                                const EdgeInsets.symmetric(horizontal: 8.0),
+                                    const EdgeInsets.symmetric(horizontal: 8.0),
                                 child: Card(
                                   margin:
-                                  const EdgeInsets.symmetric(vertical: 8),
+                                      const EdgeInsets.symmetric(vertical: 8),
                                   child: ListTile(
                                     contentPadding: const EdgeInsets.all(16),
                                     onTap: () => bottomsheet(context, data),
                                     subtitle: Column(
                                       crossAxisAlignment:
-                                      CrossAxisAlignment.start,
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           'Teacher Name: ${data["username"] ?? "Unknown"}\n'
-                                              'Leave Type: ${data["leaveType"] ?? "Unknown"}\n'
-                                              'From: ${startDate?.toLocal().toString().split(' ')[0] ?? "Unknown"}, '
-                                              'To: ${endDate?.toLocal().toString().split(' ')[0] ?? "Unknown"}\n'
-                                              'Duration: $duration',
+                                          'Leave Type: ${data["leaveType"] ?? "Unknown"}\n'
+                                          'From: ${startDate?.toLocal().toString().split(' ')[0] ?? "Unknown"}, '
+                                          'To: ${endDate?.toLocal().toString().split(' ')[0] ?? "Unknown"}\n'
+                                          'Duration: $duration',
                                         ),
                                         customstatusButton(
                                           initialStatus:
-                                          data['status'] ?? 'Pending',
+                                              data['status'] ?? 'Pending',
                                           leaveId: data['leavesid'] ?? '',
                                         ),
                                       ],
@@ -1195,22 +1193,22 @@ class _LeavesPageState extends State<LeavesPage> {
                                     child: Text('No leave requests found.'));
                               }
                               final filteredDocs =
-                              snapshot.data!.docs.where((doc) {
+                                  snapshot.data!.docs.where((doc) {
                                 final data = doc.data() as Map<String, dynamic>;
                                 return searchFunctn(data, _searchText);
                               }).toList();
                               snapshot.data!.docs
                                   .map((doc) =>
-                              doc.data() as Map<String, dynamic>)
+                                      doc.data() as Map<String, dynamic>)
                                   .toList();
                               return ListView.builder(
                                 itemCount: filteredDocs.length,
                                 itemBuilder: (context, index) {
                                   final doc = filteredDocs[index];
                                   final data =
-                                  doc.data() as Map<String, dynamic>;
+                                      doc.data() as Map<String, dynamic>;
                                   final startDate = doc["startDate"]
-                                  is Timestamp
+                                          is Timestamp
                                       ? (doc["startDate"] as Timestamp).toDate()
                                       : null;
                                   final endDate = doc["endDate"] is Timestamp
@@ -1232,21 +1230,21 @@ class _LeavesPageState extends State<LeavesPage> {
                                           vertical: 8),
                                       child: ListTile(
                                         contentPadding:
-                                        const EdgeInsets.all(16),
+                                            const EdgeInsets.all(16),
                                         onTap: () => bottomsheet(context, data),
                                         subtitle: Column(
                                           crossAxisAlignment:
-                                          CrossAxisAlignment.start,
+                                              CrossAxisAlignment.start,
                                           children: [
                                             Text(
                                               'Leave Type: ${doc["leaveType"]}\n'
-                                                  'From: ${startDate?.toLocal().toString().split(' ')[0] ?? "Unknown"},  '
-                                                  'To: ${endDate?.toLocal().toString().split(' ')[0] ?? "Unknown"}\n'
-                                                  'Duration: $duration',
+                                              'From: ${startDate?.toLocal().toString().split(' ')[0] ?? "Unknown"},  '
+                                              'To: ${endDate?.toLocal().toString().split(' ')[0] ?? "Unknown"}\n'
+                                              'Duration: $duration',
                                               style: TextStyle(
                                                 fontFamily:
-                                                GoogleFonts.montserrat()
-                                                    .fontFamily,
+                                                    GoogleFonts.montserrat()
+                                                        .fontFamily,
                                               ),
                                             ),
                                             Row(
@@ -1256,8 +1254,8 @@ class _LeavesPageState extends State<LeavesPage> {
                                                   'Status: ',
                                                   style: TextStyle(
                                                     fontFamily:
-                                                    GoogleFonts.montserrat()
-                                                        .fontFamily,
+                                                        GoogleFonts.montserrat()
+                                                            .fontFamily,
                                                   ),
                                                 ),
                                                 Text(
@@ -1265,12 +1263,12 @@ class _LeavesPageState extends State<LeavesPage> {
                                                   style: TextStyle(
                                                     fontWeight: FontWeight.bold,
                                                     color: (doc["status"] ==
-                                                        "Approved")
+                                                            "Approved")
                                                         ? Colors.green
                                                         : (doc["status"] ==
-                                                        "Rejected")
-                                                        ? Colors.red
-                                                        : Colors.orange,
+                                                                "Rejected")
+                                                            ? Colors.red
+                                                            : Colors.orange,
                                                   ),
                                                 ),
                                               ],
@@ -1299,11 +1297,11 @@ class _LeavesPageState extends State<LeavesPage> {
                                   ),
                                   onPressed: () async {
                                     final bool? shouldRefresh =
-                                    await Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                            builder: (context) =>
-                                            const SubmitLeavePage()));
+                                        await Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                                builder: (context) =>
+                                                    const SubmitLeavePage()));
                                     if (shouldRefresh == true) {
                                       getData();
                                     }
@@ -1311,7 +1309,7 @@ class _LeavesPageState extends State<LeavesPage> {
                                   child: Text(
                                     'Add Leave',
                                     style:
-                                    TextStyle(fontWeight: FontWeight.bold),
+                                        TextStyle(fontWeight: FontWeight.bold),
                                   ),
                                 ),
                               ),
@@ -1383,7 +1381,7 @@ Widget customRow(String label, String value, TextEditingController controller,
                   borderSide: BorderSide(color: Colors.black54, width: 1),
                 ),
                 contentPadding:
-                EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+                    EdgeInsets.symmetric(vertical: 8, horizontal: 10),
               ),
             ),
           ),
@@ -1428,17 +1426,17 @@ class _SubmitLeavePageState extends State<SubmitLeavePage> {
       leavetypeController.text = widget.leave!['leaveType'] ?? "";
       startdateController.text = widget.leave!['startDate'] != null
           ? (widget.leave!['startDate'] as Timestamp)
-          .toDate()
-          .toLocal()
-          .toString()
-          .split(' ')[0]
+              .toDate()
+              .toLocal()
+              .toString()
+              .split(' ')[0]
           : "";
       enddateController.text = widget.leave!['endDate'] != null
           ? (widget.leave!['endDate'] as Timestamp)
-          .toDate()
-          .toLocal()
-          .toString()
-          .split(' ')[0]
+              .toDate()
+              .toLocal()
+              .toString()
+              .split(' ')[0]
           : "";
       leavereasonController.text = widget.leave!['leaveReason'] ?? "";
       leaveDocId = widget.leave!['leavesid'];
@@ -1507,9 +1505,9 @@ class _SubmitLeavePageState extends State<SubmitLeavePage> {
       setState(() {
         currentData = querySnapshot.docs
             .map((doc) => {
-          ...doc.data(),
-          "leavesid": doc.id,
-        })
+                  ...doc.data(),
+                  "leavesid": doc.id,
+                })
             .toList();
         isLoading = false;
       });
@@ -1531,9 +1529,9 @@ class _SubmitLeavePageState extends State<SubmitLeavePage> {
       setState(() {
         currentData = querySnapshot.docs
             .map((doc) => {
-          ...doc.data(),
-          "leavesid": doc.id,
-        })
+                  ...doc.data(),
+                  "leavesid": doc.id,
+                })
             .toList();
         isLoading = false;
       });
@@ -1550,24 +1548,23 @@ class _SubmitLeavePageState extends State<SubmitLeavePage> {
       try {
         setState(() {
           isLoading = true;
-        });
-        setState(() {
           _autoValidate = true;
         });
         final currentUser = FirebaseAuth.instance.currentUser;
+        if (currentUser == null) return;
+
 
         final userDoc = await FirebaseFirestore.instance
             .collection('Users')
-            .doc(currentUser?.uid)
+            .doc(currentUser.uid)
             .get();
         if (!userDoc.exists) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-                content: Text("user details not found in Firestore")),
+                content: Text("User details not found in Firestore")),
           );
           return;
         }
-
         final userData = userDoc.data() as Map<String, dynamic>;
         final userDepartment = userData["department"] ?? "";
         final userName = userData["username"] ?? "";
@@ -1575,12 +1572,12 @@ class _SubmitLeavePageState extends State<SubmitLeavePage> {
         DateTime startDate = DateTime.parse(startdateController.text);
         DateTime endDate = DateTime.parse(enddateController.text);
         int duration = endDate.difference(startDate).inDays + 1;
-        print('Leave Duration: $duration days');
 
         CollectionReference leavesCollection =
-        FirebaseFirestore.instance.collection('Leaves');
+            FirebaseFirestore.instance.collection('Leaves');
 
         if (isEditing && leaveDocId != null) {
+
           await leavesCollection.doc(leaveDocId).update({
             'leaveType': leavetypeController.text,
             'startDate': startDate,
@@ -1590,15 +1587,42 @@ class _SubmitLeavePageState extends State<SubmitLeavePage> {
             'updatedAt': FieldValue.serverTimestamp(),
           });
 
+
+          final updatedLeaveDoc = await leavesCollection.doc(leaveDocId).get();
+          final updatedData = updatedLeaveDoc.data() as Map<String, dynamic>?;
+          final ownerId = updatedData?['userId'];
+
+
+          if (ownerId != null && ownerId != currentUser.uid) {
+            final ownerDoc = await FirebaseFirestore.instance
+                .collection('Users')
+                .doc(ownerId)
+                .get();
+            final ownerData = ownerDoc.data();
+            final ownerRole = ownerData?['role'];
+            if (ownerRole != 'Admin') {
+
+              await sendNotification(
+                userId: ownerId,
+                title: 'Leave Request Updated',
+                message:
+                    'Your leave request has been updated by ${currentUser.email}.',
+                type: 'leave_update',
+                payload: {'leaveDocId': leaveDocId},
+              );
+            }
+          }
+
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("leave request updated successfully")),
+            const SnackBar(content: Text("Leave request updated successfully")),
           );
         } else {
+          // Create a new leave request.
           var uuid = Uuid();
           String generatedUUID = uuid.v4();
           await leavesCollection.doc(generatedUUID).set({
             'leavesid': generatedUUID,
-            'userId': currentUser?.uid,
+            'userId': currentUser.uid,
             'username': userName,
             'userDepartment': userDepartment,
             'creator_role': creatorRole,
@@ -1612,7 +1636,7 @@ class _SubmitLeavePageState extends State<SubmitLeavePage> {
           });
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-                content: Text("leave request submitted successfully")),
+                content: Text("Leave request submitted successfully")),
           );
         }
 
@@ -1625,8 +1649,12 @@ class _SubmitLeavePageState extends State<SubmitLeavePage> {
         Navigator.pop(context, true);
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("error submitting leave request: $e")),
+          SnackBar(content: Text("Error submitting leave request: $e")),
         );
+      } finally {
+        setState(() {
+          isLoading = false;
+        });
       }
     }
   }
@@ -1696,7 +1724,7 @@ class _SubmitLeavePageState extends State<SubmitLeavePage> {
                     final DateTime? selectedDate = await showDatePicker(
                       context: context,
                       initialDate:
-                      startDate ?? DateTime.now().add(Duration(days: 1)),
+                          startDate ?? DateTime.now().add(Duration(days: 1)),
                       firstDate: DateTime.now().add(Duration(days: 1)),
                       lastDate: DateTime(2100),
                     );
@@ -1776,7 +1804,7 @@ class _SubmitLeavePageState extends State<SubmitLeavePage> {
                     border: OutlineInputBorder(),
                     hintText: 'Enter your leave reason here...',
                     contentPadding:
-                    EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                        EdgeInsets.symmetric(vertical: 10, horizontal: 12),
                   ),
                   onChanged: (value) {
                     setState(() {});
@@ -1803,18 +1831,18 @@ class _SubmitLeavePageState extends State<SubmitLeavePage> {
                     onPressed: submitLeaveData,
                     child: isLoading
                         ? SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2,
-                      ),
-                    )
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
                         : Text(
-                      isEditing ? 'Update Leave' : 'Submit Leave',
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 14),
-                    ),
+                            isEditing ? 'Update Leave' : 'Submit Leave',
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 14),
+                          ),
                   ),
                 ),
               ],
@@ -1866,6 +1894,7 @@ class _customstatusButtonState extends State<customstatusButton> {
 
   Future<void> _updateLeaveStatus(String newStatus) async {
     try {
+
       await FirebaseFirestore.instance
           .collection('Leaves')
           .doc(widget.leaveId)
@@ -1876,49 +1905,46 @@ class _customstatusButtonState extends State<customstatusButton> {
         showstatusButtons = false;
       });
 
+
       DocumentSnapshot leaveDoc = await FirebaseFirestore.instance
           .collection('Leaves')
           .doc(widget.leaveId)
           .get();
 
       if (leaveDoc.exists) {
-        Map<String, dynamic> leaveData =
-        leaveDoc.data() as Map<String, dynamic>;
-        String userId = leaveData['userId'] ?? "Unknown";
+        final leaveData = leaveDoc.data() as Map<String, dynamic>;
+        String requesterId =
+            leaveData['userId'] ?? "Unknown";
         String username = leaveData['username'] ?? "Unknown";
         String role = leaveData['creator_role'] ?? "Unknown";
         String leaveType = leaveData['leaveType'] ?? "Unknown";
         String reason = leaveData['leaveReason'] ?? "No reason provided";
         String startDate = leaveData['startDate'] != null
             ? (leaveData['startDate'] as Timestamp)
-            .toDate()
-            .toLocal()
-            .toString()
-            .split(' ')[0]
+                .toDate()
+                .toLocal()
+                .toString()
+                .split(' ')[0]
             : "Unknown";
         String endDate = leaveData['endDate'] != null
             ? (leaveData['endDate'] as Timestamp)
-            .toDate()
-            .toLocal()
-            .toString()
-            .split(' ')[0]
+                .toDate()
+                .toLocal()
+                .toString()
+                .split(' ')[0]
             : "Unknown";
 
         await sendNotification(
-          userId: userId,
+          userId: requesterId,
           title: "Leave Status Updated",
           message:
-          "Your leave request for $reason from $startDate to $endDate has been $newStatus.",
+              "Your leave request for $reason from $startDate to $endDate has been $newStatus.",
           type: "LeaveStatus",
           payload: {
-            "User Name": username,
-            "User Role": role,
-            "Leave Type": leaveType,
-            "Leave Status": newStatus,
-            "Leave Reason": reason,
-            "Start Date": startDate,
-            "End Date": endDate,
-            // "Leave Id": widget.leaveId,
+            "userName": username,
+            "userRole": role,
+            "leaveType": leaveType,
+            "leaveStatus": newStatus,
           },
         );
       }
@@ -1953,8 +1979,8 @@ class _customstatusButtonState extends State<customstatusButton> {
                 color: _status == 'Approved'
                     ? Colors.green
                     : _status == 'Rejected'
-                    ? Colors.red
-                    : Colors.orange,
+                        ? Colors.red
+                        : Colors.orange,
               ),
             )
           ],
@@ -2012,4 +2038,23 @@ class _customstatusButtonState extends State<customstatusButton> {
       ),
     );
   }
+}
+
+Future<void> sendNotification({
+  required String userId,
+  required String title,
+  required String message,
+  required String type,
+  Map<String, dynamic>? payload,
+}) async {
+  await FirebaseFirestore.instance.collection('notifications').add({
+    'userId': userId,
+    'title': title,
+    'message': message,
+    'type': type,
+    'timestamp': DateTime.now().toUtc(),
+    'isRead': false,
+    'isNotified': false,
+    'payload': payload,
+  });
 }
