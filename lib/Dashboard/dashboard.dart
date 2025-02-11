@@ -9,6 +9,7 @@ import 'package:local_auth/local_auth.dart';
 import 'package:new_school/drawer_screens/academic_records.dart';
 import 'package:new_school/drawer_screens/homework_assignment.dart';
 import 'package:new_school/firebase_auth_implementation/firebase_auth_services.dart';
+import 'package:new_school/screens/Onesignal_service.dart';
 import 'package:new_school/screens/notification_services.dart';
 import 'package:new_school/screens/profile_page.dart';
 import 'package:new_school/screens/sign_in_page.dart';
@@ -145,8 +146,6 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
     _loadImage();
     WidgetsBinding.instance.addObserver(this);
     _checkAuthenticationOnStartup();
-
-
   }
 
   @override
@@ -393,9 +392,8 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
                   ),
                 ),
                 IconButton(
-                  onPressed: () {
-                    // This will display a notification with title "Hi" and body "hello"
-                    NotificationService.showInstantNotification("Hi", "hello");
+                  onPressed: () async {
+
                   },
                   icon: Icon(Icons.add_a_photo),
                 )

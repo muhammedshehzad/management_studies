@@ -7,6 +7,7 @@ import 'package:new_school/screens/login_page.dart';
 import 'package:new_school/screens/notification_model.dart';
 import 'package:new_school/screens/notification_services.dart';
 import 'package:new_school/screens/notifications_page.dart';
+import 'package:new_school/screens/onesignal.dart';
 import 'package:new_school/screens/profile_details_page.dart';
 import 'package:new_school/screens/profile_page.dart';
 import 'package:new_school/screens/sign_in_page.dart';
@@ -25,6 +26,8 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
   await NotificationService.init();
+
+  NotiHelper.initNotif();
 
   final User? currentUser = FirebaseAuth.instance.currentUser;
   final String currentUserId = currentUser?.uid ?? "";
@@ -65,7 +68,6 @@ Future<void> main() async {
     });
   }
 
-
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   final String? email = prefs.getString('email');
   final String? role = prefs.getString('role');
@@ -79,10 +81,10 @@ Future<void> main() async {
         initialRoute: email == null
             ? '/signin'
             : role == 'Admin'
-            ? '/dashboardAdmin'
-            : role == 'Teacher'
-            ? '/dashboardTeacher'
-            : '/dashboardStudent',
+                ? '/dashboardAdmin'
+                : role == 'Teacher'
+                    ? '/dashboardTeacher'
+                    : '/dashboardStudent',
       ),
     ),
   );

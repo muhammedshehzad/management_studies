@@ -5,6 +5,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 
+import '../screens/Onesignal_service.dart';
+
 
 class LeavesPage extends StatefulWidget {
   const LeavesPage({super.key});
@@ -1894,7 +1896,7 @@ class _customstatusButtonState extends State<customstatusButton> {
 
   Future<void> _updateLeaveStatus(String newStatus) async {
     try {
-
+      // Update the leave status in Firestore.
       await FirebaseFirestore.instance
           .collection('Leaves')
           .doc(widget.leaveId)
@@ -1905,7 +1907,7 @@ class _customstatusButtonState extends State<customstatusButton> {
         showstatusButtons = false;
       });
 
-
+      // Retrieve updated leave document.
       DocumentSnapshot leaveDoc = await FirebaseFirestore.instance
           .collection('Leaves')
           .doc(widget.leaveId)
@@ -1913,38 +1915,40 @@ class _customstatusButtonState extends State<customstatusButton> {
 
       if (leaveDoc.exists) {
         final leaveData = leaveDoc.data() as Map<String, dynamic>;
-        String requesterId =
-            leaveData['userId'] ?? "Unknown";
+        String requesterId = leaveData['userId'] ?? "Unknown";
         String username = leaveData['username'] ?? "Unknown";
         String role = leaveData['creator_role'] ?? "Unknown";
         String leaveType = leaveData['leaveType'] ?? "Unknown";
         String reason = leaveData['leaveReason'] ?? "No reason provided";
         String startDate = leaveData['startDate'] != null
             ? (leaveData['startDate'] as Timestamp)
-                .toDate()
-                .toLocal()
-                .toString()
-                .split(' ')[0]
+            .toDate()
+            .toLocal()
+            .toString()
+            .split(' ')[0]
             : "Unknown";
         String endDate = leaveData['endDate'] != null
             ? (leaveData['endDate'] as Timestamp)
-                .toDate()
-                .toLocal()
-                .toString()
-                .split(' ')[0]
+            .toDate()
+            .toLocal()
+            .toString()
+            .split(' ')[0]
             : "Unknown";
 
-        await sendNotification(
-          userId: requesterId,
+        // Construct the message for the notification.
+        String message =
+            "Your leave request for $reason from $startDate to $endDate has been $newStatus.";
+
+        // Call the OneSignal notification service, including extra details in data.
+        await NotificationServiceOneSignal().sendNotification(
           title: "Leave Status Updated",
-          message:
-              "Your leave request for $reason from $startDate to $endDate has been $newStatus.",
-          type: "LeaveStatus",
-          payload: {
+          message: message,
+          dataPayload: {
             "userName": username,
             "userRole": role,
             "leaveType": leaveType,
             "leaveStatus": newStatus,
+            // You can include more fields as needed.
           },
         );
       }
