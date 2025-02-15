@@ -22,10 +22,39 @@ class _ProfileDetailsPageState extends State<ProfileDetailsPage> {
   File? tempImage;
   final picker = ImagePicker();
   String? imageurl;
+  bool isUploading = false;
+  bool isEditing = false;
+  bool _controllersInitialized = false;
+  String? userid;
+  final _db = FirebaseFirestore.instance;
+
+  final TextEditingController nameController = TextEditingController();
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController addressController = TextEditingController();
+  final TextEditingController phoneController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    final User? user = FirebaseAuth.instance.currentUser;
+    userid = user?.uid;
+    if (userid != null) {
+      _loadProfileData();
+      _loadImage();
+    }
+  }
+
+  /// Fetch the user profile data once.
+  Future<DocumentSnapshot<Map<String, dynamic>>> getProfileData() async {
+    if (userid != null) {
+      return FirebaseFirestore.instance.collection('Users').doc(userid).get();
+    }
+    throw Exception("User not logged in");
+  }
 
   Future<void> _pickImage() async {
     final returnedImage =
-    await ImagePicker().pickImage(source: ImageSource.gallery);
+        await ImagePicker().pickImage(source: ImageSource.gallery);
     if (returnedImage != null) {
       setState(() {
         tempImage = File(returnedImage.path);
@@ -37,8 +66,6 @@ class _ProfileDetailsPageState extends State<ProfileDetailsPage> {
       );
     }
   }
-
-  bool isUploading = false;
 
   Future<void> imageUpload() async {
     if (tempImage == null) return;
@@ -63,53 +90,16 @@ class _ProfileDetailsPageState extends State<ProfileDetailsPage> {
         print('Uploaded Image URL: $imageurl');
         saveImagePath(uploadedUrl);
         updateUser(userid!);
-        isUploading = false; // Stop loading
+        isUploading = false;
       });
     } else {
       setState(() {
-        isUploading = false; // Stop loading on failure
+        isUploading = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Failed to upload image to Cloudinary.')),
       );
     }
-  }
-
-  Widget buildPhotoView(String imageurl) {
-    return Scaffold(
-      body: Center(
-        child: SizedBox(
-          height: double.infinity,
-          width: double.infinity,
-          child: Stack(
-            children: [
-              PhotoView(
-                imageProvider: NetworkImage(imageurl!),
-                minScale: PhotoViewComputedScale.contained,
-                maxScale: PhotoViewComputedScale.covered * 2.0,
-                backgroundDecoration: const BoxDecoration(
-                  color: Colors.black,
-                ),
-              ),
-              Positioned(
-                top: 30,
-                right: 0,
-                child: IconButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                  icon: Icon(
-                    Icons.close,
-                    size: 30,
-                    color: Colors.black,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 
   Future<void> saveImagePath(String path) async {
@@ -120,89 +110,6 @@ class _ProfileDetailsPageState extends State<ProfileDetailsPage> {
   Future<String?> getImagePath() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('profileImagePath');
-  }
-
-  Stream<DocumentSnapshot<Map<String, dynamic>>>? profilebuilder() {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      return FirebaseFirestore.instance
-          .collection('Users')
-          .doc(user.uid)
-          .snapshots();
-    }
-    _loadImage();
-    return null;
-  }
-
-  bool isEditing = false;
-  final _db = FirebaseFirestore.instance;
-  String? userid;
-
-  Widget buildProfileImage(String imageUrl) {
-    return imageUrl.startsWith('http')
-        ? Image.network(imageUrl, fit: BoxFit.cover)
-        : Image.asset('assets/default_profile_image.png', fit: BoxFit.cover);
-  }
-
-  Future<void> updateUser(String userId) async {
-    final updatedData = {
-      "username": nameController.text,
-      "email": emailController.text,
-      "address": addressController.text,
-      "phone": phoneController.text,
-      "url": imageurl ?? "null"
-    };
-
-    try {
-      await _db.collection("Users").doc(userId).update(updatedData);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("User details updated successfully!")),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Failed to update user.")),
-      );
-    }
-  }
-
-  final TextEditingController nameController = TextEditingController();
-  final TextEditingController emailController = TextEditingController();
-  final TextEditingController addressController = TextEditingController();
-  final TextEditingController phoneController = TextEditingController();
-
-  @override
-  void initState() {
-    super.initState();
-    final FirebaseAuth auth = FirebaseAuth.instance;
-    final User? user = auth.currentUser;
-    final uid = user?.uid;
-
-    setState(() {
-      userid = uid;
-    });
-
-    if (userid != null) {
-      _loadProfileData();
-      _loadImage();
-    }
-  }
-
-  Future<void> imageUplod() async {
-    final url = Uri.parse('https://api.cloudinary.com/v1_1/dfcehequr/upload');
-    final request = http.MultipartRequest('POST', url)
-      ..fields['upload_preset'] = 'images'
-      ..files.add(await http.MultipartFile.fromPath('file', imageurl!));
-    final response = await request.send();
-    if (response.statusCode == 200) {
-      final responsedata = await response.stream.toBytes();
-      final responseString = String.fromCharCodes(responsedata);
-      final jsonMap = jsonDecode(responseString);
-      setState(() {
-        final url = jsonMap['url'];
-        imageurl = url;
-        print(imageurl);
-      });
-    }
   }
 
   Future<void> _loadProfileData() async {
@@ -246,27 +153,81 @@ class _ProfileDetailsPageState extends State<ProfileDetailsPage> {
     }
   }
 
-  bool _controllersInitialized = false;
+  Future<void> updateUser(String userId) async {
+    final updatedData = {
+      "username": nameController.text,
+      "email": emailController.text,
+      "address": addressController.text,
+      "phone": phoneController.text,
+      "url": imageurl ?? "null"
+    };
+
+    try {
+      await _db.collection("Users").doc(userId).update(updatedData);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("User details updated successfully!")),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Failed to update user.")),
+      );
+    }
+  }
+
+  Widget buildPhotoView(String imageurl) {
+    return Scaffold(
+      body: Center(
+        child: SizedBox(
+          height: double.infinity,
+          width: double.infinity,
+          child: Stack(
+            children: [
+              PhotoView(
+                imageProvider: NetworkImage(imageurl),
+                minScale: PhotoViewComputedScale.contained,
+                maxScale: PhotoViewComputedScale.covered * 2.0,
+                backgroundDecoration: const BoxDecoration(
+                  color: Colors.black,
+                ),
+              ),
+              Positioned(
+                top: 30,
+                right: 0,
+                child: IconButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  icon: const Icon(
+                    Icons.close,
+                    size: 30,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final profile = profilebuilder();
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
           onPressed: () {
             Navigator.pop(context);
           },
-          icon: Icon(Icons.arrow_back),
+          icon: const Icon(Icons.arrow_back),
         ),
       ),
-      body: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-        stream: profile,
+      body: FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+        future: getProfileData(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-
           if (snapshot.hasError) {
             return const Center(
               child: Text(
@@ -275,8 +236,7 @@ class _ProfileDetailsPageState extends State<ProfileDetailsPage> {
               ),
             );
           }
-
-          if (!snapshot.hasData || snapshot.data?.data() == null) {
+          if (!snapshot.hasData || snapshot.data!.data() == null) {
             return const Center(
               child: Text(
                 'No profile data found.',
@@ -287,14 +247,15 @@ class _ProfileDetailsPageState extends State<ProfileDetailsPage> {
 
           final data = snapshot.data!.data()!;
           if (isEditing) {
+            // Update controllers only if editing.
             nameController.text = data["username"] ?? 'N/A';
             emailController.text = data["email"] ?? 'N/A';
             addressController.text = data["address"] ?? 'N/A';
             phoneController.text = data["phone"] ?? 'N/A';
             _controllersInitialized = true;
           }
-          var userData = snapshot.data!.data();
-          String profileImageUrl = userData?['url'] ?? '';
+          String profileImageUrl = data['url'] ?? '';
+
           return SingleChildScrollView(
             child: Column(
               children: [
@@ -302,29 +263,30 @@ class _ProfileDetailsPageState extends State<ProfileDetailsPage> {
                   onTap: isEditing
                       ? _pickImage
                       : () {
-                    if (profileImageUrl.isNotEmpty) {
-                      Navigator.push(
-                          context,
-                          SlidingPageTransitionRL(
-                            page: PhotoViewScreen(
-                                imageUrl: profileImageUrl),
-                          ));
-                    }
-                  },
+                          if (profileImageUrl.isNotEmpty) {
+                            Navigator.push(
+                              context,
+                              SlidingPageTransitionRL(
+                                page:
+                                    PhotoViewScreen(imageUrl: profileImageUrl),
+                              ),
+                            );
+                          }
+                        },
                   child: CircleAvatar(
                     radius: 90,
                     backgroundColor: Colors.blueGrey.shade100,
                     backgroundImage: profileImageUrl.isNotEmpty
                         ? NetworkImage(profileImageUrl)
                         : null,
-                    child: isUploading // Show loading indicator while uploading
+                    child: isUploading
                         ? const CircularProgressIndicator(color: Colors.white)
                         : (profileImageUrl.isEmpty &&
-                        tempImage == null &&
-                        selectedImage == null)
-                        ? const Icon(Icons.camera_alt,
-                        size: 50, color: Colors.white)
-                        : null,
+                                tempImage == null &&
+                                selectedImage == null)
+                            ? const Icon(Icons.camera_alt,
+                                size: 50, color: Colors.white)
+                            : null,
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -336,16 +298,15 @@ class _ProfileDetailsPageState extends State<ProfileDetailsPage> {
                       Text(
                         "${data["role"] ?? 'N/A'} Details :",
                         style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16,
-                            color: Colors.black87),
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                          color: Colors.black87,
+                        ),
                       ),
                     ],
                   ),
                 ),
-                SizedBox(
-                  height: 5,
-                ),
+                const SizedBox(height: 5),
                 buildEditableRow(
                   'Name',
                   nameController,
@@ -372,7 +333,7 @@ class _ProfileDetailsPageState extends State<ProfileDetailsPage> {
                 ),
                 Padding(
                   padding: const EdgeInsets.all(8.0),
-                  child: Container(
+                  child: SizedBox(
                     width: MediaQuery.of(context).size.width,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(

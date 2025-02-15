@@ -5,7 +5,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 
-
 class LeavesPage extends StatefulWidget {
   const LeavesPage({super.key});
 
@@ -1553,7 +1552,6 @@ class _SubmitLeavePageState extends State<SubmitLeavePage> {
         final currentUser = FirebaseAuth.instance.currentUser;
         if (currentUser == null) return;
 
-
         final userDoc = await FirebaseFirestore.instance
             .collection('Users')
             .doc(currentUser.uid)
@@ -1577,7 +1575,6 @@ class _SubmitLeavePageState extends State<SubmitLeavePage> {
             FirebaseFirestore.instance.collection('Leaves');
 
         if (isEditing && leaveDocId != null) {
-
           await leavesCollection.doc(leaveDocId).update({
             'leaveType': leavetypeController.text,
             'startDate': startDate,
@@ -1587,11 +1584,9 @@ class _SubmitLeavePageState extends State<SubmitLeavePage> {
             'updatedAt': FieldValue.serverTimestamp(),
           });
 
-
           final updatedLeaveDoc = await leavesCollection.doc(leaveDocId).get();
           final updatedData = updatedLeaveDoc.data() as Map<String, dynamic>?;
           final ownerId = updatedData?['userId'];
-
 
           if (ownerId != null && ownerId != currentUser.uid) {
             final ownerDoc = await FirebaseFirestore.instance
@@ -1601,7 +1596,6 @@ class _SubmitLeavePageState extends State<SubmitLeavePage> {
             final ownerData = ownerDoc.data();
             final ownerRole = ownerData?['role'];
             if (ownerRole != 'Admin') {
-
               await sendNotification(
                 userId: ownerId,
                 title: 'Leave Request Updated',
@@ -1894,7 +1888,6 @@ class _customstatusButtonState extends State<customstatusButton> {
 
   Future<void> _updateLeaveStatus(String newStatus) async {
     try {
-
       await FirebaseFirestore.instance
           .collection('Leaves')
           .doc(widget.leaveId)
@@ -1905,7 +1898,6 @@ class _customstatusButtonState extends State<customstatusButton> {
         showstatusButtons = false;
       });
 
-
       DocumentSnapshot leaveDoc = await FirebaseFirestore.instance
           .collection('Leaves')
           .doc(widget.leaveId)
@@ -1913,8 +1905,7 @@ class _customstatusButtonState extends State<customstatusButton> {
 
       if (leaveDoc.exists) {
         final leaveData = leaveDoc.data() as Map<String, dynamic>;
-        String requesterId =
-            leaveData['userId'] ?? "Unknown";
+        String requesterId = leaveData['userId'] ?? "Unknown";
         String username = leaveData['username'] ?? "Unknown";
         String role = leaveData['creator_role'] ?? "Unknown";
         String leaveType = leaveData['leaveType'] ?? "Unknown";

@@ -208,7 +208,7 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
           setState(() {
             _originalData.addAll(querySnapshot.docs
                 .map((doc) => HomeWorkDetailModel.fromMap(
-                doc.data() as Map<String, dynamic>))
+                    doc.data() as Map<String, dynamic>))
                 .toList());
 
             _lastDocument = querySnapshot.docs.last;
@@ -257,7 +257,7 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
                                 padding: const EdgeInsets.all(16.0),
                                 child: Row(
                                   mainAxisAlignment:
-                                  MainAxisAlignment.spaceBetween,
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text(
                                       "Filters",
@@ -286,9 +286,9 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
                                       padding: const EdgeInsets.all(16.0),
                                       child: Column(
                                         mainAxisAlignment:
-                                        MainAxisAlignment.start,
+                                            MainAxisAlignment.start,
                                         crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Text(
                                             "Select a Subject: ",
@@ -313,7 +313,7 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
                                       padding: const EdgeInsets.all(16.0),
                                       child: Column(
                                         crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Text(
                                             "Select a Status",
@@ -329,7 +329,7 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
                                           Wrap(
                                             spacing: 14,
                                             alignment:
-                                            WrapAlignment.spaceEvenly,
+                                                WrapAlignment.spaceEvenly,
                                             children: [
                                               ChoiceChip(
                                                 label: Text("All"),
@@ -340,11 +340,11 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
                                                       : Colors.black,
                                                 ),
                                                 selected:
-                                                selectedStatus == "All",
+                                                    selectedStatus == "All",
                                                 selectedColor:
-                                                Colors.blueGrey.shade600,
+                                                    Colors.blueGrey.shade600,
                                                 backgroundColor:
-                                                Colors.blueGrey.shade200,
+                                                    Colors.blueGrey.shade200,
                                                 onSelected: (bool selected) {
                                                   setState(() {
                                                     selectedStatus = selected
@@ -360,16 +360,16 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
                                                 labelStyle: TextStyle(
                                                   fontWeight: FontWeight.bold,
                                                   color: selectedStatus ==
-                                                      "Completed"
+                                                          "Completed"
                                                       ? Colors.white
                                                       : Colors.black,
                                                 ),
                                                 selected: selectedStatus ==
                                                     "Completed",
                                                 selectedColor:
-                                                Colors.green.shade600,
+                                                    Colors.green.shade600,
                                                 backgroundColor:
-                                                Colors.green.shade200,
+                                                    Colors.green.shade200,
                                                 onSelected: (bool selected) {
                                                   setState(() {
                                                     selectedStatus = selected
@@ -385,16 +385,16 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
                                                 labelStyle: TextStyle(
                                                   fontWeight: FontWeight.bold,
                                                   color: selectedStatus ==
-                                                      "Pending"
+                                                          "Pending"
                                                       ? Colors.white
                                                       : Colors.black,
                                                 ),
                                                 selected:
-                                                selectedStatus == "Pending",
+                                                    selectedStatus == "Pending",
                                                 selectedColor:
-                                                Colors.red.shade600,
+                                                    Colors.red.shade600,
                                                 backgroundColor:
-                                                Colors.red.shade200,
+                                                    Colors.red.shade200,
                                                 onSelected: (bool selected) {
                                                   setState(() {
                                                     selectedStatus = selected
@@ -417,7 +417,7 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
                                         decoration: BoxDecoration(
                                           color: Colors.grey[100],
                                           borderRadius:
-                                          BorderRadius.circular(8),
+                                              BorderRadius.circular(8),
                                         ),
                                         child: Padding(
                                           padding: const EdgeInsets.all(16.0),
@@ -425,16 +425,16 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
                                             decoration: BoxDecoration(
                                               color: Colors.grey[100],
                                               borderRadius:
-                                              BorderRadius.circular(8),
+                                                  BorderRadius.circular(8),
                                             ),
                                             child: SfDateRangePicker(
                                               onSelectionChanged:
-                                              _onSelectionChanged,
+                                                  _onSelectionChanged,
                                               selectionMode:
-                                              DateRangePickerSelectionMode
-                                                  .range,
+                                                  DateRangePickerSelectionMode
+                                                      .range,
                                               initialSelectedRange:
-                                              PickerDateRange(
+                                                  PickerDateRange(
                                                 DateTime.now(),
                                                 DateTime.now()
                                                     .add(Duration(days: 1)),
@@ -558,7 +558,8 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
     }
 
     if (_isLoading && records.isEmpty) {
-      return Center(child: Center(
+      return Center(
+          child: Center(
         child: Material(
           child: Shimmer.fromColors(
             baseColor: Colors.grey[400]!,
@@ -630,7 +631,7 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
             homework.title,
             DateFormat('dd-MM-yyyy').format(homework.deadline),
             homework.status,
-                () {
+            () {
               Navigator.push(
                 context,
                 SlidingPageTransitionRL(
@@ -697,7 +698,7 @@ class CustomStudentTile extends StatelessWidget {
         onTap: ontap,
         title: Text(subject,
             style:
-            TextStyle(fontWeight: FontWeight.bold, color: Colors.black87)),
+                TextStyle(fontWeight: FontWeight.bold, color: Colors.black87)),
         subtitle: Container(
           width: MediaQuery.of(context).size.width * 0.7,
           padding: const EdgeInsets.only(bottom: 4.0),
@@ -966,7 +967,7 @@ class _SubjectFilterButtonState extends State<SubjectFilterButton> {
   Future<List<String?>> _fetchSubjects() async {
     try {
       final querySnapshot =
-      await FirebaseFirestore.instance.collection('homeworks').get();
+          await FirebaseFirestore.instance.collection('homeworks').get();
       return querySnapshot.docs
           .map((doc) => doc.data()['subject'] as String?)
           .where((subject) => subject != null)
@@ -1012,7 +1013,7 @@ class _SubjectFilterButtonState extends State<SubjectFilterButton> {
               child: Text(
                 subject == 'All' ? 'All Subjects' : " ${subject}",
                 style:
-                const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
               ),
             );
           }).toList(),

@@ -5,8 +5,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:isar/isar.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
+
+import '../isar_storage/school_details_model.dart';
 
 class SchoolDetailsPage extends StatefulWidget {
   final String role;
@@ -22,10 +26,11 @@ class _SchoolDetailsPageState extends State<SchoolDetailsPage> {
   File? temporaryImage;
   final picker = ImagePicker();
   String? schoolimageurl;
+  late Isar isar;
 
   Future _pickImage() async {
     final returnedSchoolImage =
-    await ImagePicker().pickImage(source: ImageSource.gallery);
+        await ImagePicker().pickImage(source: ImageSource.gallery);
     if (returnedSchoolImage != null) {
       setState(() {
         temporaryImage = File(returnedSchoolImage.path);
@@ -96,66 +101,99 @@ class _SchoolDetailsPageState extends State<SchoolDetailsPage> {
   final _db = FirebaseFirestore.instance;
   String? schoolid;
 
-  Future<void> updateSchool(String schoolId) async {
-    try {
-      final currentData =
-      await _db.collection("School").doc("9NekuNXmyxdNxWekn282").get();
-
-      if (currentData.exists) {
-        final updatedSchoolData = {
-          "schoolname": schoolNameController.text,
-          "schooltype": schoolTypeController.text,
-          "schoollocation": schoolLocationController.text,
-          "schoolcontact": schoolContactController.text,
-          "schoolwebsite": schoolWebsiteController.text,
-          "schoolaffiliation": schoolAffiliationController.text,
-          "url": schoolimageurl,
-        };
-
-        await _db
-            .collection("School")
-            .doc("9NekuNXmyxdNxWekn282")
-            .update(updatedSchoolData);
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("School details updated successfully!")),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text("Failed to fetch existing school data.")),
-        );
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Failed to update School data.")),
-      );
+  Future<void> updateSchool(String? schoolId) async {
+    if (schoolId == null) {
+      print('Error: schoolId is null');
+      return;
     }
+
+    print("Fetching current school data for ID: $schoolId");
+
+    final currentData = await _db.collection("School").doc(schoolId).get();
+
+    if (!currentData.exists) {
+      print("No existing school data found for ID: $schoolId");
+      return;
+    }
+
+    print("Existing data found. Preparing update...");
+
+    final updatedSchoolData = {
+      "schoolname": schoolNameController.text,
+      "schooltype": schoolTypeController.text,
+      "schoollocation": schoolLocationController.text,
+      "schoolcontact": schoolContactController.text,
+      "schoolwebsite": schoolWebsiteController.text,
+      "url": schoolimageurl ?? currentData["url"]
+    };
+
+    await _db.collection("School").doc(schoolId).update(updatedSchoolData);
+
+    final schoolDetails = SchoolDetails()
+      ..schoolName = schoolNameController.text
+      ..schoolType = schoolTypeController.text
+      ..schoolLocation = schoolLocationController.text
+      ..schoolContact = schoolContactController.text
+      ..schoolWebsite = schoolWebsiteController.text
+      ..schoolImageUrl = schoolimageurl ?? '';
+
+    if (isar == null) {
+      print("no dataa");
+      return;
+    }
+
+    await isar.writeTxn(() async {
+      final id = await isar.schoolDetails.put(schoolDetails);
+      print("updated $id");
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('School details updated successfully!')),
+    );
   }
 
   final TextEditingController schoolNameController = TextEditingController();
   final TextEditingController schoolTypeController = TextEditingController();
   final TextEditingController schoolLocationController =
-  TextEditingController();
+      TextEditingController();
   final TextEditingController schoolContactController = TextEditingController();
   final TextEditingController schoolWebsiteController = TextEditingController();
   final TextEditingController schoolAffiliationController =
-  TextEditingController();
+      TextEditingController();
 
   @override
   void initState() {
     final FirebaseAuth auth = FirebaseAuth.instance;
     final User? user = auth.currentUser;
     final uid = user?.uid;
-    print("User role: ${widget.role}");
-
+    initializeIsar();
+    loadSchoolDetailsFromIsar();
     setState(() {
       schoolid = uid;
     });
     super.initState();
   }
 
+  Future<void> initializeIsar() async {
+    final dir = await getApplicationDocumentsDirectory();
+    isar = await Isar.open([SchoolDetailsSchema], directory: dir.path);
+  }
+
   bool _controllersInitialized = false;
+
+  Future<void> loadSchoolDetailsFromIsar() async {
+    final cachedData = await isar.schoolDetails.get(1);
+    if (cachedData != null) {
+      setState(() {
+        schoolNameController.text = cachedData.schoolName;
+        schoolTypeController.text = cachedData.schoolType;
+        schoolLocationController.text = cachedData.schoolLocation;
+        schoolContactController.text = cachedData.schoolContact;
+        schoolWebsiteController.text = cachedData.schoolWebsite;
+        schoolimageurl = cachedData.schoolImageUrl;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -207,14 +245,15 @@ class _SchoolDetailsPageState extends State<SchoolDetailsPage> {
             _controllersInitialized = true;
           }
           String schoolImageUrl = schooldata?['url'] ?? '';
+
           return SingleChildScrollView(
             child: Column(
               children: [
                 GestureDetector(
                   onTap: isEditing
                       ? () async {
-                    await _pickImage();
-                  }
+                          await _pickImage();
+                        }
                       : null,
                   child: Container(
                     height: MediaQuery.of(context).size.height * .275,
@@ -229,10 +268,10 @@ class _SchoolDetailsPageState extends State<SchoolDetailsPage> {
                     ),
                     child: !isEditing
                         ? Container(
-                      child: const Center(
-                        child: Text(''),
-                      ),
-                    )
+                            child: const Center(
+                              child: Text(''),
+                            ),
+                          )
                         : null,
                   ),
                 ),
@@ -254,13 +293,7 @@ class _SchoolDetailsPageState extends State<SchoolDetailsPage> {
                           onPressed: () async {
                             if (isEditing) {
                               final user = FirebaseAuth.instance.currentUser;
-                              if (user != null) {
-                                if (temporaryImage != null) {
-                                  selectedNewImage = temporaryImage;
-                                  await saveImagePath(selectedNewImage!.path);
-                                } else {}
-                                await updateSchool(user.uid);
-                              }
+                              updateSchool('9NekuNXmyxdNxWekn282');
                             }
                             setState(() {
                               isEditing = !isEditing;

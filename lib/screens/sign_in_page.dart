@@ -47,20 +47,21 @@ class _SignInState extends State<SignIn> {
             .collection('Users')
             .doc(userCredential.uid)
             .get();
-        // await NotificationService.initializeNotifications();
-
-        if (!userDoc.exists) throw 'User role not found in Firyestore.';
+        final User? user = FirebaseAuth.instance.currentUser;
+        if (user != null) {
+          SharedPreferences prefs = await SharedPreferences.getInstance();
+          await prefs.setString('userId', user.uid);
+        }
+        if (!userDoc.exists) throw 'User role not found in Firestore.';
 
         final validRoles = ['Admin', 'Teacher', 'Student'];
         String role = userDoc.data()?['role'];
         if (!validRoles.contains(role)) throw 'Invalid role detected: $role';
-
         SharedPreferences prefs = await SharedPreferences.getInstance();
         await prefs.setString('email', email);
         await prefs.setString('role', role);
-        Navigator.pushReplacement(context,
-            MaterialPageRoute(builder: (context) => Dashboard(role: role)));
-
+        Navigator.pushReplacement(
+            context, SlidingPageTransitionRL(page: Dashboard(role: role)));
         ScaffoldMessenger.of(context)
             .showSnackBar(const SnackBar(content: Text('Sign-in successful')));
       } else {
