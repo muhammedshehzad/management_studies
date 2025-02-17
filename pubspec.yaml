@@ -83,6 +83,8 @@ dependencies:
   syncfusion_flutter_gauges: ^28.2.5
   isar: ^3.1.0+1
   isar_flutter_libs: ^3.1.0+1
+  connectivity_plus: ^6.1.3
+
 
 
 
