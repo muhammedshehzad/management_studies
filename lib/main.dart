@@ -28,7 +28,7 @@ import 'package:isar/isar.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 late Isar isar;
-
+//hello
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   isar = await IsarUserService.init();
