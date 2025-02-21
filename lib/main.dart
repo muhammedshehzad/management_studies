@@ -16,50 +16,37 @@ import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'Dashboard/dashboard.dart';
+import 'firebase_auth_implementation/firebase_options.dart';
+import 'isar_storage/isar_user_service.dart';
 import 'isar_storage/school_details_model.dart';
+import 'isar_storage/user_model.dart';
 import 'notifications/backservice.dart';
 import 'drawer_screens/Canteen/cart_provider.dart';
-// import 'package:isar/isar.dart';
+import 'package:isar/isar.dart';
+
+// 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  ---github passkey---
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
-// late Isar isar;
+late Isar isar;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+  isar = await IsarUserService.init();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   await NotificationService.init();
   await initializeService();
 
-  final User? currentUser = FirebaseAuth.instance.currentUser;
-  final String currentUserId = currentUser?.uid ?? "";
-  SharedPreferences prefs = await SharedPreferences.getInstance();
-  if (currentUserId.isNotEmpty) {
-    FirebaseFirestore.instance
-        .collection('leave_requests')
-        .snapshots()
-        .listen((snapshot) async {
-      for (var change in snapshot.docChanges) {
-        if (change.type == DocumentChangeType.modified) {
-          var data = change.doc.data();
-          if (data != null) {
-            String leaveRequesterId = data['userId'];
-            String leaveStatus = data['status'];
-            if (leaveRequesterId.isNotEmpty) {
-              await NotificationService.showNotification(
-                "Leave Request Update",
-                "Your leave request has been $leaveStatus",
-              );
-            }
-          }
-        }
-      }
-    });
+  try {
+    await IsarUserService.init();
+  } catch (e) {
+    print(e);
   }
 
+  SharedPreferences prefs = await SharedPreferences.getInstance();
   final String? email = prefs.getString('email');
   final String? role = prefs.getString('role');
-  final dir = await getApplicationDocumentsDirectory();
-  // isar = await Isar.open([SchoolDetailsSchema], directory: dir.path);
   runApp(
     MultiProvider(
       providers: [

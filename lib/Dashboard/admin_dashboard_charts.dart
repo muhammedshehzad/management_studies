@@ -22,7 +22,7 @@ class TeachersList extends StatelessWidget {
           return const Center(child: Text('No teachers found.'));
         }
         return Container(
-          height: 400,
+          height: MediaQuery.of(context).size.height,
           width: double.infinity,
           child: ListView.builder(
             physics: const NeverScrollableScrollPhysics(),
@@ -168,7 +168,7 @@ class TeachersChart extends StatelessWidget {
                     sideTitles: SideTitles(
                       showTitles: true,
                       interval: 1,
-                      reservedSize: 35,
+                      reservedSize: 20,
                       getTitlesWidget: (double value, TitleMeta meta) {
                         return Text(
                           value.toString(),
@@ -180,17 +180,24 @@ class TeachersChart extends StatelessWidget {
                   bottomTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
+                      reservedSize: 40,
                       getTitlesWidget: (double value, TitleMeta meta) {
                         int index = value.toInt();
                         if (index >= 0 && index < departments.length) {
-                          return Container(
-                            width: 70,
-                            alignment: Alignment.center,
-                            child: Text(
-                              departments[index],
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontSize: 11),
+                          String displayText = departments[index].length > 8
+                              ? departments[index].substring(0, 4)
+                              : departments[index];
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 8.0),
+                            child: SizedBox(
+                              width: 70,
+                              child: Text(
+                                displayText,
+                                textAlign: TextAlign.center,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 11),
+                              ),
                             ),
                           );
                         }

@@ -2,13 +2,18 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:ui';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:isar/isar.dart';
 import 'package:new_school/sliding_transition.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
+import 'package:new_school/isar_storage/isar_user_service.dart';
+import '../isar_storage/user_model.dart';
+import '../main.dart';
 
 class ProfileDetailsPage extends StatefulWidget {
   const ProfileDetailsPage({super.key});
@@ -27,6 +32,7 @@ class _ProfileDetailsPageState extends State<ProfileDetailsPage> {
   bool _controllersInitialized = false;
   String? userid;
   final _db = FirebaseFirestore.instance;
+  bool _isLoading = true;
 
   final TextEditingController nameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
@@ -40,11 +46,18 @@ class _ProfileDetailsPageState extends State<ProfileDetailsPage> {
     userid = user?.uid;
     if (userid != null) {
       _loadProfileData();
-      _loadImage();
+      loadProfileFromIsar().then((_) {
+        if (mounted) {
+          setState(() => _isLoading = false);
+        }
+      });
+    } else {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
-  /// Fetch the user profile data once.
   Future<DocumentSnapshot<Map<String, dynamic>>> getProfileData() async {
     if (userid != null) {
       return FirebaseFirestore.instance.collection('Users').doc(userid).get();
@@ -67,8 +80,8 @@ class _ProfileDetailsPageState extends State<ProfileDetailsPage> {
     }
   }
 
-  Future<void> imageUpload() async {
-    if (tempImage == null) return;
+  Future<String?> imageUpload() async {
+    if (tempImage == null) return null;
 
     setState(() {
       isUploading = true;
@@ -81,17 +94,13 @@ class _ProfileDetailsPageState extends State<ProfileDetailsPage> {
 
     final response = await request.send();
     if (response.statusCode == 200) {
-      final responsedata = await response.stream.toBytes();
-      final responseString = String.fromCharCodes(responsedata);
+      final responseData = await response.stream.toBytes();
+      final responseString = String.fromCharCodes(responseData);
       final jsonMap = jsonDecode(responseString);
       setState(() {
-        final uploadedUrl = jsonMap['url'] ?? '';
-        imageurl = uploadedUrl;
-        print('Uploaded Image URL: $imageurl');
-        saveImagePath(uploadedUrl);
-        updateUser(userid!);
         isUploading = false;
       });
+      return jsonMap['url'];
     } else {
       setState(() {
         isUploading = false;
@@ -99,7 +108,13 @@ class _ProfileDetailsPageState extends State<ProfileDetailsPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Failed to upload image to Cloudinary.')),
       );
+      return null;
     }
+  }
+
+  Future<bool> isConnected() async {
+    var result = await Connectivity().checkConnectivity();
+    return result != ConnectivityResult.none;
   }
 
   Future<void> saveImagePath(String path) async {
@@ -113,20 +128,73 @@ class _ProfileDetailsPageState extends State<ProfileDetailsPage> {
   }
 
   Future<void> _loadProfileData() async {
-    if (userid != null) {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('Users')
-          .doc(userid)
-          .get();
+    final connectivityResult = await Connectivity().checkConnectivity();
 
-      if (snapshot.exists) {
-        final data = snapshot.data()!;
-        setState(() {
-          nameController.text = data["username"] ?? 'N/A';
-          emailController.text = data["email"] ?? 'N/A';
-          addressController.text = data["address"] ?? 'N/A';
-          phoneController.text = data["phone"] ?? 'N/A';
-        });
+    if (connectivityResult == ConnectivityResult.none) {
+      await loadProfileFromIsar();
+    } else {
+      try {
+        final snapshot = await FirebaseFirestore.instance
+            .collection('Users')
+            .doc(userid)
+            .get();
+
+        if (snapshot.exists) {
+          final data = snapshot.data()!;
+          setState(() {
+            nameController.text = data["username"] ?? 'N/A';
+            emailController.text = data["email"] ?? 'N/A';
+            addressController.text = data["address"] ?? 'N/A';
+            phoneController.text = data["phone"] ?? 'N/A';
+            imageurl = data['url'];
+          });
+          await _saveProfileToIsar(data);
+          if (data['url'] != null) {
+            await saveImagePath(data['url']!);
+          }
+        }
+      } catch (e) {
+        await loadProfileFromIsar();
+      }
+    }
+  }
+
+  Future<void> _saveProfileToIsar(Map<String, dynamic> data) async {
+    final user = UserModel()
+      ..uid = userid!
+      ..username = data['username'] ?? 'N/A'
+      ..email = data['email'] ?? 'N/A'
+      ..role = data['role'] ?? 'N/A'
+      ..url = data['url'] ?? ''
+      ..department = data['department'] ?? ''
+      ..address = data['address'] ?? ''
+      ..phone = data['phone'] ?? 'N/A';
+
+    await IsarUserService.isar!.writeTxn(() async {
+      await IsarUserService.isar!.userModels.put(user);
+    });
+  }
+
+  Future<void> loadProfileFromIsar() async {
+    if (!IsarUserService.isInitialized) {
+      await IsarUserService.init();
+    }
+
+    final user = await IsarUserService.isar?.userModels
+        .filter()
+        .uidEqualTo(userid!)
+        .findFirst();
+
+    if (user != null) {
+      setState(() {
+        nameController.text = user.username ?? 'N/A';
+        emailController.text = user.email ?? 'N/A';
+        addressController.text = user.address ?? 'N/A';
+        phoneController.text = user.phone ?? 'N/A';
+        imageurl = user.url;
+      });
+      if (user.url != null && user.url!.isNotEmpty) {
+        await saveImagePath(user.url!);
       }
     }
   }
@@ -137,41 +205,113 @@ class _ProfileDetailsPageState extends State<ProfileDetailsPage> {
       setState(() {
         selectedImage = File(path);
       });
-    } else if (userid != null) {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('Users')
-          .doc(userid)
-          .get();
-      if (snapshot.exists) {
-        final url = snapshot['url'];
-        if (url != null) {
-          setState(() {
-            selectedImage = File(url);
-          });
-        }
-      }
+      return;
+    }
+
+    final user = await IsarUserService.isar!.userModels
+        .filter()
+        .uidEqualTo(userid!)
+        .findFirst();
+    if (user != null && user.url != null && user.url!.isNotEmpty) {
+      setState(() {
+        selectedImage = File(user.url!);
+      });
+      await saveImagePath(user.url!);
     }
   }
 
   Future<void> updateUser(String userId) async {
+    String? uploadedImageUrl;
+
+    if (tempImage != null) {
+      uploadedImageUrl = await imageUpload();
+    }
+
     final updatedData = {
       "username": nameController.text,
       "email": emailController.text,
       "address": addressController.text,
       "phone": phoneController.text,
-      "url": imageurl ?? "null"
+      "url": uploadedImageUrl ?? imageurl,
     };
 
-    try {
-      await _db.collection("Users").doc(userId).update(updatedData);
+    await updateUserOffline(userId, updatedData);
+
+    bool online = await isConnected();
+    if (online) {
+      try {
+        await _db.collection("Users").doc(userId).update(updatedData);
+
+        DocumentSnapshot snapshot =
+            await _db.collection("Users").doc(userId).get();
+        if (snapshot.exists) {
+          final data = snapshot.data() as Map<String, dynamic>;
+          final user = UserModel()
+            ..uid = userId
+            ..username = data['username'] ?? 'N/A'
+            ..email = data['email'] ?? 'N/A'
+            ..role = data['role'] ?? 'N/A'
+            ..url = data['url'] ?? ''
+            ..department = data['department'] ?? ''
+            ..address = data['address'] ?? ''
+            ..phone = data['phone'] ?? 'N/A';
+
+          await IsarUserService.isar!.writeTxn(() async {
+            final existingUser = await IsarUserService.isar!.userModels
+                .filter()
+                .uidEqualTo(userId)
+                .findFirst();
+            if (existingUser != null) {
+              user.id = existingUser.id;
+            }
+            await IsarUserService.isar!.userModels.put(user);
+          });
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("User details updated successfully!")),
+          );
+        }
+      } catch (e) {
+        print("Error updating Firestore: $e");
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Failed to update user online.")),
+        );
+      }
+    } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("User details updated successfully!")),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Failed to update user.")),
+        const SnackBar(
+            content: Text(
+                "Offline: Changes saved locally and will sync when online.")),
       );
     }
+  }
+
+  Future<void> updateUserOffline(
+      String userId, Map<String, dynamic> updatedData) async {
+    setState(() => isEditing = false);
+
+    // Ensure Isar is initialized
+    if (!IsarUserService.isInitialized) {
+      await IsarUserService.init();
+    }
+
+    final localUser = await IsarUserService.isar!.userModels
+            .filter()
+            .uidEqualTo(userId)
+            .findFirst() ??
+        UserModel();
+
+    localUser.uid = userId;
+    localUser.username = updatedData["username"] ?? localUser.username;
+    localUser.email = updatedData["email"] ?? localUser.email;
+    localUser.address = updatedData["address"] ?? localUser.address;
+    localUser.phone = updatedData["phone"] ?? localUser.phone;
+    localUser.url = updatedData["url"] ?? localUser.url;
+
+    await IsarUserService.isar!.writeTxn(() async {
+      await IsarUserService.isar!.userModels.put(localUser);
+    });
+    print('Local Isar updated.');
   }
 
   Widget buildPhotoView(String imageurl) {
@@ -214,172 +354,142 @@ class _ProfileDetailsPageState extends State<ProfileDetailsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          onPressed: () {
-            Navigator.pop(context);
-          },
-          icon: const Icon(Icons.arrow_back),
+        appBar: AppBar(
+          leading: IconButton(
+            onPressed: () {
+              Navigator.pop(context);
+            },
+            icon: const Icon(Icons.arrow_back),
+          ),
         ),
-      ),
-      body: FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-        future: getProfileData(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return const Center(
-              child: Text(
-                'Error loading profile data.',
-                style: TextStyle(color: Colors.red, fontSize: 16),
-              ),
-            );
-          }
-          if (!snapshot.hasData || snapshot.data!.data() == null) {
-            return const Center(
-              child: Text(
-                'No profile data found.',
-                style: TextStyle(color: Colors.grey, fontSize: 16),
-              ),
-            );
-          }
-
-          final data = snapshot.data!.data()!;
-          if (isEditing) {
-            // Update controllers only if editing.
-            nameController.text = data["username"] ?? 'N/A';
-            emailController.text = data["email"] ?? 'N/A';
-            addressController.text = data["address"] ?? 'N/A';
-            phoneController.text = data["phone"] ?? 'N/A';
-            _controllersInitialized = true;
-          }
-          String profileImageUrl = data['url'] ?? '';
-
-          return SingleChildScrollView(
-            child: Column(
-              children: [
-                GestureDetector(
-                  onTap: isEditing
-                      ? _pickImage
-                      : () {
-                          if (profileImageUrl.isNotEmpty) {
-                            Navigator.push(
-                              context,
-                              SlidingPageTransitionRL(
-                                page:
-                                    PhotoViewScreen(imageUrl: profileImageUrl),
-                              ),
-                            );
-                          }
-                        },
-                  child: CircleAvatar(
-                    radius: 90,
-                    backgroundColor: Colors.blueGrey.shade100,
-                    backgroundImage: profileImageUrl.isNotEmpty
-                        ? NetworkImage(profileImageUrl)
-                        : null,
-                    child: isUploading
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : (profileImageUrl.isEmpty &&
-                                tempImage == null &&
-                                selectedImage == null)
-                            ? const Icon(Icons.camera_alt,
-                                size: 50, color: Colors.white)
-                            : null,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 9.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        "${data["role"] ?? 'N/A'} Details :",
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 16,
-                          color: Colors.black87,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 5),
-                buildEditableRow(
-                  'Name',
-                  nameController,
-                  isEditing,
-                  data["username"] ?? 'N/A',
-                ),
-                buildEditableRow(
-                  'Mail',
-                  emailController,
-                  isEditing,
-                  data["email"] ?? 'N/A',
-                ),
-                buildEditableRow(
-                  'Address',
-                  addressController,
-                  isEditing,
-                  data["address"] ?? 'N/A',
-                ),
-                buildEditableRow(
-                  'Phone Number',
-                  phoneController,
-                  isEditing,
-                  "+91 ${data["phone"] ?? 'N/A'}",
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: SizedBox(
-                    width: MediaQuery.of(context).size.width,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        backgroundColor: const Color(0xff3e948e),
-                        elevation: 3,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                      ),
-                      onPressed: () async {
-                        if (isEditing) {
-                          final user = FirebaseAuth.instance.currentUser;
-                          if (user != null) {
-                            if (tempImage != null) {
-                              selectedImage = tempImage;
-                              await saveImagePath(selectedImage!.path);
-                            }
-                            await updateUser(user.uid);
-                          }
-                        }
-                        setState(() {
-                          isEditing = !isEditing;
-                        });
-                      },
-                      child: Text(
-                        isEditing ? 'Save Changes' : 'Edit Profile',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                        ),
+        body: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : SingleChildScrollView(
+                child: Column(
+                  children: [
+                    GestureDetector(
+                      onTap: isEditing
+                          ? _pickImage
+                          : imageurl?.isNotEmpty ?? false
+                              ? () {
+                                  Navigator.push(
+                                      context,
+                                      SlidingPageTransitionRL(
+                                        page: PhotoViewScreen(
+                                            imageUrl: imageurl!),
+                                      ));
+                                }
+                              : null,
+                      child: CircleAvatar(
+                        radius: 90,
+                        backgroundColor: Colors.blueGrey.shade100,
+                        backgroundImage: tempImage != null
+                            ? FileImage(tempImage!) as ImageProvider
+                            : (imageurl?.isNotEmpty ?? false
+                                ? NetworkImage(imageurl!)
+                                : null),
+                        child: isUploading
+                            ? const CircularProgressIndicator(
+                                color: Colors.white)
+                            : (imageurl == null && tempImage == null)
+                                ? const Icon(Icons.camera_alt,
+                                    size: 50, color: Colors.white)
+                                : null,
                       ),
                     ),
-                  ),
-                )
-              ],
-            ),
-          );
-        },
-      ),
-    );
+                    const SizedBox(height: 10),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 9.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          FutureBuilder<DocumentSnapshot>(
+                            future: _db.collection('Users').doc(userid).get(),
+                            builder: (context, snapshot) {
+                              if (snapshot.hasData && snapshot.data!.exists) {
+                                final role =
+                                    snapshot.data!.get('role') ?? 'N/A';
+                                return Text(
+                                  "$role Details :",
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 16,
+                                    color: Colors.black87,
+                                  ),
+                                );
+                              }
+                              return const SizedBox.shrink();
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    buildEditableRow(
+                      'Name',
+                      nameController,
+                      isEditing,
+                    ),
+                    buildEditableRow(
+                      'Mail',
+                      emailController,
+                      isEditing,
+                    ),
+                    buildEditableRow(
+                      'Address',
+                      addressController,
+                      isEditing,
+                    ),
+                    buildEditableRow(
+                      'Phone Number',
+                      phoneController,
+                      isEditing,
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: SizedBox(
+                        width: MediaQuery.of(context).size.width,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            backgroundColor: const Color(0xff3e948e),
+                            elevation: 3,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                          ),
+                          onPressed: () async {
+                            final user = FirebaseAuth.instance.currentUser;
+                            if (user != null) {
+                              if (isEditing) {
+                                await updateUser(user.uid);
+                                setState(() => isEditing = false);
+                              } else {
+                                setState(() => isEditing = true);
+                              }
+                            }
+                          },
+                          child: Text(
+                            isEditing ? 'Save Changes' : 'Edit Profile',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ),
+                    )
+                  ],
+                ),
+              ));
   }
 }
 
-Widget buildEditableRow(String label, TextEditingController controller,
-    bool isEditing, String details) {
+Widget buildEditableRow(
+  String label,
+  TextEditingController controller,
+  bool isEditing,
+) {
   return Padding(
     padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 8),
     child: TextField(

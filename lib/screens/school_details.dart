@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:ui';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -10,6 +11,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 
+import '../isar_storage/isar_user_service.dart';
 import '../isar_storage/school_details_model.dart';
 
 class SchoolDetailsPage extends StatefulWidget {
@@ -26,23 +28,39 @@ class _SchoolDetailsPageState extends State<SchoolDetailsPage> {
   File? temporaryImage;
   final picker = ImagePicker();
   String? schoolimageurl;
-  late Isar isar;
+  File? tempImage;
 
-  Future _pickImage() async {
+  Future<void> _pickImage() async {
     final returnedSchoolImage =
         await ImagePicker().pickImage(source: ImageSource.gallery);
     if (returnedSchoolImage != null) {
       setState(() {
         temporaryImage = File(returnedSchoolImage.path);
       });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: const [
+              CircularProgressIndicator(),
+              SizedBox(width: 16),
+              Text('Uploading image...'),
+            ],
+          ),
+          duration: const Duration(seconds: 2),
+        ),
+      );
       await imageUpload();
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const CircularProgressIndicator() as SnackBar);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('No image selected.')),
       );
     }
+  }
+
+  Future<bool> isConnected() async {
+    var result = await Connectivity().checkConnectivity();
+    return result != ConnectivityResult.none;
   }
 
   Future<void> imageUpload() async {
@@ -59,14 +77,11 @@ class _SchoolDetailsPageState extends State<SchoolDetailsPage> {
       final responsedata = await response.stream.toBytes();
       final responseString = String.fromCharCodes(responsedata);
       final jsonMap = jsonDecode(responseString);
-
       setState(() {
-        final uploadedUrl = jsonMap['url'];
-        schoolimageurl = uploadedUrl;
+        schoolimageurl = jsonMap['url'];
         print('Uploaded Image URL: $schoolimageurl');
-        saveImagePath(uploadedUrl);
-        updateSchool(schoolid!);
       });
+      await saveImagePath(schoolimageurl!);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Failed to upload image to Cloudinary.')),
@@ -107,16 +122,11 @@ class _SchoolDetailsPageState extends State<SchoolDetailsPage> {
       return;
     }
 
-    print("Fetching current school data for ID: $schoolId");
-
-    final currentData = await _db.collection("School").doc(schoolId).get();
-
-    if (!currentData.exists) {
-      print("No existing school data found for ID: $schoolId");
-      return;
-    }
-
-    print("Existing data found. Preparing update...");
+    final existingSchool = await IsarUserService.isar!.schoolDetails
+        .filter()
+        .idEqualTo(1)
+        .findFirst();
+    print(existingSchool);
 
     final updatedSchoolData = {
       "schoolname": schoolNameController.text,
@@ -124,32 +134,86 @@ class _SchoolDetailsPageState extends State<SchoolDetailsPage> {
       "schoollocation": schoolLocationController.text,
       "schoolcontact": schoolContactController.text,
       "schoolwebsite": schoolWebsiteController.text,
-      "url": schoolimageurl ?? currentData["url"]
+      "url": schoolimageurl ?? existingSchool?.schoolImageUrl ?? '',
     };
 
-    await _db.collection("School").doc(schoolId).update(updatedSchoolData);
+    await updateSchoolOffline(schoolId, updatedSchoolData);
 
-    final schoolDetails = SchoolDetails()
-      ..schoolName = schoolNameController.text
-      ..schoolType = schoolTypeController.text
-      ..schoolLocation = schoolLocationController.text
-      ..schoolContact = schoolContactController.text
-      ..schoolWebsite = schoolWebsiteController.text
-      ..schoolImageUrl = schoolimageurl ?? '';
+    bool online = await isConnected();
+    if (online) {
+      try {
+        await _db
+            .collection("School")
+            .doc(schoolId)
+            .set(updatedSchoolData, SetOptions(merge: true));
 
-    if (isar == null) {
-      print("no dataa");
-      return;
+        DocumentSnapshot snapshot =
+            await _db.collection("School").doc(schoolId).get();
+        if (snapshot.exists) {
+          final data = snapshot.data() as Map<String, dynamic>;
+          final schoolDetails = SchoolDetails()
+            ..schoolName = data['schoolname'] ?? schoolNameController.text
+            ..schoolType = data['schooltype'] ?? schoolTypeController.text
+            ..schoolLocation =
+                data['schoollocation'] ?? schoolLocationController.text
+            ..schoolContact =
+                data['schoolcontact'] ?? schoolContactController.text
+            ..schoolWebsite =
+                data['schoolwebsite'] ?? schoolWebsiteController.text
+            ..schoolImageUrl =
+                data['url'] ?? existingSchool?.schoolImageUrl ?? '';
+
+          await IsarUserService.isar!.writeTxn(() async {
+            await IsarUserService.isar!.schoolDetails.put(schoolDetails);
+          });
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('School details updated successfully!')),
+        );
+      } catch (e) {
+        print("Error updating Firestore: $e");
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Failed to update school online.")),
+        );
+      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text(
+                "Offline: Changes saved locally and will sync when online.")),
+      );
     }
+  }
 
-    await isar.writeTxn(() async {
-      final id = await isar.schoolDetails.put(schoolDetails);
-      print("updated $id");
-    });
+  Future<void> updateSchoolOffline(
+      String schoolId, Map<String, dynamic> updatedData) async {
+    setState(() => isEditing = false);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('School details updated successfully!')),
-    );
+    final isar = IsarUserService.isar!;
+    final localSchool =
+        await isar.schoolDetails.filter().idEqualTo(1).findFirst();
+
+    if (localSchool != null) {
+      localSchool
+        ..schoolName = updatedData["schoolname"] ?? localSchool.schoolName
+        ..schoolType = updatedData["schooltype"] ?? localSchool.schoolType
+        ..schoolLocation =
+            updatedData["schoollocation"] ?? localSchool.schoolLocation
+        ..schoolContact =
+            updatedData["schoolcontact"] ?? localSchool.schoolContact
+        ..schoolWebsite =
+            updatedData["schoolwebsite"] ?? localSchool.schoolWebsite
+        ..schoolImageUrl = updatedData["url"] ?? localSchool.schoolImageUrl;
+
+      await isar.writeTxn(() async {
+        await isar.schoolDetails.put(localSchool);
+      });
+
+      print('Local Isar updated: $updatedData');
+    } else {
+      print('No existing school record found in Isar.');
+    }
   }
 
   final TextEditingController schoolNameController = TextEditingController();
@@ -166,7 +230,6 @@ class _SchoolDetailsPageState extends State<SchoolDetailsPage> {
     final FirebaseAuth auth = FirebaseAuth.instance;
     final User? user = auth.currentUser;
     final uid = user?.uid;
-    initializeIsar();
     loadSchoolDetailsFromIsar();
     setState(() {
       schoolid = uid;
@@ -174,15 +237,10 @@ class _SchoolDetailsPageState extends State<SchoolDetailsPage> {
     super.initState();
   }
 
-  Future<void> initializeIsar() async {
-    final dir = await getApplicationDocumentsDirectory();
-    isar = await Isar.open([SchoolDetailsSchema], directory: dir.path);
-  }
-
   bool _controllersInitialized = false;
 
   Future<void> loadSchoolDetailsFromIsar() async {
-    final cachedData = await isar.schoolDetails.get(1);
+    final cachedData = await IsarUserService.isar!.schoolDetails.get(1);
     if (cachedData != null) {
       setState(() {
         schoolNameController.text = cachedData.schoolName;
@@ -193,6 +251,15 @@ class _SchoolDetailsPageState extends State<SchoolDetailsPage> {
         schoolimageurl = cachedData.schoolImageUrl;
       });
     }
+  }
+
+  Future<String?> fetchImage() async {
+    QuerySnapshot querySnapshot =
+        await FirebaseFirestore.instance.collection('School').get();
+    if (querySnapshot.docs.isEmpty) return null;
+    DocumentSnapshot documentSnapshot = querySnapshot.docs.first;
+    String? schoolImageUrl = documentSnapshot['url'];
+    return schoolImageUrl;
   }
 
   @override
@@ -207,157 +274,273 @@ class _SchoolDetailsPageState extends State<SchoolDetailsPage> {
           icon: Icon(Icons.arrow_back),
         ),
       ),
-      body: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-        stream: school,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            FutureBuilder<String?>(
+              future: fetchImage(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Center(
+                      child: CircleAvatar(
+                    radius: 90,
+                    backgroundColor: Colors.blueGrey.shade100,
+                    backgroundImage:
+                        (schoolimageurl != null && schoolimageurl!.isNotEmpty)
+                            ? NetworkImage(schoolimageurl!)
+                            : null,
+                    child: (schoolimageurl == null || schoolimageurl!.isEmpty)
+                        ? const Icon(Icons.camera_alt,
+                            size: 50, color: Colors.white)
+                        : null,
+                  ));
+                }
 
-          if (snapshot.hasError) {
-            return const Center(
-              child: Text(
-                'Error loading profile data.',
-                style: TextStyle(color: Colors.red, fontSize: 16),
-              ),
-            );
-          }
+                if (snapshot.hasError) {
+                  return const Center(
+                    child: Text('Error loading image URL',
+                        style: TextStyle(color: Colors.red)),
+                  );
+                }
 
-          if (!snapshot.hasData || snapshot.data?.data() == null) {
-            return const Center(
-              child: Text(
-                'No school data found.',
-                style: TextStyle(color: Colors.grey, fontSize: 16),
-              ),
-            );
-          }
+                if (!snapshot.hasData || snapshot.data == null) {
+                  return Center(
+                    child: CircleAvatar(
+                      radius: 90,
+                      backgroundColor: Colors.blueGrey.shade100,
+                      backgroundImage:
+                          (schoolimageurl != null && schoolimageurl!.isNotEmpty)
+                              ? NetworkImage(schoolimageurl!)
+                              : null, // or a placeholder image
+                      child: (schoolimageurl == null || schoolimageurl!.isEmpty)
+                          ? const Icon(Icons.camera_alt,
+                              size: 50, color: Colors.white)
+                          : null,
+                    ),
+                  );
+                }
 
-          final schooldata = snapshot.data!.data()!;
-          if (!_controllersInitialized) {
-            schoolNameController.text = schooldata["schoolname"] ?? 'N/A';
-            schoolTypeController.text = schooldata["schooltype"] ?? 'N/A';
-            schoolLocationController.text =
-                schooldata["schoollocation"] ?? 'N/A';
-            schoolContactController.text = schooldata["schoolcontact"] ?? 'N/A';
-            schoolWebsiteController.text = schooldata["schoolwebsite"] ?? 'N/A';
-            schoolAffiliationController.text =
-                schooldata["schoolaffiliation"] ?? 'N/A';
-            _controllersInitialized = true;
-          }
-          String schoolImageUrl = schooldata?['url'] ?? '';
+                String schoolImageUrl = snapshot.data!;
 
-          return SingleChildScrollView(
-            child: Column(
-              children: [
-                GestureDetector(
+                return GestureDetector(
                   onTap: isEditing
                       ? () async {
                           await _pickImage();
                         }
                       : null,
-                  child: Container(
-                    height: MediaQuery.of(context).size.height * .275,
-                    width: MediaQuery.of(context).size.width * .6,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.black, width: 1),
-                      image: DecorationImage(
-                        image: NetworkImage(schoolImageUrl),
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                    child: !isEditing
-                        ? Container(
-                            child: const Center(
-                              child: Text(''),
-                            ),
-                          )
+                  child: CircleAvatar(
+                    radius: 90,
+                    backgroundColor: Colors.blueGrey.shade100,
+                    backgroundImage:
+                        (schoolimageurl != null && schoolimageurl!.isNotEmpty)
+                            ? NetworkImage(schoolimageurl!)
+                            : null, // or a placeholder image
+                    child: (schoolimageurl == null || schoolimageurl!.isEmpty)
+                        ? const Icon(Icons.camera_alt,
+                            size: 50, color: Colors.white)
                         : null,
                   ),
-                ),
-                const SizedBox(height: 10),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 14.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        "School Details : ",
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 18,
-                            color: Colors.black87),
-                      ),
-                      if (widget.role == 'Admin')
-                        IconButton(
-                          onPressed: () async {
-                            if (isEditing) {
-                              final user = FirebaseAuth.instance.currentUser;
-                              updateSchool('9NekuNXmyxdNxWekn282');
-                            }
-                            setState(() {
-                              isEditing = !isEditing;
-                            });
-                          },
-                          icon: Icon(
-                            isEditing ? Icons.check : Icons.edit,
-                            size: 24,
-                            color: Colors.black54,
+                );
+              },
+            ),
+            StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+              stream: school,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Scaffold(
+                      body: const Center(child: CircularProgressIndicator()));
+                }
+
+                if (snapshot.hasError) {
+                  return const Center(
+                    child: Text(
+                      'Error loading profile data.',
+                      style: TextStyle(color: Colors.red, fontSize: 16),
+                    ),
+                  );
+                }
+
+                if (!snapshot.hasData || snapshot.data?.data() == null) {
+                  return Center(
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 10),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 14.0),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                "School Details : ",
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 18,
+                                    color: Colors.black87),
+                              ),
+                              if (widget.role == 'Admin')
+                                IconButton(
+                                  onPressed: () async {
+                                    if (isEditing) {
+                                      await updateSchool(
+                                          '9NekuNXmyxdNxWekn282');
+                                      setState(() {
+                                        isEditing = false;
+                                      });
+                                    } else {
+                                      setState(() {
+                                        isEditing = true;
+                                      });
+                                    }
+                                  },
+                                  icon: Icon(
+                                    isEditing ? Icons.check : Icons.edit,
+                                    size: 24,
+                                    color: Colors.black54,
+                                  ),
+                                ),
+                            ],
                           ),
                         ),
-                    ],
-                  ),
-                ),
-                buildEditableRow(
-                  'Name',
-                  schoolNameController,
-                  isEditing,
-                  schooldata["schoolname"] ?? 'N/A',
-                ),
-                buildEditableRow(
-                  'Type',
-                  schoolTypeController,
-                  isEditing,
-                  schooldata["schooltype"] ?? 'N/A',
-                ),
-                buildEditableRow(
-                  'Location',
-                  schoolLocationController,
-                  isEditing,
-                  schooldata["schoollocation"] ?? 'N/A',
-                ),
-                buildEditableRow(
-                  'Contact',
-                  schoolContactController,
-                  isEditing,
-                  "${schooldata["schoolcontact"] ?? 'N/A'}",
-                ),
-                buildEditableRow(
-                  'Website',
-                  schoolWebsiteController,
-                  isEditing,
-                  "${schooldata["schoolwebsite"] ?? 'N/A'}",
-                ),
-                buildEditableRow(
-                  'Affiliation',
-                  schoolAffiliationController,
-                  isEditing,
-                  "${schooldata["schoolaffiliation"] ?? 'N/A'}",
-                ),
-                SizedBox(
-                  height: 30,
-                )
-              ],
+                        buildEditableRow(
+                          'Name',
+                          schoolNameController,
+                          isEditing,
+                        ),
+                        buildEditableRow(
+                          'Type',
+                          schoolTypeController,
+                          isEditing,
+                        ),
+                        buildEditableRow(
+                          'Location',
+                          schoolLocationController,
+                          isEditing,
+                        ),
+                        buildEditableRow(
+                          'Contact',
+                          schoolContactController,
+                          isEditing,
+                        ),
+                        buildEditableRow(
+                          'Website',
+                          schoolWebsiteController,
+                          isEditing,
+                        ),
+                        buildEditableRow(
+                          'Affiliation',
+                          schoolAffiliationController,
+                          isEditing,
+                        ),
+                        const SizedBox(
+                          height: 30,
+                        )
+                      ],
+                    ),
+                  );
+                }
+
+                final schooldata = snapshot.data!.data()!;
+                if (!_controllersInitialized) {
+                  schoolNameController.text = schooldata["schoolname"] ?? 'N/A';
+                  schoolTypeController.text = schooldata["schooltype"] ?? 'N/A';
+                  schoolLocationController.text =
+                      schooldata["schoollocation"] ?? 'N/A';
+                  schoolContactController.text =
+                      schooldata["schoolcontact"] ?? 'N/A';
+                  schoolWebsiteController.text =
+                      schooldata["schoolwebsite"] ?? 'N/A';
+                  schoolAffiliationController.text =
+                      schooldata["schoolaffiliation"] ?? 'N/A';
+                  _controllersInitialized = true;
+                }
+
+                return Column(
+                  children: [
+                    const SizedBox(height: 10),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 14.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            "School Details : ",
+                            style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 18,
+                                color: Colors.black87),
+                          ),
+                          if (widget.role == 'Admin')
+                            IconButton(
+                              onPressed: () async {
+                                if (isEditing) {
+                                  await updateSchool('9NekuNXmyxdNxWekn282');
+                                  setState(() {
+                                    isEditing = false;
+                                  });
+                                } else {
+                                  setState(() {
+                                    isEditing = true;
+                                  });
+                                }
+                              },
+                              icon: Icon(
+                                isEditing ? Icons.check : Icons.edit,
+                                size: 24,
+                                color: Colors.black54,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    buildEditableRow(
+                      'Name',
+                      schoolNameController,
+                      isEditing,
+                    ),
+                    buildEditableRow(
+                      'Type',
+                      schoolTypeController,
+                      isEditing,
+                    ),
+                    buildEditableRow(
+                      'Location',
+                      schoolLocationController,
+                      isEditing,
+                    ),
+                    buildEditableRow(
+                      'Contact',
+                      schoolContactController,
+                      isEditing,
+                    ),
+                    buildEditableRow(
+                      'Website',
+                      schoolWebsiteController,
+                      isEditing,
+                    ),
+                    buildEditableRow(
+                      'Affiliation',
+                      schoolAffiliationController,
+                      isEditing,
+                    ),
+                    SizedBox(
+                      height: 30,
+                    )
+                  ],
+                );
+              },
             ),
-          );
-        },
+          ],
+        ),
       ),
     );
   }
 }
 
-Widget buildEditableRow(String label, TextEditingController controller,
-    bool isEditing, String details) {
+Widget buildEditableRow(
+  String label,
+  TextEditingController controller,
+  bool isEditing,
+) {
   return Padding(
     padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 8),
     child: TextField(

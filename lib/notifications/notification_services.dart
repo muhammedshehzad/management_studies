@@ -6,6 +6,8 @@ class NotificationService {
       FlutterLocalNotificationsPlugin();
 
   static Future<void> init() async {
+    await requestPermissions();
+
     const AndroidInitializationSettings androidInitializationSettings =
         AndroidInitializationSettings("@mipmap/ic_launcher");
 
@@ -15,22 +17,44 @@ class NotificationService {
     await flutterLocalNotificationsPlugin.initialize(initializationSettings);
   }
 
-  static Future<void> checkForOldNotifications(String userId) async {
-    // print("Checking for old notifications for user: $userId");
+  static Future<void> requestPermissions() async {
+    final androidImplementation =
+        flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>();
+    if (androidImplementation != null) {
+      final bool granted =
+          await androidImplementation.requestNotificationsPermission() ?? false;
+      if (!granted) {
+        print("Notification permission not granted on Android");
+      }
+    }
 
+    final iosImplementation =
+        flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<
+            IOSFlutterLocalNotificationsPlugin>();
+    if (iosImplementation != null) {
+      final bool? granted = await iosImplementation.requestPermissions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+      if (granted == false) {
+        print("Notification permission not granted on iOS");
+      }
+    }
+  }
+
+  static Future<void> checkForOldNotifications(String userId) async {
     final QuerySnapshot snapshot = await FirebaseFirestore.instance
         .collection('notifications')
         .where('userId', isEqualTo: userId)
         .where('isNotified', isEqualTo: false)
         .get();
 
-    // print("Found ${snapshot.docs.length} old notifications");
-
     for (var doc in snapshot.docs) {
       final data = doc.data() as Map<String, dynamic>;
       final String title = data['title'] ?? 'Old Notification';
       final String message = data['message'] ?? 'You have a pending update';
-      // print("Showing old notification: $title - $message");
       await showNotification(title, message);
       doc.reference.update({'isNotified': true});
     }

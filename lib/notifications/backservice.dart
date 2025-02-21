@@ -5,6 +5,8 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:new_school/notifications/notification_services.dart';
 
+import '../firebase_auth_implementation/firebase_options.dart';
+
 Future<void> initializeService() async {
   final service = FlutterBackgroundService();
   await service.configure(
@@ -23,8 +25,11 @@ Future<void> initializeService() async {
 @pragma('vm:entry-point')
 void onStart(ServiceInstance service) async {
   DartPluginRegistrant.ensureInitialized();
-  await Firebase.initializeApp();
-  await NotificationService.init();
+
+
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
 
   if (service is AndroidServiceInstance) {
     service.on('setAsForeground').listen((event) {
@@ -39,18 +44,15 @@ void onStart(ServiceInstance service) async {
     service.stopSelf();
   });
 
-  Timer.periodic(const Duration(seconds: 1), (timer) async {
+  Timer.periodic(const Duration(seconds: 10), (timer) async {
     if (service is AndroidServiceInstance) {
-      service.setForegroundNotificationInfo(
-        title: '',
-        content: '',
-      );
+      service.setForegroundNotificationInfo(title: '', content: '');
     }
-    // print("Background service running...");
+
     final User? currentUser = FirebaseAuth.instance.currentUser;
     final String currentUserId = currentUser?.uid ?? "";
 
-    if (currentUserId != null && currentUserId.isNotEmpty) {
+    if (currentUserId.isNotEmpty) {
       await NotificationService.checkForOldNotifications(currentUserId);
     }
 

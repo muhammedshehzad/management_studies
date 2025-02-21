@@ -6,6 +6,8 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:local_auth/local_auth.dart';
+import 'package:new_school/Dashboard/student_dashboard_charts.dart';
+import 'package:new_school/Dashboard/teacher_dashboard_chart.dart';
 import 'package:new_school/drawer_screens/academic_records.dart';
 import 'package:new_school/drawer_screens/homework_assignment.dart';
 import 'package:new_school/firebase_auth_implementation/firebase_auth_services.dart';
@@ -18,9 +20,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 import 'package:badges/badges.dart' as badges;
-import '../assets/widgets/admin_dashboard_charts.dart';
-import '../assets/widgets/student_dashboard_charts.dart';
-import '../assets/widgets/teacher_dashboard_chart.dart';
+import 'admin_dashboard_charts.dart';
+
 import '../drawer_screens/Canteen/canteen_page.dart';
 import '../drawer_screens/leaves_page.dart';
 import '../screens/notifications_page.dart';
@@ -165,6 +166,23 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
     }
   }
 
+  Future<String> _getUserRole() async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) return 'guest';
+
+    try {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(currentUser.uid)
+          .get();
+
+      return userDoc.data()?['role'] ?? 'guest';
+    } catch (e) {
+      print('Error getting user role: $e');
+      return 'guest';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final profiles = profileBuild();
@@ -299,7 +317,6 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
                           child: Text('No notifications found'));
                     }
 
-                    // Count unread notifications
                     final unreadCount = snapshot.data!.docs
                         .where((doc) => (doc['isRead'] == false))
                         .length;
@@ -307,7 +324,6 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
                     return badges.Badge(
                       badgeAnimation: badges.BadgeAnimation.fade(),
                       showBadge: unreadCount > 0,
-                      // Hide badge if there are no unread notifications
                       badgeContent: Text(
                         unreadCount.toString(),
                         style: const TextStyle(
@@ -379,61 +395,131 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
                 dragStartBehavior: DragStartBehavior.start,
                 children: [
                   Container(
-                    child: DrawerHeader(
-                      decoration: BoxDecoration(
-                        image: DecorationImage(
-                          image: NetworkImage(profileImageUrl),
-                          fit: BoxFit.cover,
-                          colorFilter: ColorFilter.mode(
-                            Colors.black.withOpacity(0.5),
-                            BlendMode.darken,
+                    // decoration: BoxDecoration(
+                    //   borderRadius: BorderRadius.circular(12),
+                    //
+                    // ),
+                    child: ClipRRect(
+                      // borderRadius: BorderRadius.circular(12),
+                      child: DrawerHeader(
+                        decoration: BoxDecoration(
+                          image: DecorationImage(
+                            image: NetworkImage(profileImageUrl),
+                            fit: BoxFit.cover,
+                            colorFilter: ColorFilter.mode(
+                              Colors.black.withOpacity(0.5),
+                              BlendMode.darken,
+                            ),
                           ),
                         ),
-                        borderRadius: BorderRadius.vertical(
-                          bottom: Radius.circular(2),
-                        ),
-                      ),
-                      child: GestureDetector(
-                        onTap: () async {
-                          await Navigator.push(
-                            context,
-                            SlidingPageTransitionLR(page: ProfilePage()),
-                          );
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.all(8.0),
+                        child: GestureDetector(
+                          onTap: () async {
+                            await Navigator.push(
+                              context,
+                              SlidingPageTransitionLR(page: ProfilePage()),
+                            );
+                          },
                           child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
                             crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.end,
                             children: [
-                              Text(
-                                data["username"] ?? 'N/A',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 24,
-                                  color: Colors.white,
+                              if (role != 'Admin') ...[
+                                Text(
+                                  data["username"] ?? 'N/A',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 22,
+                                    color: Colors.white,
+                                    shadows: [
+                                      Shadow(
+                                        offset: Offset(0, 1),
+                                        blurRadius: 3,
+                                        color: Colors.black45,
+                                      ),
+                                    ],
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                data["email"] ?? 'N/A',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 18,
-                                  color: Colors.white70,
+                                const SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    const Icon(Icons.school,
+                                        size: 18, color: Colors.white70),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        '${data["department"] ?? "N/A"} Dept',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w500,
+                                          fontSize: 16,
+                                          color: Colors.white70,
+                                          shadows: [
+                                            Shadow(
+                                              offset: Offset(0, 1),
+                                              blurRadius: 3,
+                                              color: Colors.black45,
+                                            ),
+                                          ],
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                role,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 17,
-                                  color: Colors.yellowAccent,
-                                  fontStyle: FontStyle.italic,
+                                const SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    const Icon(Icons.email,
+                                        size: 18, color: Colors.white70),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        data["email"] ?? 'N/A',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w500,
+                                          fontSize: 16,
+                                          color: Colors.white70,
+                                          shadows: [
+                                            Shadow(
+                                              offset: Offset(0, 1),
+                                              blurRadius: 3,
+                                              color: Colors.black45,
+                                            ),
+                                          ],
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
                                 ),
+                                const SizedBox(height: 12),
+                              ],
+                              if (role == 'Admin') ...[
+                                Spacer(),
+                              ],
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  const Icon(Icons.verified_user,
+                                      size: 18, color: Colors.yellowAccent),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    role,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                      color: Colors.yellowAccent,
+                                      fontStyle: FontStyle.italic,
+                                      shadows: [
+                                        Shadow(
+                                          offset: Offset(0, 1),
+                                          blurRadius: 3,
+                                          color: Colors.black45,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),

@@ -1,7 +1,10 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:ui';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:new_school/drawer_screens/Canteen/orders_page.dart';
@@ -29,10 +32,13 @@ class _CheckoutPageState extends State<CheckoutPage> {
   bool isLoading = false;
   bool paymentFailed = false;
   String? currentTransactionId;
+  bool isOnline = false;
+  StreamSubscription? _connectivitySubscription;
 
   @override
   void initState() {
     super.initState();
+    checkInternet();
     _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
     _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
     _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
@@ -114,7 +120,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
       try {
         DocumentReference transactionRef;
 
-        // 1. Prioritize current transaction ID
         if (currentTransactionId != null) {
           transactionRef = FirebaseFirestore.instance
               .collection('Transactions')
@@ -122,10 +127,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
         } else {
           transactionRef =
               FirebaseFirestore.instance.collection('Transactions').doc();
-          currentTransactionId = transactionRef.id; // Store new ID immediately
+          currentTransactionId = transactionRef.id;
         }
 
-        // Generate order ID only if new transaction
         final generatedOrderId =
             (currentTransactionId == null && orderId == null)
                 ? generateUniqueOrderId()
@@ -371,6 +375,33 @@ class _CheckoutPageState extends State<CheckoutPage> {
         : Container();
   }
 
+  Future<void> checkInternet() async {
+    bool connected = await hasInternet();
+    setState(() {
+      isOnline = connected;
+    });
+
+    _connectivitySubscription = Connectivity()
+        .onConnectivityChanged
+        .listen((List<ConnectivityResult> results) async {
+      bool connected =
+          results.any((result) => result != ConnectivityResult.none) &&
+              await hasInternet();
+      setState(() {
+        isOnline = connected;
+      });
+    });
+  }
+
+  Future<bool> hasInternet() async {
+    try {
+      final result = await InternetAddress.lookup('google.com');
+      return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
+    } catch (e) {
+      return false;
+    }
+  }
+
   @override
   void dispose() {
     super.dispose();
@@ -388,16 +419,16 @@ class _CheckoutPageState extends State<CheckoutPage> {
             title: Text('Checkout Page'),
             centerTitle: true,
             actions: [
-              IconButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      SlidingPageTransitionRL(
-                        page: OrdersPage(),
-                      ),
-                    );
-                  },
-                  icon: Icon(Icons.history)),
+              // IconButton(
+              //     onPressed: () {
+              //       Navigator.push(
+              //         context,
+              //         SlidingPageTransitionRL(
+              //           page: OrdersPage(),
+              //         ),
+              //       );
+              //     },
+              //     icon: Icon(Icons.history)),
               SizedBox(width: 5),
             ],
           ),
@@ -540,11 +571,17 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                   setState(() {
                                     isLoading = true; // Show loading screen
                                   });
-
-                                  await initiatePayment(); // Call the payment function
+                                  isOnline
+                                      ? await initiatePayment()
+                                      : ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                          SnackBar(
+                                              content: Text(
+                                                  'No internet connection detected. Please check your connection and try again later.')),
+                                        );
 
                                   setState(() {
-                                    isLoading = false; // Hide loading screen
+                                    isLoading = false;
                                   });
                                 },
                                 child: Text(

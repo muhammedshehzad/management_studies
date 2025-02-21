@@ -145,7 +145,7 @@ Future<double?> fetchAttendanceForCurrentUser() async {
 
   int approvedLeaves = notificationsSnapshot.docs.length;
 
-  double attendance = 100 - ((approvedLeaves / 202) * 100);
+  double attendance = 100 - ((approvedLeaves / 80) * 100);
 
   return attendance;
 }
