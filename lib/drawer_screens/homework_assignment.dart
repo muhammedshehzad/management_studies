@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -7,6 +8,8 @@ import 'package:shimmer/shimmer.dart';
 import 'package:side_sheet/side_sheet.dart';
 import 'package:syncfusion_flutter_datepicker/datepicker.dart';
 import 'package:uuid/uuid.dart';
+import '../isar_storage/homework_records_model.dart';
+import '../main.dart';
 import '../sliding_transition.dart';
 import 'homework_details.dart';
 
@@ -72,6 +75,16 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
   @override
   void dispose() {
     super.dispose();
+  }
+
+  Future<void> refreshHomeworkData() async {
+    setState(() {
+      _originalData.clear();
+      _filteredData.clear();
+      _lastDocument = null;
+      _allFetched = false;
+    });
+    await _fetchFirebaseData();
   }
 
   void _applyFilters() {
@@ -162,40 +175,94 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
     });
   }
 
+  Future<String> _getUserRole() async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) return 'guest';
+
+    try {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(currentUser.uid)
+          .get();
+
+      return userDoc.data()?['role'] ?? 'guest';
+    } catch (e) {
+      print('Error getting user role: $e');
+      return 'guest';
+    }
+  }
+
   Future<void> _fetchFirebaseData() async {
-    if (_isLoading || _allFetched) return;
+    if (_isLoading || _allFetched) {
+      print("loading: $_isLoading, allFetched: $_allFetched");
+      return;
+    }
 
     setState(() {
       _isLoading = true;
     });
 
+    final User? currentUser = FirebaseAuth.instance.currentUser;
+
+    if (currentUser == null) {
+      setState(() {
+        _isLoading = false;
+      });
+      return;
+    }
+
+    final String userRole = await _getUserRole();
+
     try {
       await Future.delayed(Duration(milliseconds: 100));
 
-      if (_originalData.isEmpty) {
-        final querySnapshot = await FirebaseFirestore.instance
+      Query<Map<String, dynamic>> query;
+
+      if (userRole == 'Admin') {
+        query = FirebaseFirestore.instance
             .collection('homeworks')
-            .orderBy('deadline')
+            .orderBy('deadline');
+      } else if (userRole == 'Teacher' || userRole == 'Student') {
+        final userDocSnapshot = await FirebaseFirestore.instance
+            .collection('Users')
+            .doc(currentUser.uid)
             .get();
 
+        if (!userDocSnapshot.exists) {
+          print(" User document doesn't exist");
+          return;
+        }
+
+        final userDepartment = userDocSnapshot.data()?['department'];
+
+        if (userDepartment == null) {
+          print(" No department found for user");
+          return;
+        }
+
+        query = FirebaseFirestore.instance
+            .collection('homeworks')
+            .where('subject', isEqualTo: userDepartment)
+            .orderBy('deadline');
+      } else {
+        return;
+      }
+
+      if (_originalData.isEmpty) {
+        final querySnapshot = await query.get();
+
         setState(() {
-          _originalData = querySnapshot.docs
-              .map((doc) => HomeWorkDetailModel.fromMap(doc.data()))
-              .toList();
-
+          _originalData = querySnapshot.docs.map((doc) {
+            return HomeWorkDetailModel.fromMap(doc.data());
+          }).toList();
           _applyFilters();
-
           if (querySnapshot.docs.isNotEmpty) {
             _lastDocument = querySnapshot.docs.last;
           }
         });
       } else {
-        Query query = FirebaseFirestore.instance
-            .collection('homeworks')
-            .orderBy('deadline');
-
         if (_lastDocument != null) {
-          query = query.startAfterDocument(_lastDocument!); // Pagination
+          query = query.startAfterDocument(_lastDocument!);
         }
 
         final querySnapshot = await query.get();
@@ -206,19 +273,16 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
           });
         } else {
           setState(() {
-            _originalData.addAll(querySnapshot.docs
-                .map((doc) => HomeWorkDetailModel.fromMap(
-                doc.data() as Map<String, dynamic>))
-                .toList());
-
+            _originalData.addAll(querySnapshot.docs.map((doc) {
+              return HomeWorkDetailModel.fromMap(doc.data());
+            }).toList());
             _lastDocument = querySnapshot.docs.last;
-
             _applyFilters();
           });
         }
       }
     } catch (e) {
-      debugPrint('Error fetching data: $e');
+      print("$e");
     } finally {
       setState(() {
         _isLoading = false;
@@ -257,7 +321,7 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
                                 padding: const EdgeInsets.all(16.0),
                                 child: Row(
                                   mainAxisAlignment:
-                                  MainAxisAlignment.spaceBetween,
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text(
                                       "Filters",
@@ -286,9 +350,9 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
                                       padding: const EdgeInsets.all(16.0),
                                       child: Column(
                                         mainAxisAlignment:
-                                        MainAxisAlignment.start,
+                                            MainAxisAlignment.start,
                                         crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Text(
                                             "Select a Subject: ",
@@ -313,7 +377,7 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
                                       padding: const EdgeInsets.all(16.0),
                                       child: Column(
                                         crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Text(
                                             "Select a Status",
@@ -329,7 +393,7 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
                                           Wrap(
                                             spacing: 14,
                                             alignment:
-                                            WrapAlignment.spaceEvenly,
+                                                WrapAlignment.spaceEvenly,
                                             children: [
                                               ChoiceChip(
                                                 label: Text("All"),
@@ -340,11 +404,11 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
                                                       : Colors.black,
                                                 ),
                                                 selected:
-                                                selectedStatus == "All",
+                                                    selectedStatus == "All",
                                                 selectedColor:
-                                                Colors.blueGrey.shade600,
+                                                    Colors.blueGrey.shade600,
                                                 backgroundColor:
-                                                Colors.blueGrey.shade200,
+                                                    Colors.blueGrey.shade200,
                                                 onSelected: (bool selected) {
                                                   setState(() {
                                                     selectedStatus = selected
@@ -360,16 +424,16 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
                                                 labelStyle: TextStyle(
                                                   fontWeight: FontWeight.bold,
                                                   color: selectedStatus ==
-                                                      "Completed"
+                                                          "Completed"
                                                       ? Colors.white
                                                       : Colors.black,
                                                 ),
                                                 selected: selectedStatus ==
                                                     "Completed",
                                                 selectedColor:
-                                                Colors.green.shade600,
+                                                    Colors.green.shade600,
                                                 backgroundColor:
-                                                Colors.green.shade200,
+                                                    Colors.green.shade200,
                                                 onSelected: (bool selected) {
                                                   setState(() {
                                                     selectedStatus = selected
@@ -385,16 +449,16 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
                                                 labelStyle: TextStyle(
                                                   fontWeight: FontWeight.bold,
                                                   color: selectedStatus ==
-                                                      "Pending"
+                                                          "Pending"
                                                       ? Colors.white
                                                       : Colors.black,
                                                 ),
                                                 selected:
-                                                selectedStatus == "Pending",
+                                                    selectedStatus == "Pending",
                                                 selectedColor:
-                                                Colors.red.shade600,
+                                                    Colors.red.shade600,
                                                 backgroundColor:
-                                                Colors.red.shade200,
+                                                    Colors.red.shade200,
                                                 onSelected: (bool selected) {
                                                   setState(() {
                                                     selectedStatus = selected
@@ -417,7 +481,7 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
                                         decoration: BoxDecoration(
                                           color: Colors.grey[100],
                                           borderRadius:
-                                          BorderRadius.circular(8),
+                                              BorderRadius.circular(8),
                                         ),
                                         child: Padding(
                                           padding: const EdgeInsets.all(16.0),
@@ -425,16 +489,16 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
                                             decoration: BoxDecoration(
                                               color: Colors.grey[100],
                                               borderRadius:
-                                              BorderRadius.circular(8),
+                                                  BorderRadius.circular(8),
                                             ),
                                             child: SfDateRangePicker(
                                               onSelectionChanged:
-                                              _onSelectionChanged,
+                                                  _onSelectionChanged,
                                               selectionMode:
-                                              DateRangePickerSelectionMode
-                                                  .range,
+                                                  DateRangePickerSelectionMode
+                                                      .range,
                                               initialSelectedRange:
-                                              PickerDateRange(
+                                                  PickerDateRange(
                                                 DateTime.now(),
                                                 DateTime.now()
                                                     .add(Duration(days: 1)),
@@ -519,15 +583,15 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
               height: 5,
             ),
             Expanded(child: _buildHomeworkList(_filteredData)),
-            if (role == 'Admin' || role == 'Teacher')
+            if (role == 'Teacher')
               Container(
                 height: 44,
                 width: MediaQuery.of(context).size.width,
-                margin: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     foregroundColor: Colors.white,
-                    backgroundColor: Color(0xff3e948e),
+                    backgroundColor: const Color(0xff3e948e),
                     elevation: 5,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(6),
@@ -535,9 +599,11 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
                   ),
                   onPressed: () {
                     Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => HomeWorkDetails()));
+                      context,
+                      SlidingPageTransitionRL(page: HomeWorkDetails()),
+                    ).then((_) {
+                      refreshHomeworkData();
+                    });
                   },
                   child: const Text(
                     'Add data',
@@ -558,7 +624,8 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
     }
 
     if (_isLoading && records.isEmpty) {
-      return Center(child: Center(
+      return Center(
+          child: Center(
         child: Material(
           child: Shimmer.fromColors(
             baseColor: Colors.grey[400]!,
@@ -630,11 +697,11 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
             homework.title,
             DateFormat('dd-MM-yyyy').format(homework.deadline),
             homework.status,
-                () {
+            () {
               Navigator.push(
                 context,
                 SlidingPageTransitionRL(
-                    page: HomeworkDetails(docId: homework.docid)),
+                    page: HomeworkDetailsPage(docId: homework.docid)),
               );
             },
           ),
@@ -697,7 +764,7 @@ class CustomStudentTile extends StatelessWidget {
         onTap: ontap,
         title: Text(subject,
             style:
-            TextStyle(fontWeight: FontWeight.bold, color: Colors.black87)),
+                TextStyle(fontWeight: FontWeight.bold, color: Colors.black87)),
         subtitle: Container(
           width: MediaQuery.of(context).size.width * 0.7,
           padding: const EdgeInsets.only(bottom: 4.0),
@@ -749,85 +816,130 @@ class _HomeWorkDetailsState extends State<HomeWorkDetails> {
   TextEditingController _assignedby = TextEditingController();
   TextEditingController _description = TextEditingController();
   TextEditingController _estimatedtime = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final TextEditingController _departmentController = TextEditingController();
+
+  String? _selectedDepartment;
+  String? _selectedTeacherName;
+  String? _selectedTeacher;
+  List<String> _departments = [];
+  List<Map<String, String>> _teachers = [];
+  bool _isLoading = true;
 
   Future<void> addHomeworkToFirestore(
       String title, String subject, DateTime deadline, String status) async {
     final firestore = FirebaseFirestore.instance;
-
-    List<String> keywords = _generateKeywords(title, subject);
 
     await firestore.collection('homeworks').add({
       'title': title,
       'subject': subject,
       'deadline': Timestamp.fromDate(deadline),
       'status': status,
-      'keywords': keywords,
     });
   }
 
-  List<String> _generateKeywords(String title, String subject) {
-    List<String> keywords = [];
-
-    void _addToKeywords(String text) {
-      text = text.toLowerCase();
-      for (int i = 1; i <= text.length; i++) {
-        keywords.add(text.substring(0, i));
-      }
-    }
-
-    _addToKeywords(title);
-    _addToKeywords(subject);
-
-    return keywords.toSet().toList();
+  Future<bool> isConnected() async {
+    var result = await Connectivity().checkConnectivity();
+    return result != ConnectivityResult.none;
   }
 
   Future<void> _submitnewData() async {
-    final subject = _subject.text;
-    final title = _title.text;
-    final deadline = _deadlines.text;
-    final status = _status.text;
-    final assignedby = _assignedby.text;
-    final description = _description.text;
-    final estimatedtime = _estimatedtime.text;
+    if (!_formKey.currentState!.validate()) return;
+    final subject = _selectedDepartment ?? '';
+    final title = _title.text.trim();
+    final deadlineText = _deadlines.text.trim();
+    final status = _status.text.trim();
+    final assignedby = _selectedTeacherName;
+    final description = _description.text.trim();
+    final estimatedtime = _estimatedtime.text.trim();
     final documentid = Uuid().v4();
-    final docid = documentid;
 
-    if (status.isEmpty ||
-        deadline.isEmpty ||
-        title.isEmpty ||
-        subject.isEmpty ||
-        description.isEmpty ||
-        estimatedtime.isEmpty ||
-        assignedby.isEmpty) {
+    if (assignedby == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a teacher')),
+      );
       return;
     }
 
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        final deadlines = DateFormat('dd-MM-yyyy').parse(deadline);
-        final deadlineTimestamp = Timestamp.fromDate(deadlines);
-        await FirebaseFirestore.instance
-            .collection('homeworks')
-            .doc(docid)
-            .set({
-          'status': status,
-          'subject': subject,
-          'title': title,
-          'deadline': deadlineTimestamp,
-          'assignedby': assignedby,
-          'description': description,
-          'estimatedtime': estimatedtime,
-          'docid': docid,
-        });
-        addHomeworkToFirestore;
-        Navigator.pop(context);
-      }
-    } catch (error) {
-      print('Error adding data: $error');
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Error adding data')));
+    if (subject.isEmpty ||
+        title.isEmpty ||
+        deadlineText.isEmpty ||
+        status.isEmpty ||
+        assignedby.isEmpty ||
+        description.isEmpty ||
+        estimatedtime.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill all fields')),
+      );
+      return;
     }
+
+    final deadline = DateFormat('dd-MM-yyyy').parse(deadlineText);
+    final deadlineTimestamp = Timestamp.fromDate(deadline);
+
+    final homework = HomeworkRecordModel()
+      ..docid = documentid
+      ..subject = subject
+      ..title = title
+      ..deadline = deadline
+      ..status = status
+      ..assignedBy = assignedby
+      ..description = description
+      ..estimatedTime = estimatedtime;
+
+    await saveHomeworkToIsar(homework);
+    print('data saved to isar locally');
+    Navigator.pop(context);
+
+    bool online = await isConnected();
+
+    if (online) {
+      try {
+        final user = FirebaseAuth.instance.currentUser;
+        if (user != null) {
+          await FirebaseFirestore.instance
+              .collection('homeworks')
+              .doc(documentid)
+              .set({
+            'status': status,
+            'subject': subject,
+            'title': title,
+            'deadline': deadlineTimestamp,
+            'assignedby': assignedby,
+            'description': description,
+            'estimatedtime': estimatedtime,
+            'docid': documentid,
+          });
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Homework added successfully')),
+          );
+          print('data saved to firestore');
+          Navigator.pop(context);
+        }
+      } catch (error) {
+        print('Error adding data: $error');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error adding data: $error')),
+        );
+      }
+    }
+  }
+
+  Future<void> saveHomeworkToIsar(HomeworkRecordModel homework) async {
+    await isar.writeTxn(() async {
+      await isar.homeworkRecordModels.put(homework);
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchTeacherData();
+
+    _departmentController.text =
+        _selectedDepartment ?? 'No department selected';
   }
 
   Future<void> _selectDate(BuildContext context) async {
@@ -845,6 +957,71 @@ class _HomeWorkDetailsState extends State<HomeWorkDetails> {
     }
   }
 
+  Future<String> _getUserRole() async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) return 'guest';
+
+    try {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(currentUser.uid)
+          .get();
+
+      return userDoc.data()?['role'] ?? 'guest';
+    } catch (e) {
+      print('Error getting user role: $e');
+      return 'guest';
+    }
+  }
+
+  void _updateDepartment(String? dept) {
+    setState(() {
+      _selectedDepartment = dept;
+    });
+  }
+
+  void _updateTeacher(String? teacher) {
+    setState(() {
+      _selectedTeacherName = teacher;
+    });
+  }
+
+  Future<void> _fetchTeacherData() async {
+    final userRole = await _getUserRole();
+    QuerySnapshot teacherSnapshot;
+
+    if (userRole == 'Admin') {
+      teacherSnapshot =
+          await FirebaseFirestore.instance.collection('Users').get();
+    } else if (userRole == 'Teacher') {
+      teacherSnapshot = await FirebaseFirestore.instance
+          .collection('Users')
+          .where('id', isEqualTo: FirebaseAuth.instance.currentUser?.uid)
+          .get();
+    } else {
+      teacherSnapshot = await FirebaseFirestore.instance
+          .collection('Users')
+          .where('role', isEqualTo: 'Teacher')
+          .get();
+    }
+
+    setState(() {
+      _teachers = teacherSnapshot.docs
+          .map((doc) => doc.data() as Map<String, String>)
+          .toList();
+    });
+  }
+
+  @override
+  void dispose() {
+    _title.dispose();
+    _description.dispose();
+    _deadlines.dispose();
+    _status.dispose();
+    _estimatedtime.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -854,75 +1031,244 @@ class _HomeWorkDetailsState extends State<HomeWorkDetails> {
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12),
-          child: Column(
-            children: [
-              TextField(
-                controller: _subject,
-                decoration: const InputDecoration(labelText: 'Subject'),
-              ),
-              TextField(
-                controller: _title,
-                decoration: const InputDecoration(labelText: 'Title'),
-              ),
-              TextField(
-                controller: _description,
-                decoration: const InputDecoration(labelText: 'Description'),
-              ),
-              TextField(
-                controller: _deadlines,
-                decoration: const InputDecoration(labelText: 'Deadline'),
-                readOnly: true,
-                onTap: () => _selectDate(context),
-              ),
-              DropdownButtonFormField<String>(
-                value: _status.text.isEmpty ? null : _status.text,
-                decoration: const InputDecoration(labelText: 'Status'),
-                items: const [
-                  DropdownMenuItem(
-                      value: "Completed", child: Text("Completed")),
-                  DropdownMenuItem(value: "Pending", child: Text("Pending")),
-                ],
-                onChanged: (String? newValue) {
-                  if (newValue != null) {
-                    _status.text = newValue;
-                  }
-                },
-              ),
-              TextField(
-                controller: _assignedby,
-                decoration: const InputDecoration(labelText: 'Assigned By'),
-              ),
-              TextField(
-                controller: _estimatedtime,
-                decoration: const InputDecoration(labelText: 'Estimated Time'),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12.0),
-                child: Container(
-                  height: 40,
-                  width: MediaQuery.of(context).size.width,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      foregroundColor: Colors.white,
-                      backgroundColor: Color(0xff3e948e),
-                      elevation: 5,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(6),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              children: [
+                TeacherInfoWidget(
+                  onTeacherSelected: _updateTeacher,
+                  onDept: _updateDepartment,
+                ),
+                TextFormField(
+                  controller: _title,
+                  decoration: const InputDecoration(labelText: 'Title'),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter a title';
+                    }
+                    if (value.length < 3) {
+                      return 'Title must be at least 3 characters long';
+                    }
+                    return null;
+                  },
+                ),
+                TextFormField(
+                  controller: _description,
+                  decoration: const InputDecoration(labelText: 'Description'),
+                  maxLines: 3,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter a description';
+                    }
+                    if (value.length < 10) {
+                      return 'Description must be at least 10 characters long';
+                    }
+                    return null;
+                  },
+                ),
+                TextFormField(
+                  controller: _deadlines,
+                  decoration: const InputDecoration(labelText: 'Deadline'),
+                  readOnly: true,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please select a deadline';
+                    }
+                    return null;
+                  },
+                  onTap: () => _selectDate(context),
+                ),
+                DropdownButtonFormField<String>(
+                  value: _status.text.isEmpty ? null : _status.text,
+                  decoration: const InputDecoration(labelText: 'Status'),
+                  items: const [
+                    DropdownMenuItem(
+                        value: "Completed", child: Text("Completed")),
+                    DropdownMenuItem(value: "Pending", child: Text("Pending")),
+                  ],
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please select a status';
+                    }
+                    return null;
+                  },
+                  onChanged: (String? newValue) {
+                    if (newValue != null) {
+                      _status.text = newValue;
+                    }
+                  },
+                ),
+                TextFormField(
+                  controller: _estimatedtime,
+                  decoration: const InputDecoration(
+                      labelText: 'Estimated Time', helperText: 'In Days'),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter estimated time';
+                    }
+                    if (!RegExp(r'^\d+$').hasMatch(value)) {
+                      return 'Please enter a valid number';
+                    }
+                    return null;
+                  },
+                  keyboardType: TextInputType.number,
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12.0),
+                  child: SizedBox(
+                    height: 40,
+                    width: MediaQuery.of(context).size.width,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        backgroundColor: const Color(0xff3e948e),
+                        elevation: 5,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(6),
+                        ),
                       ),
-                    ),
-                    onPressed: _submitnewData,
-                    child: const Text(
-                      'Submit',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                      onPressed: _submitnewData,
+                      child: const Text(
+                        'Submit',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
     );
+  }
+}
+
+class TeacherInfoWidget extends StatefulWidget {
+  final Function(String?) onTeacherSelected;
+  final Function(String?) onDept;
+
+  const TeacherInfoWidget({
+    Key? key,
+    required this.onTeacherSelected,
+    required this.onDept,
+  }) : super(key: key);
+
+  @override
+  _TeacherInfoWidgetState createState() => _TeacherInfoWidgetState();
+}
+
+class _TeacherInfoWidgetState extends State<TeacherInfoWidget> {
+  final TextEditingController _teacherNameController = TextEditingController();
+  final TextEditingController _departmentController = TextEditingController();
+
+  String? _selectedTeacher;
+  String? _selectedTeacherName;
+  String? _selectedDepartment;
+  List<Map<String, String>> _teachers = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchTeacherData();
+  }
+
+  Future<String> _getUserRole() async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) {
+      return 'guest';
+    }
+
+    try {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(currentUser.uid)
+          .get();
+      return userDoc.data()?['role'] ?? 'guest';
+    } catch (e) {
+      return 'guest';
+    }
+  }
+
+  Future<void> _fetchTeacherData() async {
+    final userRole = await _getUserRole();
+
+    QuerySnapshot teacherSnapshot;
+    try {
+      if (userRole == 'Admin') {
+        teacherSnapshot =
+            await FirebaseFirestore.instance.collection('Users').get();
+      } else if (userRole == 'Teacher') {
+        teacherSnapshot = await FirebaseFirestore.instance
+            .collection('Users')
+            .where(FieldPath.documentId,
+                isEqualTo: FirebaseAuth.instance.currentUser?.uid)
+            .get();
+      } else {
+        teacherSnapshot = await FirebaseFirestore.instance
+            .collection('Users')
+            .where('role', isEqualTo: 'Teacher')
+            .get();
+      }
+
+      final teachersData = teacherSnapshot.docs.map((doc) {
+        return doc.data() as Map<String, dynamic>;
+      }).map((data) {
+        return data.map((key, value) => MapEntry(key, value.toString()));
+      }).toList();
+
+      setState(() {
+        _teachers = teachersData;
+        if (_teachers.isNotEmpty) {
+          final teacher = _teachers.first;
+          _selectedTeacher = teacher['username'];
+          _selectedTeacherName = teacher['username'];
+          _selectedDepartment = teacher['department'];
+
+          _teacherNameController.text = _selectedTeacherName ?? '';
+          _departmentController.text =
+              _selectedDepartment ?? 'No department selected';
+          widget.onTeacherSelected(_selectedTeacherName);
+          widget.onDept(_selectedDepartment);
+        } else {
+          print("No teacher data found.");
+        }
+      });
+    } catch (e) {
+      print("Error fetching teacher data: $e");
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextFormField(
+          controller: _teacherNameController,
+          decoration: InputDecoration(
+            labelText: 'Assigned By',
+            // helperText: 'Teacher ID: ${_selectedTeacher ?? "N/A"}',
+          ),
+          readOnly: true,
+        ),
+        const SizedBox(height: 12),
+        TextFormField(
+          controller: _departmentController,
+          decoration: const InputDecoration(
+            labelText: 'Department',
+          ),
+          readOnly: true,
+        ),
+      ],
+    );
+  }
+
+  @override
+  void dispose() {
+    _teacherNameController.dispose();
+    _departmentController.dispose();
+    super.dispose();
   }
 }
 
@@ -966,7 +1312,7 @@ class _SubjectFilterButtonState extends State<SubjectFilterButton> {
   Future<List<String?>> _fetchSubjects() async {
     try {
       final querySnapshot =
-      await FirebaseFirestore.instance.collection('homeworks').get();
+          await FirebaseFirestore.instance.collection('homeworks').get();
       return querySnapshot.docs
           .map((doc) => doc.data()['subject'] as String?)
           .where((subject) => subject != null)
@@ -1012,7 +1358,7 @@ class _SubjectFilterButtonState extends State<SubjectFilterButton> {
               child: Text(
                 subject == 'All' ? 'All Subjects' : " ${subject}",
                 style:
-                const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
               ),
             );
           }).toList(),

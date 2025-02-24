@@ -11,16 +11,16 @@ import 'package:photo_view/photo_view.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 
-class HomeworkDetails extends StatefulWidget {
+class HomeworkDetailsPage extends StatefulWidget {
   final String docId;
 
-  const HomeworkDetails({super.key, required this.docId});
+  const HomeworkDetailsPage({super.key, required this.docId});
 
   @override
-  State<HomeworkDetails> createState() => _HomeworkDetailsState();
+  State<HomeworkDetailsPage> createState() => _HomeworkDetailsPageState();
 }
 
-class _HomeworkDetailsState extends State<HomeworkDetails> {
+class _HomeworkDetailsPageState extends State<HomeworkDetailsPage> {
   final FirebaseFirestore firestore = FirebaseFirestore.instance;
   String fileName = '';
   List<XFile> pickedFiles = [];

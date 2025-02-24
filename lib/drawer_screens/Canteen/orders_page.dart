@@ -1,4 +1,8 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -16,7 +20,14 @@ class OrdersPage extends StatefulWidget {
 
 class _OrdersPageState extends State<OrdersPage> {
   String? currentTransactionId;
+  bool isOnline = false;
+  StreamSubscription? _connectivitySubscription;
 
+  @override
+  void initState() {
+    checkInternet();
+     super.initState();
+  }
   Future<List<Map<String, dynamic>>> fetchRecentTransactions() async {
     User? user = FirebaseAuth.instance.currentUser;
     if (user == null) return [];
@@ -41,45 +52,9 @@ class _OrdersPageState extends State<OrdersPage> {
     }).toList();
   }
 
-  Future<void> deleteTransaction(String transactionId) async {
-    try {
-      DocumentReference transactionRef = FirebaseFirestore.instance
-          .collection('Transactions')
-          .doc(transactionId);
-
-      await deleteSubCollection(transactionRef, 'Items');
-      await transactionRef.delete();
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Transaction deleted successfully')),
-      );
-
-      print('Transaction and sub-collections deleted successfully.');
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to delete transaction: $e')),
-      );
-      print('Error deleting transaction: $e');
-    }
-  }
-
-  Future<void> deleteSubCollection(
-      DocumentReference parentDoc, String subCollection) async {
-    final subCollectionRef = parentDoc.collection(subCollection);
-    final subCollectionSnapshot = await subCollectionRef.get();
-
-    for (var doc in subCollectionSnapshot.docs) {
-      await doc.reference.delete();
-    }
-
-    print('All sub-collection documents deleted successfully.');
-  }
-
   Future<void> retryDraftOrder(String transactionId) async {
     await loadDraftOrder(transactionId);
-    if (Navigator.canPop(context)) {
-      Navigator.pop(context);
-    }
+    if (Navigator.canPop(context)) {}
 
     Navigator.pushReplacement(
       context,
@@ -128,6 +103,33 @@ class _OrdersPageState extends State<OrdersPage> {
     }
   }
 
+  Future<void> checkInternet() async {
+    bool connected = await hasInternet();
+    setState(() {
+      isOnline = connected;
+    });
+
+    _connectivitySubscription = Connectivity()
+        .onConnectivityChanged
+        .listen((List<ConnectivityResult> results) async {
+      bool connected =
+          results.any((result) => result != ConnectivityResult.none) &&
+              await hasInternet();
+      setState(() {
+        isOnline = connected;
+      });
+    });
+  }
+
+
+  Future<bool> hasInternet() async {
+    try {
+      final result = await InternetAddress.lookup('google.com');
+      return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
+    } catch (e) {
+      return false;
+    }
+  }
   @override
   Widget build(BuildContext context) {
     final User? user = FirebaseAuth.instance.currentUser;
@@ -183,10 +185,10 @@ class _OrdersPageState extends State<OrdersPage> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 margin:
-                const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                    const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
                 child: Padding(
                   padding:
-                  const EdgeInsets.symmetric(vertical: 16, horizontal: 18),
+                      const EdgeInsets.symmetric(vertical: 16, horizontal: 18),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -233,8 +235,8 @@ class _OrdersPageState extends State<OrdersPage> {
                               color: isSuccess
                                   ? Colors.green.shade600
                                   : isDraft
-                                  ? Colors.orange.shade600
-                                  : Colors.red.shade600,
+                                      ? Colors.orange.shade600
+                                      : Colors.red.shade600,
                               borderRadius: BorderRadius.circular(22),
                             ),
                             child: Center(
@@ -242,8 +244,8 @@ class _OrdersPageState extends State<OrdersPage> {
                                 isSuccess
                                     ? 'Success'
                                     : isDraft
-                                    ? 'Draft'
-                                    : 'Failed',
+                                        ? 'Draft'
+                                        : 'Failed',
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.bold,
@@ -263,8 +265,14 @@ class _OrdersPageState extends State<OrdersPage> {
                                   ),
                                 ),
                                 onPressed: () async {
+                                  // isOnline
+                                  //     ?
                                   await retryDraftOrder(
-                                      transaction['transactionId']);
+                                          transaction['transactionId']);
+                                      // : ScaffoldMessenger.of(context)
+                                      //     .showSnackBar(
+                                      //     SnackBar(
+                                      //         content: Text('No internet connection detected. Please check your connection and try again later.')),                                        );
                                 },
                                 child: const Text(
                                   'Retry Payment',

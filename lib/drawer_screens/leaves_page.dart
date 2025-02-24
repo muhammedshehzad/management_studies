@@ -1,10 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:new_school/isar_storage/leave_request_model.dart';
 import 'package:uuid/uuid.dart';
 
+import '../isar_storage/isar_user_service.dart';
 
 class LeavesPage extends StatefulWidget {
   const LeavesPage({super.key});
@@ -359,10 +362,29 @@ class _LeavesPageState extends State<LeavesPage> {
     });
   }
 
-  Stream<QuerySnapshot> fetchStudentLeaves() {
-    return FirebaseFirestore.instance
+  Stream<QuerySnapshot> fetchStudentLeaves() async* {
+    final User? currentUser = FirebaseAuth.instance.currentUser;
+
+    final userDocSnapshot = await FirebaseFirestore.instance
+        .collection('Users')
+        .doc(currentUser?.uid)
+        .get();
+
+    if (!userDocSnapshot.exists) {
+      yield* Stream.empty();
+      return;
+    }
+
+    final userDepartment = userDocSnapshot.data()?['department'];
+    if (userDepartment == null) {
+      yield* Stream.empty();
+      return;
+    }
+
+    yield* FirebaseFirestore.instance
         .collection('Leaves')
         .where("creator_role", isEqualTo: "student")
+        .where("userDepartment", isEqualTo: userDepartment)
         .orderBy("createdAt", descending: true)
         .snapshots();
   }
@@ -1542,6 +1564,10 @@ class _SubmitLeavePageState extends State<SubmitLeavePage> {
       });
     });
   }
+  Future<bool> isConnected() async {
+    var result = await Connectivity().checkConnectivity();
+    return result != ConnectivityResult.none;
+  }
 
   Future<void> submitLeaveData() async {
     if (key.currentState!.validate()) {
@@ -1550,9 +1576,9 @@ class _SubmitLeavePageState extends State<SubmitLeavePage> {
           isLoading = true;
           _autoValidate = true;
         });
+
         final currentUser = FirebaseAuth.instance.currentUser;
         if (currentUser == null) return;
-
 
         final userDoc = await FirebaseFirestore.instance
             .collection('Users')
@@ -1560,11 +1586,11 @@ class _SubmitLeavePageState extends State<SubmitLeavePage> {
             .get();
         if (!userDoc.exists) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text("User details not found in Firestore")),
+            const SnackBar(content: Text("User details not found in Firestore")),
           );
           return;
         }
+
         final userData = userDoc.data() as Map<String, dynamic>;
         final userDepartment = userData["department"] ?? "";
         final userName = userData["username"] ?? "";
@@ -1573,54 +1599,29 @@ class _SubmitLeavePageState extends State<SubmitLeavePage> {
         DateTime endDate = DateTime.parse(enddateController.text);
         int duration = endDate.difference(startDate).inDays + 1;
 
-        CollectionReference leavesCollection =
-            FirebaseFirestore.instance.collection('Leaves');
 
-        if (isEditing && leaveDocId != null) {
+        final leaveRequest = LeaveRequest()
+          ..userId = currentUser.uid
+          ..username = userName
+          ..userDepartment = userDepartment
+          ..creatorRole = creatorRole
+          ..leaveType = leavetypeController.text
+          ..startDate = startDate
+          ..endDate = endDate
+          ..leaveReason = leavereasonController.text
+          ..durationDays = duration
+          ..status = 'Pending'
+          ..isSynced = false;
 
-          await leavesCollection.doc(leaveDocId).update({
-            'leaveType': leavetypeController.text,
-            'startDate': startDate,
-            'endDate': endDate,
-            'leaveReason': leavereasonController.text,
-            'durationDays': duration,
-            'updatedAt': FieldValue.serverTimestamp(),
-          });
+        await IsarUserService.isar!.writeTxn(() async {
+          await IsarUserService.isar!.leaveRequests.put(leaveRequest);
+        });
+        Navigator.pop(context);
 
-
-          final updatedLeaveDoc = await leavesCollection.doc(leaveDocId).get();
-          final updatedData = updatedLeaveDoc.data() as Map<String, dynamic>?;
-          final ownerId = updatedData?['userId'];
-
-
-          if (ownerId != null && ownerId != currentUser.uid) {
-            final ownerDoc = await FirebaseFirestore.instance
-                .collection('Users')
-                .doc(ownerId)
-                .get();
-            final ownerData = ownerDoc.data();
-            final ownerRole = ownerData?['role'];
-            if (ownerRole != 'Admin') {
-
-              await sendNotification(
-                userId: ownerId,
-                title: 'Leave Request Updated',
-                message:
-                    'Your leave request has been updated by ${currentUser.email}.',
-                type: 'leave_update',
-                payload: {'leaveDocId': leaveDocId},
-              );
-            }
-          }
-
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Leave request updated successfully")),
-          );
-        } else {
-          // Create a new leave request.
-          var uuid = Uuid();
-          String generatedUUID = uuid.v4();
-          await leavesCollection.doc(generatedUUID).set({
+        bool online = await isConnected();
+        if (online) {
+          String generatedUUID = Uuid().v4();
+          await FirebaseFirestore.instance.collection('Leaves').doc(generatedUUID).set({
             'leavesid': generatedUUID,
             'userId': currentUser.uid,
             'username': userName,
@@ -1634,19 +1635,22 @@ class _SubmitLeavePageState extends State<SubmitLeavePage> {
             'durationDays': duration,
             'status': 'Pending'
           });
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text("Leave request submitted successfully")),
-          );
+
+
+          await IsarUserService.isar!.writeTxn(() async {
+            leaveRequest.isSynced = true;
+            await IsarUserService.isar!.leaveRequests.put(leaveRequest);
+          });
         }
 
-        if (!isEditing) {
-          leavetypeController.clear();
-          leavereasonController.clear();
-          startdateController.clear();
-          enddateController.clear();
-        }
-        Navigator.pop(context, true);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Leave request submitted successfully")),
+        );
+
+        leavetypeController.clear();
+        leavereasonController.clear();
+        startdateController.clear();
+        enddateController.clear();
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Error submitting leave request: $e")),
@@ -1894,7 +1898,6 @@ class _customstatusButtonState extends State<customstatusButton> {
 
   Future<void> _updateLeaveStatus(String newStatus) async {
     try {
-
       await FirebaseFirestore.instance
           .collection('Leaves')
           .doc(widget.leaveId)
@@ -1905,7 +1908,6 @@ class _customstatusButtonState extends State<customstatusButton> {
         showstatusButtons = false;
       });
 
-
       DocumentSnapshot leaveDoc = await FirebaseFirestore.instance
           .collection('Leaves')
           .doc(widget.leaveId)
@@ -1913,8 +1915,7 @@ class _customstatusButtonState extends State<customstatusButton> {
 
       if (leaveDoc.exists) {
         final leaveData = leaveDoc.data() as Map<String, dynamic>;
-        String requesterId =
-            leaveData['userId'] ?? "Unknown";
+        String requesterId = leaveData['userId'] ?? "Unknown";
         String username = leaveData['username'] ?? "Unknown";
         String role = leaveData['creator_role'] ?? "Unknown";
         String leaveType = leaveData['leaveType'] ?? "Unknown";

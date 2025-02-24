@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'notification_model.dart';
+import '../notifications/notification_model.dart';
 
 class NotificationsPage extends StatefulWidget {
   const NotificationsPage({Key? key}) : super(key: key);
@@ -42,12 +42,15 @@ class _NotificationsPageState extends State<NotificationsPage> {
             .orderBy('timestamp', descending: true)
             .snapshots(),
         builder: (context, snapshot) {
-          if (snapshot.hasError)
+          if (snapshot.hasError) {
             return Center(child: Text('Error: ${snapshot.error}'));
-          if (snapshot.connectionState == ConnectionState.waiting)
+          }
+          if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty)
+          }
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
             return const Center(child: Text('No notifications found'));
+          }
           return ListView.builder(
             itemCount: snapshot.data!.docs.length,
             itemBuilder: (context, index) {

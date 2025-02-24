@@ -4,8 +4,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:new_school/screens/login_page.dart';
-import 'package:new_school/screens/notification_model.dart';
-import 'package:new_school/screens/notification_services.dart';
+import 'package:new_school/notifications/notification_services.dart';
 import 'package:new_school/screens/notifications_page.dart';
 import 'package:new_school/screens/profile_details_page.dart';
 import 'package:new_school/screens/profile_page.dart';
@@ -13,63 +12,41 @@ import 'package:new_school/screens/sign_in_page.dart';
 import 'package:new_school/screens/sign_up_page.dart';
 import 'package:new_school/settings/settings_page.dart';
 import 'package:new_school/settings/two-factor_authentication.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
 import 'Dashboard/dashboard.dart';
+import 'firebase_auth_implementation/firebase_options.dart';
+import 'isar_storage/isar_user_service.dart';
+import 'isar_storage/school_details_model.dart';
+import 'isar_storage/user_model.dart';
+import 'notifications/backservice.dart';
 import 'drawer_screens/Canteen/cart_provider.dart';
+import 'package:isar/isar.dart';
+
+// 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  ---github passkey---
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
-
+late Isar isar;
+//hello
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+  isar = await IsarUserService.init();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   await NotificationService.init();
+  await initializeService();
 
-  final User? currentUser = FirebaseAuth.instance.currentUser;
-  final String currentUserId = currentUser?.uid ?? "";
-
-  if (currentUserId.isNotEmpty) {
-    final QuerySnapshot snapshot = await FirebaseFirestore.instance
-        .collection('notifications')
-        .where('userId', isEqualTo: currentUserId)
-        .where('isNotified', isEqualTo: false)
-        .get();
-    for (var doc in snapshot.docs) {
-      final notification = NotificationModel.fromFirestore(doc);
-      await NotificationService.showInstantNotification(
-        notification.title,
-        notification.message,
-      );
-      doc.reference.update({'isNotified': true});
-    }
+  try {
+    await IsarUserService.init();
+  } catch (e) {
+    print(e);
   }
 
-  if (currentUserId.isNotEmpty) {
-    FirebaseFirestore.instance
-        .collection('notifications')
-        .where('userId', isEqualTo: currentUserId)
-        .where('isNotified', isEqualTo: false)
-        .snapshots()
-        .listen((snapshot) {
-      for (var change in snapshot.docChanges) {
-        if (change.type == DocumentChangeType.added) {
-          final notification = NotificationModel.fromFirestore(change.doc);
-          NotificationService.showInstantNotification(
-            notification.title,
-            notification.message,
-          );
-          change.doc.reference.update({'isNotified': true});
-        }
-      }
-    });
-  }
-
-
-  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  SharedPreferences prefs = await SharedPreferences.getInstance();
   final String? email = prefs.getString('email');
   final String? role = prefs.getString('role');
-
   runApp(
     MultiProvider(
       providers: [
@@ -79,10 +56,10 @@ Future<void> main() async {
         initialRoute: email == null
             ? '/signin'
             : role == 'Admin'
-            ? '/dashboardAdmin'
-            : role == 'Teacher'
-            ? '/dashboardTeacher'
-            : '/dashboardStudent',
+                ? '/dashboardAdmin'
+                : role == 'Teacher'
+                    ? '/dashboardTeacher'
+                    : '/dashboardStudent',
       ),
     ),
   );

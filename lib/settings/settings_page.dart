@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:new_school/screens/sign_up_page.dart';
 import 'package:new_school/settings/terms_of_use.dart';
 import 'package:new_school/settings/two-factor_authentication.dart';
 
@@ -105,7 +106,7 @@ class _SettingsPageState extends State<SettingsPage> {
               label: 'Logout',
               onPressed: () async {
                 final SharedPreferences prefs =
-                await SharedPreferences.getInstance();
+                    await SharedPreferences.getInstance();
                 await prefs.remove('email');
                 await prefs.remove('profileImagePath');
                 await prefs.remove('role');
@@ -113,8 +114,8 @@ class _SettingsPageState extends State<SettingsPage> {
 
                 Navigator.pushAndRemoveUntil(
                   context,
-                  MaterialPageRoute(builder: (context) => SignIn()),
-                      (Route<dynamic> route) => false,
+                  SlidingPageTransitionLR(page: SignIn()),
+                  (Route<dynamic> route) => false,
                 );
               },
               image: 'lib/assets/logout(1).png',

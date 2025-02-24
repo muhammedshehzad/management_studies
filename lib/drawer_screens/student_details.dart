@@ -2,24 +2,68 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:isar/isar.dart';
+import 'package:new_school/isar_storage/academic_records_model.dart';
+import '../isar_storage/isar_user_service.dart';
 import '../pdf_converter/pdf.dart';
 
 class StudentDetails extends StatefulWidget {
   final String docId;
+  final bool isOffline;
 
-  const StudentDetails({super.key, required this.docId});
+  const StudentDetails({
+    super.key,
+    required this.docId,
+    this.isOffline = false,
+  });
 
-  @override
   State<StudentDetails> createState() => _StudentDetailsState();
 }
 
 class _StudentDetailsState extends State<StudentDetails> {
   final FirebaseFirestore firestore = FirebaseFirestore.instance;
 
-  Future<DocumentSnapshot<Map<String, dynamic>>> fetchDetails() async {
-    return firestore.collection('records').doc(widget.docId).get();
+  Future<Map<String, dynamic>> fetchDetails() async {
+    if (widget.isOffline) {
+      final student = await IsarUserService.isar!.studentDetailModels
+          .where()
+          .uidEqualTo(widget.docId)
+          .findFirst();
+
+      if (student == null) {
+        throw Exception('Student record not found');
+      }
+
+      return {
+        'name': student.name,
+        'email': student.email,
+        'regno': student.registerNumber,
+        'academicyear': student.academicYear,
+        'admno': student.admissionNumber,
+        'admdate': student.admissionDate, // Ensure proper format
+        'department': student.department,
+        'hod': student.hod,
+        'fathername': student.fatherName,
+        'fatherjob': student.fatherOccupation,
+        'fatherphone': student.fatherPhone,
+        'mothername': student.motherName,
+        'motherjob': student.motherOccupation,
+        'motherphone': student.motherPhone,
+        'score': student.score,
+        'percentage': student.percentage,
+        'grade': student.grade,
+        'status': student.status,
+      };
+    } else {
+      final doc = await firestore.collection('records').doc(widget.docId).get();
+      if (!doc.exists) {
+        throw Exception('Student record not found');
+      }
+      return doc.data()!;
+    }
   }
 
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -28,8 +72,20 @@ class _StudentDetailsState extends State<StudentDetails> {
         actions: [
           IconButton(
             onPressed: () async {
-              final snapshot = await fetchDetails();
-              final data = snapshot.data()!;
+              final data = await fetchDetails();
+
+              String admissionDate;
+              if (data['admdate'] is Timestamp) {
+                admissionDate = DateFormat('dd-MM-yyyy')
+                    .format((data['admdate'] as Timestamp).toDate());
+              } else if (data['admdate'] is String) {
+                admissionDate = data['admdate'];
+              } else if (data['admdate'] is DateTime) {
+                admissionDate = DateFormat('dd-MM-yyyy')
+                    .format(data['admdate'] as DateTime);
+              } else {
+                admissionDate = 'N/A';
+              }
 
               final studentData = {
                 'name': data['name'] ?? 'N/A',
@@ -37,10 +93,7 @@ class _StudentDetailsState extends State<StudentDetails> {
                 'regno': data['regno'] ?? 'N/A',
                 'academicyear': data['academicyear'] ?? 'N/A',
                 'admno': data['admno'] ?? 'N/A',
-                'admdate': (data['admdate'] as Timestamp)
-                    .toDate()
-                    .toLocal()
-                    .toString(),
+                'admdate': admissionDate,
                 'department': data['department'] ?? 'N/A',
                 'hod': data['hod'] ?? 'N/A',
                 'fathername': data['fathername'] ?? 'N/A',
@@ -66,7 +119,7 @@ class _StudentDetailsState extends State<StudentDetails> {
           ),
         ],
       ),
-      body: FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      body: FutureBuilder<Map<String, dynamic>>(
         future: fetchDetails(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -77,7 +130,7 @@ class _StudentDetailsState extends State<StudentDetails> {
             return Center(child: Text("Error: ${snapshot.error}"));
           }
 
-          if (!snapshot.hasData || !snapshot.data!.exists) {
+          if (!snapshot.hasData) {
             return const Center(
               child: Text(
                 'No record found.',
@@ -86,7 +139,7 @@ class _StudentDetailsState extends State<StudentDetails> {
             );
           }
 
-          final data = snapshot.data!.data()!;
+          final data = snapshot.data!;
 
           final sections = [
             [
@@ -98,12 +151,14 @@ class _StudentDetailsState extends State<StudentDetails> {
               CustomRow2("Academic Year", data['academicyear'] ?? 'N/A'),
               CustomRow2("Admission Number", data['admno'] ?? 'N/A'),
               CustomRow2(
-                "Date of Admission",
-                (data['admdate'] != null && data['admdate'] is Timestamp)
-                    ? DateFormat('dd-MM-yyyy').format(
-                        (data['admdate'] as Timestamp).toDate().toLocal())
-                    : 'N/A',
-              ),
+                  "Date of Admission",
+                  data['admdate'] is Timestamp
+                      ? DateFormat('dd-MM-yyyy')
+                          .format((data['admdate'] as Timestamp).toDate())
+                      : data['admdate'] is DateTime
+                          ? DateFormat('dd-MM-yyyy')
+                              .format(data['admdate'] as DateTime)
+                          : data['admdate']?.toString() ?? 'N/A'),
             ],
             [
               CustomRow2("Department", data['department'] ?? 'N/A'),
