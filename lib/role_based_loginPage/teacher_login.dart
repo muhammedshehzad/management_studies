@@ -20,7 +20,13 @@ class _TeacherLoginState extends State<TeacherLogin> {
     try {
       if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Please fill in all fields')),
+          SnackBar(content: Text('Please fill in all fields'),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            margin: const EdgeInsets.all(10),
+            duration: const Duration(seconds: 2),),
         );
         return;
       }

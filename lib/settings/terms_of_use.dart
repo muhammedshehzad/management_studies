@@ -14,7 +14,7 @@ class _TermsOfUseState extends State<TermsOfUse> {
       appBar: AppBar(),
       body: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12.0),
+          padding: const EdgeInsets.symmetric(horizontal: 12.0,vertical: 12),
           child: Column(
           children: [
             RichText(

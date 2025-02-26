@@ -75,7 +75,16 @@ class _ProfileDetailsPageState extends State<ProfileDetailsPage> {
       await imageUpload();
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No image selected.')),
+        SnackBar(
+          content: const Text('No image selected.'),
+          backgroundColor: Colors.red.shade500,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+          margin: const EdgeInsets.all(10),
+          duration: const Duration(seconds: 2),
+        ),
       );
     }
   }
@@ -106,7 +115,16 @@ class _ProfileDetailsPageState extends State<ProfileDetailsPage> {
         isUploading = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to upload image to Cloudinary.')),
+        SnackBar(
+          content: Text('Failed to upload image to Cloudinary.'),
+          backgroundColor: Colors.red.shade500,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+          margin: const EdgeInsets.all(10),
+          duration: const Duration(seconds: 2),
+        ),
       );
       return null;
     }
@@ -268,20 +286,38 @@ class _ProfileDetailsPageState extends State<ProfileDetailsPage> {
           });
 
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("User details updated successfully!")),
+             SnackBar(content: Text("User details updated successfully!"),   backgroundColor: Colors.green.shade500,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              margin: const EdgeInsets.all(10),
+              duration: const Duration(seconds: 2),),
           );
         }
       } catch (e) {
         print("Error updating Firestore: $e");
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Failed to update user online.")),
+           SnackBar(content: Text("Failed to update user online."), backgroundColor: Colors.red.shade500,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            margin: const EdgeInsets.all(10),
+            duration: const Duration(seconds: 2),),
         );
       }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+         SnackBar(
             content: Text(
-                "Offline: Changes saved locally and will sync when online.")),
+                "Offline: Changes saved locally and will sync when online."),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+          margin: const EdgeInsets.all(10),
+          duration: const Duration(seconds: 2),),
       );
     }
   }
@@ -367,6 +403,7 @@ class _ProfileDetailsPageState extends State<ProfileDetailsPage> {
             : SingleChildScrollView(
                 child: Column(
                   children: [
+                    const SizedBox(height: 10),
                     GestureDetector(
                       onTap: isEditing
                           ? _pickImage

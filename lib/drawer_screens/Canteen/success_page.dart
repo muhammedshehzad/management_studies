@@ -1,21 +1,19 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:new_school/drawer_screens/Canteen/canteen_page.dart';
-import 'package:new_school/drawer_screens/Canteen/cart_page.dart';
 import 'package:new_school/drawer_screens/Canteen/view_details.dart';
-
 import '../../sliding_transition.dart';
 import 'invoice_page.dart';
 
 class PaymentSuccessPage extends StatelessWidget {
-  const PaymentSuccessPage({super.key});
+  final String transactionId;
+
+  const PaymentSuccessPage({Key? key, required this.transactionId}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.green.shade100,
       appBar: AppBar(
-        title: Text(
+        title: const Text(
           'Payment Status',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
@@ -36,7 +34,7 @@ class PaymentSuccessPage extends StatelessWidget {
                   color: Colors.black.withOpacity(0.2),
                   spreadRadius: 4,
                   blurRadius: 10,
-                  offset: Offset(0, 4), // Shadow position
+                  offset: const Offset(0, 4),
                 ),
               ],
             ),
@@ -46,21 +44,21 @@ class PaymentSuccessPage extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Icon(
+                  const Icon(
                     Icons.check_circle_rounded,
                     size: 80,
                     color: Colors.white,
                   ),
-                  SizedBox(height: 12),
-                  Text(
+                  const SizedBox(height: 12),
+                  const Text(
                     'Payment Successful!',
                     style: TextStyle(
                         fontSize: 22,
                         color: Colors.white,
                         fontWeight: FontWeight.bold),
                   ),
-                  SizedBox(height: 10),
-                  Text(
+                  const SizedBox(height: 10),
+                  const Text(
                     'Your transaction has been completed successfully.',
                     style: TextStyle(
                       fontSize: 16,
@@ -68,7 +66,7 @@ class PaymentSuccessPage extends StatelessWidget {
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -76,9 +74,9 @@ class PaymentSuccessPage extends StatelessWidget {
                         children: [
                           Padding(
                             padding: const EdgeInsets.symmetric(vertical: 12.0),
-                            child: Container(
+                            child: SizedBox(
                               height: 40,
-                              width: MediaQuery.of(context).size.width * .27,
+                              width: MediaQuery.of(context).size.width * 0.27,
                               child: ElevatedButton(
                                 style: ElevatedButton.styleFrom(
                                   foregroundColor: Colors.black54,
@@ -101,9 +99,9 @@ class PaymentSuccessPage extends StatelessWidget {
                           ),
                         ],
                       ),
-                      Spacer(),
+                      const Spacer(),
                       SizedBox(
-                        width: MediaQuery.of(context).size.width * .5,
+                        width: MediaQuery.of(context).size.width * 0.5,
                         child: ElevatedButton(
                           style: ElevatedButton.styleFrom(
                             foregroundColor: Colors.black54,
@@ -114,13 +112,10 @@ class PaymentSuccessPage extends StatelessWidget {
                             ),
                           ),
                           onPressed: () {
-                            User? user = FirebaseAuth.instance.currentUser;
                             Navigator.push(
                               context,
                               SlidingPageTransitionRL(
-                                page: DownloadInvoice(
-                                  userId: user!.uid,
-                                ),
+                                page: DownloadInvoice(transactionId: transactionId),
                               ),
                             );
                           },
@@ -132,7 +127,7 @@ class PaymentSuccessPage extends StatelessWidget {
                       ),
                     ],
                   ),
-                  Container(
+                  SizedBox(
                     height: 40,
                     width: MediaQuery.of(context).size.width,
                     child: ElevatedButton(

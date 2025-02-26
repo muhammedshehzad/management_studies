@@ -1,3 +1,7 @@
+import 'dart:async';
+import 'dart:io';
+
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:new_school/screens/sign_up_page.dart';
@@ -24,6 +28,41 @@ class _SettingsPageState extends State<SettingsPage> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController addressController = TextEditingController();
   final TextEditingController phoneController = TextEditingController();
+  bool isOnline = false;
+  StreamSubscription? _connectivitySubscription;
+
+  @override
+  void initState() {
+    checkInternet();
+    super.initState();
+  }
+
+  Future<void> checkInternet() async {
+    bool connected = await hasInternet();
+    setState(() {
+      isOnline = connected;
+    });
+
+    _connectivitySubscription = Connectivity()
+        .onConnectivityChanged
+        .listen((List<ConnectivityResult> results) async {
+      bool connected =
+          results.any((result) => result != ConnectivityResult.none) &&
+              await hasInternet();
+      setState(() {
+        isOnline = connected;
+      });
+    });
+  }
+
+  Future<bool> hasInternet() async {
+    try {
+      final result = await InternetAddress.lookup('google.com');
+      return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
+    } catch (e) {
+      return false;
+    }
+  }
 
   Widget build(BuildContext context) {
     return Scaffold(
@@ -37,7 +76,7 @@ class _SettingsPageState extends State<SettingsPage> {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            const SizedBox(height: 0),
+            const SizedBox(height: 12),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 18.0),
               child: Row(
@@ -105,18 +144,43 @@ class _SettingsPageState extends State<SettingsPage> {
             CustomTile(
               label: 'Logout',
               onPressed: () async {
-                final SharedPreferences prefs =
-                    await SharedPreferences.getInstance();
-                await prefs.remove('email');
-                await prefs.remove('profileImagePath');
-                await prefs.remove('role');
-                await FirebaseAuth.instance.signOut();
+                if (isOnline) {
+                  try {
+                    final SharedPreferences prefs =
+                        await SharedPreferences.getInstance();
+                    await prefs.remove('email');
+                    await prefs.remove('profileImagePath');
+                    await prefs.remove('role');
+                    await FirebaseAuth.instance.signOut();
 
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  SlidingPageTransitionLR(page: SignIn()),
-                  (Route<dynamic> route) => false,
-                );
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      SlidingPageTransitionLR(page: SignIn()),
+                      (Route<dynamic> route) => false,
+                    );
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                          content: Text('Logout failed. Please try again.')),
+                    );
+                  }
+                } else {
+                  checkInternet();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'No internet connection detected. Please check your connection and try again later.',
+                      ),
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      margin: const EdgeInsets.all(10),
+                      duration: const Duration(seconds: 2),
+                      backgroundColor: Colors.red.shade500,
+                    ),
+                  );
+                }
               },
               image: 'lib/assets/logout(1).png',
             ),

@@ -43,8 +43,6 @@ class _AcademicRecordsState extends State<AcademicRecords> {
   String? selectedFilter;
   List<DocumentSnapshot> filteredDeptRecords = [];
   List<DocumentSnapshot> allDptRecords = [];
-  bool _isOnline = false;
-  late Stream<ConnectivityResult> _connectivityStream;
   List<StudentDetailModel> localRecords = [];
   bool isOnline = false;
   StreamSubscription? _connectivitySubscription;
@@ -125,16 +123,6 @@ class _AcademicRecordsState extends State<AcademicRecords> {
       _filterDepartment = 'All';
       _fetchDepartments();
     });
-
-    isConnected().then((online) {
-      setState(() {
-        _isOnline = online;
-      });
-
-      if (!_isOnline) {
-        _fetchLocalData();
-      }
-    });
   }
 
   Future<String> _getUserRole() async {
@@ -155,43 +143,48 @@ class _AcademicRecordsState extends State<AcademicRecords> {
   }
 
   Future<void> _initializeData() async {
+    Query<Map<String, dynamic>>? fetchedQuery;
+
     final User? currentUser = FirebaseAuth.instance.currentUser;
     final String currentUserId = currentUser?.uid ?? "";
     final userRole = await _getUserRole();
+    await fetchDepartments();
 
-    setState(() async {
-      _filterGrade = 'All';
-      _filterDepartment = 'All';
-      fetchDepartments();
+    if (userRole == 'Student' && currentUser != null) {
+      fetchedQuery = FirebaseFirestore.instance
+          .collection('records')
+          .where('userId', isEqualTo: currentUserId)
+          .orderBy('admdate', descending: true);
+      print('student list');
+    } else if (userRole == 'Teacher' && currentUser != null) {
+      final userDocSnapshot = await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(currentUser.uid)
+          .get();
 
-      if (userRole == 'Student' && currentUser != null) {
-        query = FirebaseFirestore.instance
-            .collection('records')
-            .where('userId', isEqualTo: currentUserId)
-            .orderBy('admdate', descending: true);
-        print('student list');
-      } else if (userRole == 'Teacher' && currentUser != null) {
-        final userDocSnapshot = await FirebaseFirestore.instance
-            .collection('Users')
-            .doc(currentUser.uid)
-            .get();
+      if (!userDocSnapshot.exists) return;
+      final userDepartment = userDocSnapshot.data()?['department'];
 
-        if (!userDocSnapshot.exists) return;
-        final userDepartment = userDocSnapshot.data()?['department'];
+      if (userDepartment == null) return;
+      fetchedQuery = FirebaseFirestore.instance
+          .collection('records')
+          .where('department', isEqualTo: userDepartment)
+          .orderBy('admdate', descending: true);
+      print('teacher list');
+    } else {
+      fetchedQuery = FirebaseFirestore.instance
+          .collection('records')
+          .orderBy('admdate', descending: true);
+      print('admin list');
+    }
 
-        if (userDepartment == null) return;
-        query = FirebaseFirestore.instance
-            .collection('records')
-            .where('department', isEqualTo: userDepartment)
-            .orderBy('admdate', descending: true);
-        print('teacher list');
-      } else {
-        query = FirebaseFirestore.instance
-            .collection('records')
-            .orderBy('admdate', descending: true);
-        print('admin list');
-      }
-    });
+    if (mounted) {
+      setState(() {
+        _filterGrade = 'All';
+        _filterDepartment = 'All';
+        query = fetchedQuery;
+      });
+    }
   }
 
   Future<void> checkInternet() async {
@@ -784,9 +777,19 @@ class _AcademicRecordsState extends State<AcademicRecords> {
                                     if (record.uid == null ||
                                         record.uid.isEmpty) {
                                       ScaffoldMessenger.of(context)
-                                          .showSnackBar(const SnackBar(
-                                              content:
-                                                  Text('no id is passed')));
+                                          .showSnackBar(
+                                        SnackBar(
+                                          content: Text('no id is passed'),
+                                          backgroundColor: Colors.red.shade500,
+                                          behavior: SnackBarBehavior.floating,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                          ),
+                                          margin: const EdgeInsets.all(10),
+                                          duration: const Duration(seconds: 2),
+                                        ),
+                                      );
                                       print('no passed ${record.uid}');
                                     } else {
                                       print(record.uid);
@@ -988,13 +991,29 @@ class _FormViewStudentsMarkState extends State<FormViewStudentsMark> {
           final uid = docRef.id;
           print('3');
           Navigator.pop(context);
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-              content: Text("Record added successfully online!")));
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text("Record added successfully online!"),
+            backgroundColor: Colors.green.shade500,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            margin: const EdgeInsets.all(10),
+            duration: const Duration(seconds: 2),
+          ));
         }
       } catch (error) {
         print('Firestore Error: $error');
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Error: $error')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Error: $error'),
+          backgroundColor: Colors.red.shade500,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+          margin: const EdgeInsets.all(10),
+          duration: const Duration(seconds: 2),
+        ));
       }
     } else {}
   }

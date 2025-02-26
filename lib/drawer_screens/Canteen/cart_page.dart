@@ -10,12 +10,124 @@ class CartPage extends StatefulWidget {
 }
 
 class _CartPageState extends State<CartPage> {
+  void _showClearAllConfirmation(BuildContext context) {
+    final cartProvider = context.read<CartProvider>();
+
+    if (cartProvider.cart.isNotEmpty) {
+      showDialog(
+        context: context,
+        builder: (BuildContext dialogContext) {
+          return AlertDialog(
+            // Customize shape and background
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            backgroundColor: Colors.white,
+            elevation: 8,
+            // Title styling
+            title: const Text(
+              'Confirm Clear All',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+            // Content styling with padding
+            content: const Padding(
+              padding: EdgeInsets.only(top: 8.0),
+              child: Text(
+                'Are you sure you want to remove all items from your cart? This action cannot be undone.',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.black54,
+                  height: 1.4, // Improved line spacing
+                ),
+              ),
+            ),
+            // Actions with custom styling
+            actionsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            actions: [
+              // Cancel Button
+              TextButton(
+                onPressed: () {
+                  Navigator.of(dialogContext).pop();
+                },
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.grey.shade700,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: const Text(
+                  'Cancel',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              // Clear Button
+              SizedBox(
+                height: 35,
+                child: ElevatedButton(
+                  onPressed: () {
+                    cartProvider.clearCart();
+                    Navigator.of(dialogContext).pop();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: const Text('Cart cleared successfully'),
+                        backgroundColor: Colors.green.shade600,
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        duration: const Duration(seconds: 2),
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    backgroundColor: Colors.red.shade600,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text(
+                    'Clear',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('No items in cart to clear'),
+          backgroundColor: Colors.red.shade600,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+          margin: const EdgeInsets.all(10),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.white,
         title: Text('Cart'),
         centerTitle: true,
       ),
@@ -33,8 +145,11 @@ class _CartPageState extends State<CartPage> {
                     height: MediaQuery.of(context).size.height,
                     width: MediaQuery.of(context).size.width,
                     child: Center(
-                      child: Image.asset(
-                        'lib/assets/food-cart.png',
+                      child: Opacity(
+                        opacity: .8,
+                        child: Image.asset(
+                          'lib/assets/food-cart.png',
+                        ),
                       ),
                     ),
                   ),
@@ -47,7 +162,7 @@ class _CartPageState extends State<CartPage> {
                 top: 0,
                 child: Padding(
                   padding:
-                  const EdgeInsets.symmetric(vertical: 12.0, horizontal: 8),
+                      const EdgeInsets.symmetric(vertical: 12.0, horizontal: 8),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -65,7 +180,7 @@ class _CartPageState extends State<CartPage> {
                         child: ConstrainedBox(
                           constraints: BoxConstraints(
                             maxHeight:
-                            MediaQuery.of(context).size.height * 0.64,
+                                MediaQuery.of(context).size.height * 0.64,
                           ),
                           child: Consumer<CartProvider>(
                             builder: (context, cartProvider, _) {
@@ -73,7 +188,7 @@ class _CartPageState extends State<CartPage> {
                                 return Center(
                                   child: Padding(
                                     padding:
-                                    const EdgeInsets.only(bottom: 200.0),
+                                        const EdgeInsets.only(bottom: 200.0),
                                     child: Text(
                                       'Please add items to the cart.',
                                       style: TextStyle(
@@ -87,36 +202,36 @@ class _CartPageState extends State<CartPage> {
                               } else {
                                 return ListView(
                                   children:
-                                  cartProvider.cart.entries.map((entry) {
+                                      cartProvider.cart.entries.map((entry) {
                                     final item = entry.value;
                                     return Padding(
                                       padding:
-                                      const EdgeInsets.only(bottom: 6.0),
+                                          const EdgeInsets.only(bottom: 6.0),
                                       child: Card(
                                         color: Colors.white,
                                         elevation: 3.0,
                                         shape: RoundedRectangleBorder(
                                           borderRadius:
-                                          BorderRadius.circular(10.0),
+                                              BorderRadius.circular(10.0),
                                         ),
                                         child: Stack(
                                           children: [
                                             Padding(
                                               padding:
-                                              const EdgeInsets.all(8.0),
+                                                  const EdgeInsets.all(8.0),
                                               child: Column(
                                                 crossAxisAlignment:
-                                                CrossAxisAlignment.start,
+                                                    CrossAxisAlignment.start,
                                                 children: [
                                                   Text(
                                                     item['name'],
                                                     style: TextStyle(
                                                       fontSize: 16.0,
                                                       fontWeight:
-                                                      FontWeight.bold,
+                                                          FontWeight.bold,
                                                     ),
                                                     overflow:
-                                                    TextOverflow.ellipsis,
+                                                        TextOverflow.ellipsis,
                                                   ),
                                                   Text(
                                                     'Price: ₹${item['price'].toStringAsFixed(2)}',
@@ -125,7 +240,7 @@ class _CartPageState extends State<CartPage> {
                                                       color: Colors.black,
                                                     ),
                                                     overflow:
-                                                    TextOverflow.ellipsis,
+                                                        TextOverflow.ellipsis,
                                                   ),
                                                   Text(
                                                     'Discount: ${(item['discount'] != null ? (item['discount'] * 100).toInt() : 0)}%',
@@ -134,32 +249,32 @@ class _CartPageState extends State<CartPage> {
                                                       color: Colors.black,
                                                     ),
                                                     overflow:
-                                                    TextOverflow.ellipsis,
+                                                        TextOverflow.ellipsis,
                                                   ),
                                                   Consumer<CartProvider>(
                                                     builder: (context,
-                                                        cartProvider, _) =>
+                                                            cartProvider, _) =>
                                                         Row(
-                                                          children: [
-                                                            Text(
-                                                              'Discounted Price: ',
-                                                              style: TextStyle(
-                                                                fontSize: 14.0,
-                                                                color: Colors.black,
-                                                              ),
-                                                            ),
-                                                            Text(
-                                                              '₹${cartProvider.calculateDiscountedPrice(item['price'] ?? 0, item['discount'] ?? 0)}',
-                                                              style: TextStyle(
-                                                                fontSize: 14.0,
-                                                                fontWeight:
-                                                                FontWeight.bold,
-                                                                color: Colors
-                                                                    .green.shade500,
-                                                              ),
-                                                            )
-                                                          ],
+                                                      children: [
+                                                        Text(
+                                                          'Discounted Price: ',
+                                                          style: TextStyle(
+                                                            fontSize: 14.0,
+                                                            color: Colors.black,
+                                                          ),
                                                         ),
+                                                        Text(
+                                                          '₹${cartProvider.calculateDiscountedPrice(item['price'] ?? 0, item['discount'] ?? 0)}',
+                                                          style: TextStyle(
+                                                            fontSize: 14.0,
+                                                            fontWeight:
+                                                                FontWeight.bold,
+                                                            color: Colors
+                                                                .green.shade500,
+                                                          ),
+                                                        )
+                                                      ],
+                                                    ),
                                                   ),
                                                 ],
                                               ),
@@ -173,7 +288,7 @@ class _CartPageState extends State<CartPage> {
                                                     fontWeight: FontWeight.bold,
                                                     fontSize: 18,
                                                     color:
-                                                    Colors.grey.shade600),
+                                                        Colors.grey.shade600),
                                               ),
                                             ),
                                             Positioned(
@@ -184,38 +299,38 @@ class _CartPageState extends State<CartPage> {
                                                 width: 100,
                                                 decoration: BoxDecoration(
                                                   borderRadius:
-                                                  BorderRadius.circular(8),
+                                                      BorderRadius.circular(8),
                                                 ),
                                                 child: Row(
                                                   mainAxisAlignment:
-                                                  MainAxisAlignment.center,
+                                                      MainAxisAlignment.center,
                                                   children: [
                                                     GestureDetector(
                                                       onTap: () {
                                                         String itemName =
-                                                        item['name'];
+                                                            item['name'];
                                                         context
                                                             .read<
-                                                            CartProvider>()
+                                                                CartProvider>()
                                                             .removeItem(
-                                                            itemName);
+                                                                itemName);
                                                       },
                                                       child: Container(
                                                         padding:
-                                                        EdgeInsets.all(6),
+                                                            EdgeInsets.all(6),
                                                         decoration:
-                                                        BoxDecoration(
+                                                            BoxDecoration(
                                                           color:
-                                                          Color(0xffe0e0e0),
+                                                              Color(0xffe0e0e0),
                                                           borderRadius:
-                                                          BorderRadius
-                                                              .circular(6),
+                                                              BorderRadius
+                                                                  .circular(6),
                                                         ),
                                                         child: Icon(
                                                           Icons.remove,
                                                           size: 14,
                                                           color:
-                                                          Color(0xff3e948e),
+                                                              Color(0xff3e948e),
                                                         ),
                                                       ),
                                                     ),
@@ -228,19 +343,19 @@ class _CartPageState extends State<CartPage> {
                                                         builder: (context,
                                                             cartProvider, _) {
                                                           int quantity = cartProvider
-                                                              .cart[
-                                                          item[
-                                                          'name']]
-                                                          ?[
-                                                          'quantity'] ??
+                                                                          .cart[
+                                                                      item[
+                                                                          'name']]
+                                                                  ?[
+                                                                  'quantity'] ??
                                                               0;
                                                           return Text(
                                                             '$quantity',
                                                             style: TextStyle(
                                                               fontSize: 14.0,
                                                               fontWeight:
-                                                              FontWeight
-                                                                  .bold,
+                                                                  FontWeight
+                                                                      .bold,
                                                               color: Colors
                                                                   .black87,
                                                             ),
@@ -251,32 +366,32 @@ class _CartPageState extends State<CartPage> {
                                                     GestureDetector(
                                                       onTap: () {
                                                         String itemName =
-                                                        item['name'];
+                                                            item['name'];
                                                         context
                                                             .read<
-                                                            CartProvider>()
+                                                                CartProvider>()
                                                             .addItem(
-                                                          itemName,
-                                                          item['price'],
-                                                          item['discount'],
-                                                        );
+                                                              itemName,
+                                                              item['price'],
+                                                              item['discount'],
+                                                            );
                                                       },
                                                       child: Container(
                                                         padding:
-                                                        EdgeInsets.all(6),
+                                                            EdgeInsets.all(6),
                                                         decoration:
-                                                        BoxDecoration(
+                                                            BoxDecoration(
                                                           color:
-                                                          Color(0xffe0e0e0),
+                                                              Color(0xffe0e0e0),
                                                           borderRadius:
-                                                          BorderRadius
-                                                              .circular(6),
+                                                              BorderRadius
+                                                                  .circular(6),
                                                         ),
                                                         child: Icon(
                                                           Icons.add,
                                                           size: 14,
                                                           color:
-                                                          Color(0xff3e948e),
+                                                              Color(0xff3e948e),
                                                         ),
                                                       ),
                                                     ),
@@ -312,88 +427,94 @@ class _CartPageState extends State<CartPage> {
             right: 0,
             child: Padding(
               padding: const EdgeInsets.only(left: 8.0, right: 8, bottom: 20),
-              child: Container(
-                height: 120,
-                decoration: BoxDecoration(
-                    color: Colors.teal.shade50,
-                    borderRadius: BorderRadius.circular(8)),
-                child: Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Consumer<CartProvider>(
-                            builder: (context, cartProvider, _) {
-                              return Text(
-                                'Total: ₹${cartProvider.calculateTotal().toStringAsFixed(2)}',
+              child: Card(
+                child: Container(
+                  height: 120,
+                  decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8)),
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Consumer<CartProvider>(
+                              builder: (context, cartProvider, _) {
+                                return Text(
+                                  'Total: ₹${cartProvider.calculateTotal().toStringAsFixed(2)}',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                );
+                              },
+                            ),
+                            TextButton(
+                              onPressed: () =>
+                                  _showClearAllConfirmation(context),
+                              child: Text(
+                                'Clear All',
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 16,
+                                  fontSize: 12,
+                                  color: Colors.red.shade600,
                                 ),
-                              );
-                            },
-                          ),
-                          TextButton(
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 8.0, right: 8),
+                        child: SizedBox(
+                          width: MediaQuery.of(context).size.width,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              foregroundColor: Colors.white,
+                              backgroundColor: Color(0xff3e948e),
+                              elevation: 3,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                            ),
                             onPressed: () {
-                              context.read<CartProvider>().clearCart();
+                              if (context.read<CartProvider>().cart.isEmpty) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    elevation: 5,
+                                    content: Text(
+                                        'Please add items to the cart before proceeding.'),
+                                    backgroundColor: Colors.red.shade600,behavior: SnackBarBehavior.floating,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    margin: const EdgeInsets.all(10),
+                                    duration: const Duration(seconds: 2),
+                                  ),
+                                );
+                              } else {
+                                Navigator.push(
+                                  context,
+                                  SlidingPageTransitionRL(
+                                    page: CheckoutPage(),
+                                  ),
+                                );
+                              }
                             },
                             child: Text(
-                              'Clear All',
+                              'Checkout Now',
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
-                                fontSize: 12,
-                                color: Colors.red.shade600,
+                                fontSize: 14,
                               ),
                             ),
                           ),
-                        ],
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(left: 8.0, right: 8),
-                      child: SizedBox(
-                        width: MediaQuery.of(context).size.width,
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            foregroundColor: Colors.white,
-                            backgroundColor: Color(0xff3e948e),
-                            elevation: 3,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                          ),
-                          onPressed: () {
-                            if (context.read<CartProvider>().cart.isEmpty) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  elevation: 5,
-                                  content: Text(
-                                      'Please add items to the cart before proceeding.'),
-                                  backgroundColor: Colors.red.shade600,
-                                ),
-                              );
-                            } else {
-                              Navigator.push(
-                                context,
-                                SlidingPageTransitionRL(
-                                  page: CheckoutPage(),
-                                ),
-                              );
-                            }
-                          },
-                          child: Text(
-                            'Checkout Now',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                          ),
                         ),
-                      ),
-                    )
-                  ],
+                      )
+                    ],
+                  ),
                 ),
               ),
             ),

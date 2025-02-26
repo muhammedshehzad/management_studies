@@ -156,17 +156,47 @@ class _SignInState extends State<SignIn> {
       final String userRole = await _getUserRole();
       Query<Map<String, dynamic>> query;
 
-      if (userRole == 'Student' || userRole == 'Teacher') {
+      if (userRole == 'Student') {
+        // Original student branch: fetch only leave records for the current student.
         query = FirebaseFirestore.instance
             .collection('Leaves')
             .where('userId', isEqualTo: currentUser.uid)
             .orderBy('createdAt', descending: true);
-        print("Fetching leave records for $userRole...");
+        print("Fetching leave records for Student...");
+      } else if (userRole == 'Teacher') {
+        final userDocSnapshot = await FirebaseFirestore.instance
+            .collection('Users')
+            .doc(currentUser.uid)
+            .get();
+
+        if (!userDocSnapshot.exists ||
+            userDocSnapshot.data()?['department'] == null) {
+          print("User department not found.");
+          return;
+        }
+
+        final userDepartment = userDocSnapshot.data()!['department'];
+
+        // Single query combining both conditions
+        query = FirebaseFirestore.instance
+            .collection('Leaves')
+            .where(Filter.or(
+              Filter('userId', isEqualTo: currentUser.uid),
+              Filter.and(
+                Filter('creator_role', isEqualTo: 'student'),
+                Filter('userDepartment', isEqualTo: userDepartment),
+              ),
+            ))
+            .orderBy('createdAt', descending: true);
+
+        print(
+            "Fetching leave records for $userRole in department: $userDepartment...");
       } else {
+        // (Optional) If additional roles exist, fallback to fetching all records.
         query = FirebaseFirestore.instance
             .collection('Leaves')
             .orderBy('createdAt', descending: true);
-        print("Fetching all leave records for Admin...");
+        print("Fetching all leave records...");
       }
 
       final snapshot = await query.get();
@@ -189,12 +219,15 @@ class _SignInState extends State<SignIn> {
 
         leaveRecords.add(LeaveRequest()
           ..userId = data['userId'] ?? ''
+          ..leavesId = data['leavesid'] ?? ''
           ..username = data['username'] ?? ''
           ..userDepartment = data['userDepartment'] ?? ''
           ..creatorRole = data['creator_role'] ?? ''
           ..leaveType = data['leaveType'] ?? ''
           ..startDate = startDate
           ..endDate = endDate
+          ..createdAt =
+              (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now()
           ..leaveReason = data['leaveReason'] ?? ''
           ..durationDays = data['durationDays'] ?? 0
           ..status = data['status'] ?? ''
@@ -558,16 +591,33 @@ class _SignInState extends State<SignIn> {
         syncTransactionsFirestoreToIsar();
 
         syncLeavesFirestoreToIsar();
+
         Navigator.pushReplacement(
             context, SlidingPageTransitionRL(page: Dashboard(role: role)));
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Sign-in successful')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Sign-in successful'),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+          margin: const EdgeInsets.all(10),
+          duration: const Duration(seconds: 2),
+          backgroundColor: Colors.green.shade500,
+        ));
       } else {
         throw 'User not found.';
       }
     } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Error: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Error: $e'),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+        margin: const EdgeInsets.all(10),
+        duration: const Duration(seconds: 2),
+        backgroundColor: Colors.red.shade500,
+      ));
     } finally {
       setState(() => isloading = false);
     }
@@ -577,108 +627,178 @@ class _SignInState extends State<SignIn> {
   Widget build(BuildContext context) {
     return Scaffold(
       resizeToAvoidBottomInset: true,
-      backgroundColor: Colors.white,
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Image.asset('lib/assets/access.png', height: 200),
-              const SizedBox(height: 20),
-              const Text(
-                "Welcome Back!",
-                style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xff3e948e)),
-              ),
-              const SizedBox(height: 10),
-              const Text(
-                "Sign in to continue",
-                style: TextStyle(fontSize: 16, color: Colors.black54),
-              ),
-              const SizedBox(height: 30),
-              Form(
-                key: _formKey,
-                child: Column(
-                  children: [
-                    TextFormField(
-                      controller: _emailController,
-                      decoration: InputDecoration(
-                        labelText: 'Email',
-                        prefixIcon: Icon(Icons.email, color: Color(0xff3e948e)),
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10)),
-                      ),
-                      keyboardType: TextInputType.emailAddress,
-                      validator: (value) {
-                        if (value == null || value.isEmpty)
-                          return 'Please enter your email';
-                        if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value))
-                          return 'Enter a valid email';
-                        return null;
-                      },
+      backgroundColor: Colors.grey[100], // Softer background
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 32.0, vertical: 20.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Logo with subtle animation
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 500),
+                  curve: Curves.easeInOut,
+                  height: 180,
+                  child: Image.asset('lib/assets/access.png'),
+                ),
+                const SizedBox(height: 24),
+                // Title with gradient text
+                ShaderMask(
+                  shaderCallback: (bounds) => LinearGradient(
+                    colors: [Color(0xff3e948e), Color(0xff56c1ba)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ).createShader(bounds),
+                  child: const Text(
+                    "Welcome Back!",
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white, // Base color for gradient
                     ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _passwordController,
-                      obscureText: true,
-                      decoration: InputDecoration(
-                        labelText: 'Password',
-                        prefixIcon: Icon(Icons.lock, color: Color(0xff3e948e)),
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  "Sign in to continue",
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.black45,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+                const SizedBox(height: 40),
+                // Form with subtle shadow
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10,
+                        offset: Offset(0, 4),
                       ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty)
-                          return 'Please enter your password';
-                        if (value.length < 6)
-                          return 'Password must be at least 6 characters';
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 30),
-                    isloading
-                        ? const CircularProgressIndicator(
-                            color: Color(0xff3e948e))
-                        : SizedBox(
-                            width: double.infinity,
-                            height: 50,
-                            child: ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Color(0xff3e948e),
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10)),
-                              ),
-                              onPressed: _signIn,
-                              child: const Text('Sign In',
-                                  style: TextStyle(
-                                      fontSize: 16,
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      children: [
+                        TextFormField(
+                          controller: _emailController,
+                          decoration: InputDecoration(
+                            labelText: 'Email',
+                            prefixIcon:
+                                Icon(Icons.email, color: Color(0xff3e948e)),
+                            filled: true,
+                            fillColor: Colors.grey[50],
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(color: Color(0xff3e948e)),
                             ),
                           ),
-                    const SizedBox(height: 10),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text("Don't have an account?"),
-                        TextButton(
-                          onPressed: () => Navigator.pushReplacement(
-                              context, SlidingPageTransitionRL(page: SignUp())),
-                          child: const Text('Sign Up',
-                              style: TextStyle(
+                          keyboardType: TextInputType.emailAddress,
+                          validator: (value) {
+                            if (value == null || value.isEmpty)
+                              return 'Please enter your email';
+                            if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value))
+                              return 'Enter a valid email';
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 20),
+                        TextFormField(
+                          controller: _passwordController,
+                          obscureText: true,
+                          decoration: InputDecoration(
+                            labelText: 'Password',
+                            prefixIcon:
+                                Icon(Icons.lock, color: Color(0xff3e948e)),
+                            filled: true,
+                            fillColor: Colors.grey[50],
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(color: Color(0xff3e948e)),
+                            ),
+                          ),
+                          validator: (value) {
+                            if (value == null || value.isEmpty)
+                              return 'Please enter your password';
+                            if (value.length < 6)
+                              return 'Password must be at least 6 characters';
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 30),
+                        isloading
+                            ? const CircularProgressIndicator(
+                                color: Color(0xff3e948e),
+                              )
+                            : SizedBox(
+                                width: double.infinity,
+                                height: 42,
+                                child: ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Color(0xff3e948e),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    elevation: 2,
+                                    shadowColor: Colors.black26,
+                                  ),
+                                  onPressed: _signIn,
+                                  child: const Text(
+                                    'Sign In',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                        const SizedBox(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Text(
+                              "Don't have an account?",
+                              style: TextStyle(color: Colors.black54),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.pushReplacement(
+                                context,
+                                SlidingPageTransitionRL(page: SignUp()),
+                              ),
+                              child: const Text(
+                                'Sign Up',
+                                style: TextStyle(
                                   color: Color(0xff3e948e),
-                                  fontWeight: FontWeight.bold)),
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

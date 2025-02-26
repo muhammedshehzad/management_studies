@@ -166,23 +166,6 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
     }
   }
 
-  Future<String> _getUserRole() async {
-    final currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser == null) return 'guest';
-
-    try {
-      final userDoc = await FirebaseFirestore.instance
-          .collection('Users')
-          .doc(currentUser.uid)
-          .get();
-
-      return userDoc.data()?['role'] ?? 'guest';
-    } catch (e) {
-      print('Error getting user role: $e');
-      return 'guest';
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final profiles = profileBuild();
@@ -274,7 +257,7 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
               ),
             );
           }
-          print("Data: ${snapshot.data!.data()}");
+          print("${snapshot.data!.data()}");
           final data = snapshot.data!.data()!;
           final String role = data["role"] ?? 'N/A';
           var userData = snapshot.data!.data();
@@ -395,134 +378,79 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
                 dragStartBehavior: DragStartBehavior.start,
                 children: [
                   Container(
-                    // decoration: BoxDecoration(
-                    //   borderRadius: BorderRadius.circular(12),
-                    //
-                    // ),
-                    child: ClipRRect(
-                      // borderRadius: BorderRadius.circular(12),
-                      child: DrawerHeader(
-                        decoration: BoxDecoration(
-                          image: DecorationImage(
-                            image: NetworkImage(profileImageUrl),
-                            fit: BoxFit.cover,
-                            colorFilter: ColorFilter.mode(
-                              Colors.black.withOpacity(0.5),
-                              BlendMode.darken,
-                            ),
+                    height: 200, // Fixed height for consistency
+                    child: DrawerHeader(
+                      decoration: BoxDecoration(
+                        color: Colors.grey[900], // Dark background for header
+                        image: DecorationImage(
+                          image: NetworkImage(profileImageUrl),
+                          fit: BoxFit.cover,
+                          colorFilter: ColorFilter.mode(
+                            Colors.black.withOpacity(0.4),
+                            BlendMode.darken,
                           ),
                         ),
-                        child: GestureDetector(
-                          onTap: () async {
-                            await Navigator.push(
-                              context,
-                              SlidingPageTransitionLR(page: ProfilePage()),
-                            );
-                          },
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (role != 'Admin') ...[
-                                Text(
-                                  data["username"] ?? 'N/A',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 22,
-                                    color: Colors.white,
-                                    shadows: [
-                                      Shadow(
-                                        offset: Offset(0, 1),
-                                        blurRadius: 3,
-                                        color: Colors.black45,
-                                      ),
-                                    ],
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
+                      ),
+                      child: GestureDetector(
+                        onTap: () async {
+                          await Navigator.push(
+                            context,
+                            SlidingPageTransitionLR(page: ProfilePage()),
+                          );
+                        },
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (role != 'Admin') ...[
+                              Text(
+                                data["username"] ?? 'N/A',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                  color: Colors.white,
                                 ),
-                                const SizedBox(height: 8),
-                                Row(
-                                  children: [
-                                    const Icon(Icons.school,
-                                        size: 18, color: Colors.white70),
-                                    const SizedBox(width: 6),
-                                    Expanded(
-                                      child: Text(
-                                        '${data["department"] ?? "N/A"} Dept',
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w500,
-                                          fontSize: 16,
-                                          color: Colors.white70,
-                                          shadows: [
-                                            Shadow(
-                                              offset: Offset(0, 1),
-                                              blurRadius: 3,
-                                              color: Colors.black45,
-                                            ),
-                                          ],
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                Row(
-                                  children: [
-                                    const Icon(Icons.email,
-                                        size: 18, color: Colors.white70),
-                                    const SizedBox(width: 6),
-                                    Expanded(
-                                      child: Text(
-                                        data["email"] ?? 'N/A',
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w500,
-                                          fontSize: 16,
-                                          color: Colors.white70,
-                                          shadows: [
-                                            Shadow(
-                                              offset: Offset(0, 1),
-                                              blurRadius: 3,
-                                              color: Colors.black45,
-                                            ),
-                                          ],
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
-                              ],
-                              if (role == 'Admin') ...[
-                                Spacer(),
-                              ],
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  const Icon(Icons.verified_user,
-                                      size: 18, color: Colors.yellowAccent),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    role,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
-                                      color: Colors.yellowAccent,
-                                      fontStyle: FontStyle.italic,
-                                      shadows: [
-                                        Shadow(
-                                          offset: Offset(0, 1),
-                                          blurRadius: 3,
-                                          color: Colors.black45,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
+                                overflow: TextOverflow.ellipsis,
                               ),
+                              SizedBox(height: 6),
+                              Text(
+                                '${data["department"] ?? "N/A"} Dept',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.white70,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              SizedBox(height: 6),
+                              Text(
+                                data["email"] ?? 'N/A',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.white70,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              SizedBox(height: 4),
                             ],
-                          ),
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.verified_user,
+                                  size: 16,
+                                  color: Colors.yellowAccent,
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  role,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 12,
+                                    color: Colors.yellowAccent,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -530,6 +458,7 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
                   Column(
                     children: [
                       ListTile(
+                        tileColor: Colors.grey[100],
                         title: CustomTile(
                           label: 'Academic Records',
                           onPressed: () {
@@ -542,6 +471,7 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
                         ),
                       ),
                       ListTile(
+                        tileColor: Colors.grey[100],
                         title: CustomTile(
                           label: 'Homeworks',
                           onPressed: () {
@@ -554,6 +484,7 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
                         ),
                       ),
                       ListTile(
+                        tileColor: Colors.grey[100],
                         title: CustomTile(
                           label: 'Canteen',
                           onPressed: () {
@@ -566,6 +497,7 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
                         ),
                       ),
                       ListTile(
+                        tileColor: Colors.grey[100],
                         title: CustomTile(
                           label: 'Leaves',
                           onPressed: () {

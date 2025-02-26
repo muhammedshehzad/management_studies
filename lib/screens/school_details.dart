@@ -53,7 +53,12 @@ class _SchoolDetailsPageState extends State<SchoolDetailsPage> {
       await imageUpload();
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No image selected.')),
+         SnackBar(content: Text('No image selected.'),behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+          margin: const EdgeInsets.all(10),
+          duration: const Duration(seconds: 2),),
       );
     }
   }
@@ -305,17 +310,20 @@ class _SchoolDetailsPageState extends State<SchoolDetailsPage> {
 
                 if (!snapshot.hasData || snapshot.data == null) {
                   return Center(
-                    child: CircleAvatar(
-                      radius: 90,
-                      backgroundColor: Colors.blueGrey.shade100,
-                      backgroundImage:
-                          (schoolimageurl != null && schoolimageurl!.isNotEmpty)
-                              ? NetworkImage(schoolimageurl!)
-                              : null, // or a placeholder image
-                      child: (schoolimageurl == null || schoolimageurl!.isEmpty)
-                          ? const Icon(Icons.camera_alt,
-                              size: 50, color: Colors.white)
-                          : null,
+                    child: Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: CircleAvatar(
+                        radius: 90,
+                        backgroundColor: Colors.blueGrey.shade100,
+                        backgroundImage:
+                            (schoolimageurl != null && schoolimageurl!.isNotEmpty)
+                                ? NetworkImage(schoolimageurl!)
+                                : null, // or a placeholder image
+                        child: (schoolimageurl == null || schoolimageurl!.isEmpty)
+                            ? const Icon(Icons.camera_alt,
+                                size: 50, color: Colors.white)
+                            : null,
+                      ),
                     ),
                   );
                 }
@@ -328,17 +336,20 @@ class _SchoolDetailsPageState extends State<SchoolDetailsPage> {
                           await _pickImage();
                         }
                       : null,
-                  child: CircleAvatar(
-                    radius: 90,
-                    backgroundColor: Colors.blueGrey.shade100,
-                    backgroundImage:
-                        (schoolimageurl != null && schoolimageurl!.isNotEmpty)
-                            ? NetworkImage(schoolimageurl!)
-                            : null, // or a placeholder image
-                    child: (schoolimageurl == null || schoolimageurl!.isEmpty)
-                        ? const Icon(Icons.camera_alt,
-                            size: 50, color: Colors.white)
-                        : null,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12.0),
+                    child: CircleAvatar(
+                      radius: 90,
+                      backgroundColor: Colors.blueGrey.shade100,
+                      backgroundImage:
+                          (schoolimageurl != null && schoolimageurl!.isNotEmpty)
+                              ? NetworkImage(schoolimageurl!)
+                              : null, // or a placeholder image
+                      child: (schoolimageurl == null || schoolimageurl!.isEmpty)
+                          ? const Icon(Icons.camera_alt,
+                              size: 50, color: Colors.white)
+                          : null,
+                    ),
                   ),
                 );
               },

@@ -6,10 +6,12 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:new_school/drawer_screens/Canteen/view_details.dart';
 import 'package:provider/provider.dart';
 import '../../sliding_transition.dart';
 import 'cart_provider.dart';
 import 'checkout_page.dart';
+import 'invoice_page.dart';
 
 class OrdersPage extends StatefulWidget {
   const OrdersPage({super.key});
@@ -26,8 +28,9 @@ class _OrdersPageState extends State<OrdersPage> {
   @override
   void initState() {
     checkInternet();
-     super.initState();
+    super.initState();
   }
+
   Future<List<Map<String, dynamic>>> fetchRecentTransactions() async {
     User? user = FirebaseAuth.instance.currentUser;
     if (user == null) return [];
@@ -90,8 +93,14 @@ class _OrdersPageState extends State<OrdersPage> {
           }
 
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Draft loaded'),
+            SnackBar(
+                content: Text('Draft loaded'),
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                margin: const EdgeInsets.all(10),
+                duration: const Duration(seconds: 2),
             ),
           );
         }
@@ -121,6 +130,11 @@ class _OrdersPageState extends State<OrdersPage> {
     });
   }
 
+  @override
+  void dispose() {
+    _connectivitySubscription?.cancel();
+    super.dispose();
+  }
 
   Future<bool> hasInternet() async {
     try {
@@ -130,6 +144,7 @@ class _OrdersPageState extends State<OrdersPage> {
       return false;
     }
   }
+
   @override
   Widget build(BuildContext context) {
     final User? user = FirebaseAuth.instance.currentUser;
@@ -179,114 +194,129 @@ class _OrdersPageState extends State<OrdersPage> {
               final bool isDraft = status == 'draft';
               final bool isFailed = status == 'failed';
 
-              return Card(
-                elevation: 8,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                margin:
-                    const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
-                child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 16, horizontal: 18),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SelectableText(
-                        transaction['userName'],
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 18,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      SelectableText(
-                        'Total Amount: ₹${transaction['totalAmount'].toStringAsFixed(2)}',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Colors.black54,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      SelectableText(
-                        'Date: ${DateFormat('dd-MM-yyyy, HH:mm').format((transaction['timestamp'] as Timestamp).toDate())}',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Colors.black54,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      SelectableText(
-                        'Transaction Id: ${transaction['transactionId']}',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.black54,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Container(
-                            width: 100,
-                            height: 35,
-                            decoration: BoxDecoration(
-                              color: isSuccess
-                                  ? Colors.green.shade600
-                                  : isDraft
-                                      ? Colors.orange.shade600
-                                      : Colors.red.shade600,
-                              borderRadius: BorderRadius.circular(22),
-                            ),
-                            child: Center(
-                              child: Text(
-                                isSuccess
-                                    ? 'Success'
-                                    : isDraft
-                                        ? 'Draft'
-                                        : 'Failed',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ),
+              return InkWell(
+                onTap: (){  User? user = FirebaseAuth.instance.currentUser;
+                print("Passing transactionId: ${transaction['transactionId']}");
+
+                Navigator.push(
+                  context,
+                  SlidingPageTransitionRL(
+                    page: DownloadInvoice(
+                      transactionId: transaction['transactionId'],
+                    ),
+                  ),
+                );},
+                child: Card(
+                  elevation: 8,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  margin:
+                  const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                  child: Padding(
+                    padding:
+                    const EdgeInsets.symmetric(vertical: 16, horizontal: 18),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SelectableText(
+                          transaction['userName'],
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 18,
+                            color: Colors.black87,
                           ),
-                          if (isFailed || isDraft)
-                            SizedBox(
+                        ),
+                        const SizedBox(height: 6),
+                        SelectableText(
+                          'Total Amount: ₹${transaction['totalAmount']
+                              .toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Colors.black54,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        SelectableText(
+                          'Date: ${DateFormat('dd-MM-yyyy, HH:mm').format(
+                              (transaction['timestamp'] as Timestamp).toDate())}',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Colors.black54,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        SelectableText(
+                          'Transaction Id: ${transaction['transactionId']}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.black54,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Container(
+                              width: 100,
                               height: 35,
-                              child: ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Color(0xff3e948e),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(22),
-                                  ),
-                                ),
-                                onPressed: () async {
-                                  // isOnline
-                                  //     ?
-                                  await retryDraftOrder(
-                                          transaction['transactionId']);
-                                      // : ScaffoldMessenger.of(context)
-                                      //     .showSnackBar(
-                                      //     SnackBar(
-                                      //         content: Text('No internet connection detected. Please check your connection and try again later.')),                                        );
-                                },
-                                child: const Text(
-                                  'Retry Payment',
-                                  style: TextStyle(
+                              decoration: BoxDecoration(
+                                color: isSuccess
+                                    ? Colors.green.shade600
+                                    : isDraft
+                                    ? Colors.orange.shade600
+                                    : Colors.red.shade600,
+                                borderRadius: BorderRadius.circular(22),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  isSuccess
+                                      ? 'Success'
+                                      : isDraft
+                                      ? 'Draft'
+                                      : 'Failed',
+                                  style: const TextStyle(
                                     color: Colors.white,
-                                    fontSize: 12,
                                     fontWeight: FontWeight.bold,
+                                    fontSize: 12,
                                   ),
                                 ),
                               ),
                             ),
-                        ],
-                      ),
-                    ],
+                            if (isFailed || isDraft)
+                              SizedBox(
+                                height: 35,
+                                child: ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Color(0xff3e948e),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(22),
+                                    ),
+                                  ),
+                                  onPressed: () async {
+                                    // isOnline
+                                    //     ?
+                                    await retryDraftOrder(
+                                        transaction['transactionId']);
+                                    // : ScaffoldMessenger.of(context)
+                                    //     .showSnackBar(
+                                    //     SnackBar(
+                                    //         content: Text('No internet connection detected. Please check your connection and try again later.')),                                        );
+                                  },
+                                  child: const Text(
+                                    'Retry Payment',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               );

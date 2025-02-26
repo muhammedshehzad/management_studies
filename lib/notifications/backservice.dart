@@ -44,7 +44,7 @@ void onStart(ServiceInstance service) async {
     service.stopSelf();
   });
 
-  Timer.periodic(const Duration(seconds: 10), (timer) async {
+  Timer.periodic(const Duration(seconds: 5), (timer) async {
     if (service is AndroidServiceInstance) {
       service.setForegroundNotificationInfo(title: '', content: '');
     }

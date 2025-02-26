@@ -17,58 +17,73 @@ const LeaveRequestSchema = CollectionSchema(
   name: r'LeaveRequest',
   id: 5503567001840078282,
   properties: {
-    r'creatorRole': PropertySchema(
+    r'createdAt': PropertySchema(
       id: 0,
+      name: r'createdAt',
+      type: IsarType.dateTime,
+    ),
+    r'creatorRole': PropertySchema(
+      id: 1,
       name: r'creatorRole',
       type: IsarType.string,
     ),
     r'durationDays': PropertySchema(
-      id: 1,
+      id: 2,
       name: r'durationDays',
       type: IsarType.long,
     ),
     r'endDate': PropertySchema(
-      id: 2,
+      id: 3,
       name: r'endDate',
       type: IsarType.dateTime,
     ),
     r'isSynced': PropertySchema(
-      id: 3,
+      id: 4,
       name: r'isSynced',
       type: IsarType.bool,
     ),
     r'leaveReason': PropertySchema(
-      id: 4,
+      id: 5,
       name: r'leaveReason',
       type: IsarType.string,
     ),
     r'leaveType': PropertySchema(
-      id: 5,
+      id: 6,
       name: r'leaveType',
       type: IsarType.string,
     ),
+    r'leavesId': PropertySchema(
+      id: 7,
+      name: r'leavesId',
+      type: IsarType.string,
+    ),
+    r'pendingSync': PropertySchema(
+      id: 8,
+      name: r'pendingSync',
+      type: IsarType.bool,
+    ),
     r'startDate': PropertySchema(
-      id: 6,
+      id: 9,
       name: r'startDate',
       type: IsarType.dateTime,
     ),
     r'status': PropertySchema(
-      id: 7,
+      id: 10,
       name: r'status',
       type: IsarType.string,
     ),
     r'userDepartment': PropertySchema(
-      id: 8,
+      id: 11,
       name: r'userDepartment',
       type: IsarType.string,
     ),
     r'userId': PropertySchema(
-      id: 9,
+      id: 12,
       name: r'userId',
       type: IsarType.string,
     ),
     r'username': PropertySchema(
-      id: 10,
+      id: 13,
       name: r'username',
       type: IsarType.string,
     )
@@ -78,7 +93,34 @@ const LeaveRequestSchema = CollectionSchema(
   deserialize: _leaveRequestDeserialize,
   deserializeProp: _leaveRequestDeserializeProp,
   idName: r'id',
-  indexes: {},
+  indexes: {
+    r'userId': IndexSchema(
+      id: -2005826577402374815,
+      name: r'userId',
+      unique: false,
+      replace: false,
+      properties: [
+        IndexPropertySchema(
+          name: r'userId',
+          type: IndexType.hash,
+          caseSensitive: true,
+        )
+      ],
+    ),
+    r'leavesId': IndexSchema(
+      id: 7863350640034441536,
+      name: r'leavesId',
+      unique: false,
+      replace: false,
+      properties: [
+        IndexPropertySchema(
+          name: r'leavesId',
+          type: IndexType.hash,
+          caseSensitive: true,
+        )
+      ],
+    )
+  },
   links: {},
   embeddedSchemas: {},
   getId: _leaveRequestGetId,
@@ -96,6 +138,7 @@ int _leaveRequestEstimateSize(
   bytesCount += 3 + object.creatorRole.length * 3;
   bytesCount += 3 + object.leaveReason.length * 3;
   bytesCount += 3 + object.leaveType.length * 3;
+  bytesCount += 3 + object.leavesId.length * 3;
   bytesCount += 3 + object.status.length * 3;
   bytesCount += 3 + object.userDepartment.length * 3;
   bytesCount += 3 + object.userId.length * 3;
@@ -109,17 +152,20 @@ void _leaveRequestSerialize(
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
-  writer.writeString(offsets[0], object.creatorRole);
-  writer.writeLong(offsets[1], object.durationDays);
-  writer.writeDateTime(offsets[2], object.endDate);
-  writer.writeBool(offsets[3], object.isSynced);
-  writer.writeString(offsets[4], object.leaveReason);
-  writer.writeString(offsets[5], object.leaveType);
-  writer.writeDateTime(offsets[6], object.startDate);
-  writer.writeString(offsets[7], object.status);
-  writer.writeString(offsets[8], object.userDepartment);
-  writer.writeString(offsets[9], object.userId);
-  writer.writeString(offsets[10], object.username);
+  writer.writeDateTime(offsets[0], object.createdAt);
+  writer.writeString(offsets[1], object.creatorRole);
+  writer.writeLong(offsets[2], object.durationDays);
+  writer.writeDateTime(offsets[3], object.endDate);
+  writer.writeBool(offsets[4], object.isSynced);
+  writer.writeString(offsets[5], object.leaveReason);
+  writer.writeString(offsets[6], object.leaveType);
+  writer.writeString(offsets[7], object.leavesId);
+  writer.writeBool(offsets[8], object.pendingSync);
+  writer.writeDateTime(offsets[9], object.startDate);
+  writer.writeString(offsets[10], object.status);
+  writer.writeString(offsets[11], object.userDepartment);
+  writer.writeString(offsets[12], object.userId);
+  writer.writeString(offsets[13], object.username);
 }
 
 LeaveRequest _leaveRequestDeserialize(
@@ -129,18 +175,21 @@ LeaveRequest _leaveRequestDeserialize(
   Map<Type, List<int>> allOffsets,
 ) {
   final object = LeaveRequest();
-  object.creatorRole = reader.readString(offsets[0]);
-  object.durationDays = reader.readLong(offsets[1]);
-  object.endDate = reader.readDateTime(offsets[2]);
+  object.createdAt = reader.readDateTime(offsets[0]);
+  object.creatorRole = reader.readString(offsets[1]);
+  object.durationDays = reader.readLong(offsets[2]);
+  object.endDate = reader.readDateTime(offsets[3]);
   object.id = id;
-  object.isSynced = reader.readBool(offsets[3]);
-  object.leaveReason = reader.readString(offsets[4]);
-  object.leaveType = reader.readString(offsets[5]);
-  object.startDate = reader.readDateTime(offsets[6]);
-  object.status = reader.readString(offsets[7]);
-  object.userDepartment = reader.readString(offsets[8]);
-  object.userId = reader.readString(offsets[9]);
-  object.username = reader.readString(offsets[10]);
+  object.isSynced = reader.readBool(offsets[4]);
+  object.leaveReason = reader.readString(offsets[5]);
+  object.leaveType = reader.readString(offsets[6]);
+  object.leavesId = reader.readString(offsets[7]);
+  object.pendingSync = reader.readBool(offsets[8]);
+  object.startDate = reader.readDateTime(offsets[9]);
+  object.status = reader.readString(offsets[10]);
+  object.userDepartment = reader.readString(offsets[11]);
+  object.userId = reader.readString(offsets[12]);
+  object.username = reader.readString(offsets[13]);
   return object;
 }
 
@@ -152,26 +201,32 @@ P _leaveRequestDeserializeProp<P>(
 ) {
   switch (propertyId) {
     case 0:
-      return (reader.readString(offset)) as P;
-    case 1:
-      return (reader.readLong(offset)) as P;
-    case 2:
       return (reader.readDateTime(offset)) as P;
-    case 3:
-      return (reader.readBool(offset)) as P;
-    case 4:
+    case 1:
       return (reader.readString(offset)) as P;
+    case 2:
+      return (reader.readLong(offset)) as P;
+    case 3:
+      return (reader.readDateTime(offset)) as P;
+    case 4:
+      return (reader.readBool(offset)) as P;
     case 5:
       return (reader.readString(offset)) as P;
     case 6:
-      return (reader.readDateTime(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 7:
       return (reader.readString(offset)) as P;
     case 8:
-      return (reader.readString(offset)) as P;
+      return (reader.readBool(offset)) as P;
     case 9:
-      return (reader.readString(offset)) as P;
+      return (reader.readDateTime(offset)) as P;
     case 10:
+      return (reader.readString(offset)) as P;
+    case 11:
+      return (reader.readString(offset)) as P;
+    case 12:
+      return (reader.readString(offset)) as P;
+    case 13:
       return (reader.readString(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -268,10 +323,156 @@ extension LeaveRequestQueryWhere
       ));
     });
   }
+
+  QueryBuilder<LeaveRequest, LeaveRequest, QAfterWhereClause> userIdEqualTo(
+      String userId) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'userId',
+        value: [userId],
+      ));
+    });
+  }
+
+  QueryBuilder<LeaveRequest, LeaveRequest, QAfterWhereClause> userIdNotEqualTo(
+      String userId) {
+    return QueryBuilder.apply(this, (query) {
+      if (query.whereSort == Sort.asc) {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'userId',
+              lower: [],
+              upper: [userId],
+              includeUpper: false,
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'userId',
+              lower: [userId],
+              includeLower: false,
+              upper: [],
+            ));
+      } else {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'userId',
+              lower: [userId],
+              includeLower: false,
+              upper: [],
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'userId',
+              lower: [],
+              upper: [userId],
+              includeUpper: false,
+            ));
+      }
+    });
+  }
+
+  QueryBuilder<LeaveRequest, LeaveRequest, QAfterWhereClause> leavesIdEqualTo(
+      String leavesId) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'leavesId',
+        value: [leavesId],
+      ));
+    });
+  }
+
+  QueryBuilder<LeaveRequest, LeaveRequest, QAfterWhereClause>
+      leavesIdNotEqualTo(String leavesId) {
+    return QueryBuilder.apply(this, (query) {
+      if (query.whereSort == Sort.asc) {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'leavesId',
+              lower: [],
+              upper: [leavesId],
+              includeUpper: false,
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'leavesId',
+              lower: [leavesId],
+              includeLower: false,
+              upper: [],
+            ));
+      } else {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'leavesId',
+              lower: [leavesId],
+              includeLower: false,
+              upper: [],
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'leavesId',
+              lower: [],
+              upper: [leavesId],
+              includeUpper: false,
+            ));
+      }
+    });
+  }
 }
 
 extension LeaveRequestQueryFilter
     on QueryBuilder<LeaveRequest, LeaveRequest, QFilterCondition> {
+  QueryBuilder<LeaveRequest, LeaveRequest, QAfterFilterCondition>
+      createdAtEqualTo(DateTime value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'createdAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<LeaveRequest, LeaveRequest, QAfterFilterCondition>
+      createdAtGreaterThan(
+    DateTime value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'createdAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<LeaveRequest, LeaveRequest, QAfterFilterCondition>
+      createdAtLessThan(
+    DateTime value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'createdAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<LeaveRequest, LeaveRequest, QAfterFilterCondition>
+      createdAtBetween(
+    DateTime lower,
+    DateTime upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'createdAt',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
   QueryBuilder<LeaveRequest, LeaveRequest, QAfterFilterCondition>
       creatorRoleEqualTo(
     String value, {
@@ -851,6 +1052,152 @@ extension LeaveRequestQueryFilter
       return query.addFilterCondition(FilterCondition.greaterThan(
         property: r'leaveType',
         value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<LeaveRequest, LeaveRequest, QAfterFilterCondition>
+      leavesIdEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'leavesId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LeaveRequest, LeaveRequest, QAfterFilterCondition>
+      leavesIdGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'leavesId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LeaveRequest, LeaveRequest, QAfterFilterCondition>
+      leavesIdLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'leavesId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LeaveRequest, LeaveRequest, QAfterFilterCondition>
+      leavesIdBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'leavesId',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LeaveRequest, LeaveRequest, QAfterFilterCondition>
+      leavesIdStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'leavesId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LeaveRequest, LeaveRequest, QAfterFilterCondition>
+      leavesIdEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'leavesId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LeaveRequest, LeaveRequest, QAfterFilterCondition>
+      leavesIdContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'leavesId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LeaveRequest, LeaveRequest, QAfterFilterCondition>
+      leavesIdMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'leavesId',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LeaveRequest, LeaveRequest, QAfterFilterCondition>
+      leavesIdIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'leavesId',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<LeaveRequest, LeaveRequest, QAfterFilterCondition>
+      leavesIdIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'leavesId',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<LeaveRequest, LeaveRequest, QAfterFilterCondition>
+      pendingSyncEqualTo(bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'pendingSync',
+        value: value,
       ));
     });
   }
@@ -1462,6 +1809,18 @@ extension LeaveRequestQueryLinks
 
 extension LeaveRequestQuerySortBy
     on QueryBuilder<LeaveRequest, LeaveRequest, QSortBy> {
+  QueryBuilder<LeaveRequest, LeaveRequest, QAfterSortBy> sortByCreatedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'createdAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<LeaveRequest, LeaveRequest, QAfterSortBy> sortByCreatedAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'createdAt', Sort.desc);
+    });
+  }
+
   QueryBuilder<LeaveRequest, LeaveRequest, QAfterSortBy> sortByCreatorRole() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'creatorRole', Sort.asc);
@@ -1537,6 +1896,31 @@ extension LeaveRequestQuerySortBy
     });
   }
 
+  QueryBuilder<LeaveRequest, LeaveRequest, QAfterSortBy> sortByLeavesId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'leavesId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<LeaveRequest, LeaveRequest, QAfterSortBy> sortByLeavesIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'leavesId', Sort.desc);
+    });
+  }
+
+  QueryBuilder<LeaveRequest, LeaveRequest, QAfterSortBy> sortByPendingSync() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'pendingSync', Sort.asc);
+    });
+  }
+
+  QueryBuilder<LeaveRequest, LeaveRequest, QAfterSortBy>
+      sortByPendingSyncDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'pendingSync', Sort.desc);
+    });
+  }
+
   QueryBuilder<LeaveRequest, LeaveRequest, QAfterSortBy> sortByStartDate() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'startDate', Sort.asc);
@@ -1602,6 +1986,18 @@ extension LeaveRequestQuerySortBy
 
 extension LeaveRequestQuerySortThenBy
     on QueryBuilder<LeaveRequest, LeaveRequest, QSortThenBy> {
+  QueryBuilder<LeaveRequest, LeaveRequest, QAfterSortBy> thenByCreatedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'createdAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<LeaveRequest, LeaveRequest, QAfterSortBy> thenByCreatedAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'createdAt', Sort.desc);
+    });
+  }
+
   QueryBuilder<LeaveRequest, LeaveRequest, QAfterSortBy> thenByCreatorRole() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'creatorRole', Sort.asc);
@@ -1689,6 +2085,31 @@ extension LeaveRequestQuerySortThenBy
     });
   }
 
+  QueryBuilder<LeaveRequest, LeaveRequest, QAfterSortBy> thenByLeavesId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'leavesId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<LeaveRequest, LeaveRequest, QAfterSortBy> thenByLeavesIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'leavesId', Sort.desc);
+    });
+  }
+
+  QueryBuilder<LeaveRequest, LeaveRequest, QAfterSortBy> thenByPendingSync() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'pendingSync', Sort.asc);
+    });
+  }
+
+  QueryBuilder<LeaveRequest, LeaveRequest, QAfterSortBy>
+      thenByPendingSyncDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'pendingSync', Sort.desc);
+    });
+  }
+
   QueryBuilder<LeaveRequest, LeaveRequest, QAfterSortBy> thenByStartDate() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'startDate', Sort.asc);
@@ -1754,6 +2175,12 @@ extension LeaveRequestQuerySortThenBy
 
 extension LeaveRequestQueryWhereDistinct
     on QueryBuilder<LeaveRequest, LeaveRequest, QDistinct> {
+  QueryBuilder<LeaveRequest, LeaveRequest, QDistinct> distinctByCreatedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'createdAt');
+    });
+  }
+
   QueryBuilder<LeaveRequest, LeaveRequest, QDistinct> distinctByCreatorRole(
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
@@ -1790,6 +2217,19 @@ extension LeaveRequestQueryWhereDistinct
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'leaveType', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<LeaveRequest, LeaveRequest, QDistinct> distinctByLeavesId(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'leavesId', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<LeaveRequest, LeaveRequest, QDistinct> distinctByPendingSync() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'pendingSync');
     });
   }
 
@@ -1837,6 +2277,12 @@ extension LeaveRequestQueryProperty
     });
   }
 
+  QueryBuilder<LeaveRequest, DateTime, QQueryOperations> createdAtProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'createdAt');
+    });
+  }
+
   QueryBuilder<LeaveRequest, String, QQueryOperations> creatorRoleProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'creatorRole');
@@ -1870,6 +2316,18 @@ extension LeaveRequestQueryProperty
   QueryBuilder<LeaveRequest, String, QQueryOperations> leaveTypeProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'leaveType');
+    });
+  }
+
+  QueryBuilder<LeaveRequest, String, QQueryOperations> leavesIdProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'leavesId');
+    });
+  }
+
+  QueryBuilder<LeaveRequest, bool, QQueryOperations> pendingSyncProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'pendingSync');
     });
   }
 

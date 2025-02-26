@@ -43,8 +43,16 @@ class _TwoFactorAuthState extends State<TwoFactorAuth>
       bool isAuthenticated = await showBiometricAuth();
       if (!isAuthenticated) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Authentication failed. Please try again later.')),
+          SnackBar(
+            content: Text('Authentication failed. Please try again later.'),
+            backgroundColor: Colors.red.shade500,
+            duration: const Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            margin: const EdgeInsets.all(10),
+          ),
         );
       } else {
         // Optionally do something after successful authentication
@@ -64,8 +72,15 @@ class _TwoFactorAuthState extends State<TwoFactorAuth>
       bool canCheckBiometrics = await auth.canCheckBiometrics;
       if (!canCheckBiometrics) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Biometric authentication not available.')),
+          SnackBar(
+            content: Text('Biometric authentication not available.'),
+            backgroundColor: Colors.red.shade500,
+            duration: const Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            margin: const EdgeInsets.all(10),
+          ),
         );
         return false;
       }
@@ -83,7 +98,14 @@ class _TwoFactorAuthState extends State<TwoFactorAuth>
       return result;
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Authentication error: $e')),
+        SnackBar(
+          content: Text('Authentication error: $e'),
+          backgroundColor: Colors.red.shade500,
+          duration: const Duration(seconds: 3),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          margin: const EdgeInsets.all(10),
+        ),
       );
       return false;
     } finally {
@@ -152,9 +174,16 @@ class _TwoFactorAuthState extends State<TwoFactorAuth>
                     await saveFingerprintSetting(value);
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                          content: Text(value
-                              ? 'Biometric authentication enabled'
-                              : 'Biometric authentication disabled')),
+                        content: Text(value
+                            ? 'Biometric authentication enabled'
+                            : 'Biometric authentication disabled'),
+                        duration: const Duration(seconds: 3),
+                        backgroundColor: value ? Colors.green.shade500 : Colors.red.shade500,
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8)),
+                        margin: const EdgeInsets.all(10),
+                      ),
                     );
                   },
                 ),

@@ -70,7 +70,16 @@ class _SignUpState extends State<SignUp> {
 
     if (_passwordController.text != _confirmPassword.text) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Passwords do not match')),
+        SnackBar(
+          content: Text('Passwords do not match'),
+          backgroundColor: Colors.red.shade600,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+          margin: const EdgeInsets.all(10),
+          duration: const Duration(seconds: 2),
+        ),
       );
       return;
     }
@@ -103,7 +112,16 @@ class _SignUpState extends State<SignUp> {
         await _checkIfAdmin(userCredential.uid);
 
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Signup successful')),
+          SnackBar(
+            content: Text('Signup successful'),
+            backgroundColor: Colors.green.shade600,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            margin: const EdgeInsets.all(10),
+            duration: const Duration(seconds: 2),
+          ),
         );
 
         Navigator.pushReplacement(
@@ -114,13 +132,31 @@ class _SignUpState extends State<SignUp> {
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Signup failed')),
+          SnackBar(
+            content: Text('Signup failed'),
+            backgroundColor: Colors.red.shade600,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            margin: const EdgeInsets.all(10),
+            duration: const Duration(seconds: 2),
+          ),
         );
       }
     } catch (e) {
       print('Signup error: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.red.shade600,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+          margin: const EdgeInsets.all(10),
+          duration: const Duration(seconds: 2),
+        ),
       );
     }
   }
@@ -128,232 +164,341 @@ class _SignUpState extends State<SignUp> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        title: const Text(
-          "Sign Up",
+        backgroundColor: Colors.grey[100],
+        elevation: 0, // Flat design
+        title: ShaderMask(
+          shaderCallback: (bounds) => LinearGradient(
+            colors: [Color(0xff3e948e), Color(0xff56c1ba)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ).createShader(bounds),
+          child: const Text(
+            "Sign Up",
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Colors.white, // Base color for gradient
+            ),
+          ),
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 24.0),
-        child: Column(
-          children: [
-            const SizedBox(height: 10),
-            Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  DropdownButtonFormField<String>(
-                    value: dropdownvalue,
-                    items: items.map((String role) {
-                      return DropdownMenuItem<String>(
-                        value: role,
-                        child: Text(role),
-                      );
-                    }).toList(),
-                    onChanged: (String? newValue) {
-                      setState(() {
-                        dropdownvalue = newValue!;
-                      });
-                    },
-                    decoration: InputDecoration(
-                      labelText: 'Select Role',
-                      prefixIcon: Icon(Icons.person, color: Colors.black54),
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10)),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Form container with shadow
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 10,
+                      offset: Offset(0, 4),
                     ),
-                  ),
-                  const SizedBox(height: 12.0),
-                  TextFormField(
-                    controller: _username,
-                    decoration: InputDecoration(
-                      labelText: 'Username',
-                      prefixIcon: Icon(Icons.person, color: Colors.black54),
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10)),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter your username';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 12.0),
-                  TextFormField(
-                    controller: _emailController,
-                    decoration: InputDecoration(
-                      labelText: 'Email',
-                      prefixIcon: Icon(Icons.email, color: Colors.black54),
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10)),
-                    ),
-                    keyboardType: TextInputType.emailAddress,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter your email';
-                      }
-                      if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
-                        return 'Please enter a valid email';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 12.0),
-                  TextFormField(
-                    controller: _phone,
-                    decoration: InputDecoration(
-                      labelText: 'Phone Number',
-                      prefixIcon: Icon(Icons.phone, color: Colors.black54),
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10)),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter your phone number';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 12.0),
-                  DropdownButtonFormField<String>(
-                    value: selectedDepartment,
-                    onChanged: (String? newValue) {
-                      setState(() {
-                        selectedDepartment = newValue;
-                      });
-                    },
-                    decoration: InputDecoration(
-                      labelText: 'Department',
-                      prefixIcon: Icon(Icons.school, color: Colors.black54),
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10)),
-                    ),
-                    items: [
-                      'Maths',
-                      'Physics',
-                      'Chemistry',
-                      'Economics',
-                      'English',
-                      'Computer Science',
-                      'Data Science',
-                      'Advertising',
-                      'Management Studies',
-                      'Commerce'
-                    ].map<DropdownMenuItem<String>>((String value) {
-                      return DropdownMenuItem<String>(
-                        value: value,
-                        child: Text(value),
-                      );
-                    }).toList(),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please select your department';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 12.0),
-                  TextFormField(
-                    controller: _address,
-                    decoration: InputDecoration(
-                      labelText: 'Address',
-                      prefixIcon:
-                          Icon(Icons.location_on, color: Colors.black54),
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10)),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter your address';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 12.0),
-                  TextFormField(
-                    controller: _passwordController,
-                    obscureText: true,
-                    decoration: InputDecoration(
-                      labelText: 'Password',
-                      prefixIcon: Icon(Icons.lock, color: Colors.black54),
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10)),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter your password';
-                      }
-                      if (value.length < 6) {
-                        return 'Password must be at least 6 characters';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 12.0),
-                  TextFormField(
-                    controller: _confirmPassword,
-                    obscureText: true,
-                    decoration: InputDecoration(
-                      labelText: 'Confirm Password',
-                      prefixIcon: Icon(Icons.lock, color: Colors.black54),
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10)),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please confirm your password';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 20.0),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 45,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Color(0xff3e948e),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10)),
-                      ),
-                      onPressed: _signUp,
-                      child: const Text('Sign Up',
-                          style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold)),
-                    ),
-                  ),
-                  SizedBox(
-                    height: 10,
-                  ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  ],
+                ),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Already have an account?',
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.pushReplacement(
-                              context, SlidingPageTransitionLR(page: SignIn()));
+                      DropdownButtonFormField<String>(
+                        value: dropdownvalue,
+                        items: items.map((String role) {
+                          return DropdownMenuItem<String>(
+                            value: role,
+                            child: Text(role),
+                          );
+                        }).toList(),
+                        onChanged: (String? newValue) {
+                          setState(() {
+                            dropdownvalue = newValue!;
+                          });
                         },
-                        child: Text(
-                          'Sign In',
-                          style: TextStyle(
-                              color: Color(0xff3e948e),
-                              fontWeight: FontWeight.bold),
+                        decoration: InputDecoration(
+                          labelText: 'Select Role',
+                          prefixIcon:
+                              Icon(Icons.person, color: Color(0xff3e948e)),
+                          filled: true,
+                          fillColor: Colors.grey[50],
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: Color(0xff3e948e)),
+                          ),
                         ),
+                      ),
+                      const SizedBox(height: 20),
+                      TextFormField(
+                        controller: _username,
+                        decoration: InputDecoration(
+                          labelText: 'Username',
+                          prefixIcon:
+                              Icon(Icons.person, color: Color(0xff3e948e)),
+                          filled: true,
+                          fillColor: Colors.grey[50],
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: Color(0xff3e948e)),
+                          ),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter your username';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 20),
+                      TextFormField(
+                        controller: _emailController,
+                        decoration: InputDecoration(
+                          labelText: 'Email',
+                          prefixIcon:
+                              Icon(Icons.email, color: Color(0xff3e948e)),
+                          filled: true,
+                          fillColor: Colors.grey[50],
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: Color(0xff3e948e)),
+                          ),
+                        ),
+                        keyboardType: TextInputType.emailAddress,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter your email';
+                          }
+                          if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
+                            return 'Please enter a valid email';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 20),
+                      TextFormField(
+                        controller: _phone,
+                        decoration: InputDecoration(
+                          labelText: 'Phone Number',
+                          prefixIcon:
+                              Icon(Icons.phone, color: Color(0xff3e948e)),
+                          filled: true,
+                          fillColor: Colors.grey[50],
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: Color(0xff3e948e)),
+                          ),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter your phone number';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 20),
+                      DropdownButtonFormField<String>(
+                        value: selectedDepartment,
+                        onChanged: (String? newValue) {
+                          setState(() {
+                            selectedDepartment = newValue;
+                          });
+                        },
+                        decoration: InputDecoration(
+                          labelText: 'Department',
+                          prefixIcon:
+                              Icon(Icons.school, color: Color(0xff3e948e)),
+                          filled: true,
+                          fillColor: Colors.grey[50],
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: Color(0xff3e948e)),
+                          ),
+                        ),
+                        items: [
+                          'Maths',
+                          'Physics',
+                          'Chemistry',
+                          'Economics',
+                          'English',
+                          'Computer Science',
+                          'Data Science',
+                          'Advertising',
+                          'Management Studies',
+                          'Commerce'
+                        ].map<DropdownMenuItem<String>>((String value) {
+                          return DropdownMenuItem<String>(
+                            value: value,
+                            child: Text(value),
+                          );
+                        }).toList(),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please select your department';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 20),
+                      TextFormField(
+                        controller: _address,
+                        decoration: InputDecoration(
+                          labelText: 'Address',
+                          prefixIcon:
+                              Icon(Icons.location_on, color: Color(0xff3e948e)),
+                          filled: true,
+                          fillColor: Colors.grey[50],
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: Color(0xff3e948e)),
+                          ),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter your address';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 20),
+                      TextFormField(
+                        controller: _passwordController,
+                        obscureText: true,
+                        decoration: InputDecoration(
+                          labelText: 'Password',
+                          prefixIcon:
+                              Icon(Icons.lock, color: Color(0xff3e948e)),
+                          filled: true,
+                          fillColor: Colors.grey[50],
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: Color(0xff3e948e)),
+                          ),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter your password';
+                          }
+                          if (value.length < 6) {
+                            return 'Password must be at least 6 characters';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 20),
+                      TextFormField(
+                        controller: _confirmPassword,
+                        obscureText: true,
+                        decoration: InputDecoration(
+                          labelText: 'Confirm Password',
+                          prefixIcon:
+                              Icon(Icons.lock, color: Color(0xff3e948e)),
+                          filled: true,
+                          fillColor: Colors.grey[50],
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: Color(0xff3e948e)),
+                          ),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please confirm your password';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 30),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 42,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Color(0xff3e948e),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 2,
+                            shadowColor: Colors.black26,
+                          ),
+                          onPressed: _signUp,
+                          child: const Text(
+                            'Sign Up',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text(
+                            'Already have an account?',
+                            style: TextStyle(color: Colors.black54),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.pushReplacement(
+                                context,
+                                SlidingPageTransitionLR(page: SignIn()),
+                              );
+                            },
+                            child: const Text(
+                              'Sign In',
+                              style: TextStyle(
+                                color: Color(0xff3e948e),
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -25,7 +25,14 @@ class _ChangePasswordState extends State<ChangePassword> {
 
     if (_newPasswordController.text != _confirmNewPasswordController.text) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Passwords do not match')),
+        SnackBar(
+          content: Text('Passwords do not match'),
+          backgroundColor: Colors.red.shade500,
+          duration: const Duration(seconds: 3),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          margin: const EdgeInsets.all(10),
+        ),
       );
       return;
     }
@@ -39,7 +46,14 @@ class _ChangePasswordState extends State<ChangePassword> {
       await currentUser!.reauthenticateWithCredential(cred);
       await currentUser!.updatePassword(newPassword);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Password successfully changed')),
+        SnackBar(
+          content: Text('Password successfully changed'),
+          backgroundColor: Colors.green.shade500,
+          duration: const Duration(seconds: 3),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          margin: const EdgeInsets.all(10),
+        ),
       );
       Navigator.pushAndRemoveUntil(
         context,
@@ -48,7 +62,14 @@ class _ChangePasswordState extends State<ChangePassword> {
       );
     } catch (error) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: ${error.toString()}')),
+        SnackBar(
+          content: Text('Error: ${error.toString()}'),
+          backgroundColor: Colors.red.shade500,
+          duration: const Duration(seconds: 3),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          margin: const EdgeInsets.all(10),
+        ),
       );
     } finally {
       setState(() => isLoading = false);

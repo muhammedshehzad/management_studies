@@ -216,7 +216,7 @@ class _CanteenMenuPageState extends State<CanteenMenuPage> {
           children: [
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                padding: const EdgeInsets.symmetric(horizontal: 8.0,vertical: 8),
                 child: GridView.builder(
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: MediaQuery.of(context).size.width < 600

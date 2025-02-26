@@ -210,7 +210,10 @@ class DepartmentDistributionDonutChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance.collection('Users').snapshots(),
+      stream: FirebaseFirestore.instance
+          .collection('Users')
+          .where('role', isEqualTo: 'Student')
+          .snapshots(),
       builder: (context, snapshot) {
         if (!snapshot.hasData) {
           return const Center(child: SizedBox());
@@ -220,6 +223,7 @@ class DepartmentDistributionDonutChart extends StatelessWidget {
         for (var doc in snapshot.data!.docs) {
           final data = doc.data() as Map<String, dynamic>;
           String department = data['department'] ?? 'Unknown';
+          String role = data['role'] ?? 'Unknown';
           departmentCounts[department] =
               (departmentCounts[department] ?? 0) + 1;
         }

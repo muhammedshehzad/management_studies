@@ -1,13 +1,18 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:isar/isar.dart';
 import 'package:new_school/isar_storage/leave_request_model.dart';
 import 'package:uuid/uuid.dart';
 
 import '../isar_storage/isar_user_service.dart';
+import 'leavesBloc.dart';
 
 class LeavesPage extends StatefulWidget {
   const LeavesPage({super.key});
@@ -47,6 +52,9 @@ class _LeavesPageState extends State<LeavesPage> {
   DateTime? startDate;
   DateTime? endDate;
   String? statusValue;
+  late LeavesBloc _bloc;
+  bool isOnline = false;
+  StreamSubscription? _connectivitySubscription;
 
   Future<String> getUserName() async {
     User? currentUser = FirebaseAuth.instance.currentUser;
@@ -362,36 +370,65 @@ class _LeavesPageState extends State<LeavesPage> {
     });
   }
 
-  Stream<QuerySnapshot> fetchStudentLeaves() async* {
-    final User? currentUser = FirebaseAuth.instance.currentUser;
+  Future<bool> hasInternet() async {
+    try {
+      final result = await InternetAddress.lookup('google.com');
+      return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
+    } catch (e) {
+      return false;
+    }
+  }
 
-    final userDocSnapshot = await FirebaseFirestore.instance
-        .collection('Users')
-        .doc(currentUser?.uid)
-        .get();
+  Future<void> syncPendingOperations() async {
+    bool online = await hasInternet();
+    if (!online) return;
 
-    if (!userDocSnapshot.exists) {
-      yield* Stream.empty();
-      return;
+    for (var update in FirestoreQueue.getQueuedUpdates()) {
+      try {
+        await FirebaseFirestore.instance
+            .collection(update['collection'])
+            .doc(update['docId'])
+            .update(update['data']);
+        FirestoreQueue.clearUpdate(0);
+      } catch (e) {
+        debugPrint("Error syncing Firestore update: $e");
+      }
     }
 
-    final userDepartment = userDocSnapshot.data()?['department'];
-    if (userDepartment == null) {
-      yield* Stream.empty();
-      return;
+    for (var notification in NotificationQueue.getQueuedNotifications()) {
+      try {
+        await sendNotification(
+          userId: notification['userId'],
+          title: notification['title'],
+          message: notification['message'],
+          type: notification['type'],
+          payload: notification['payload'],
+        );
+        NotificationQueue.clearNotification(0);
+      } catch (e) {
+        debugPrint("Error syncing notification: $e");
+      }
     }
 
-    yield* FirebaseFirestore.instance
-        .collection('Leaves')
-        .where("creator_role", isEqualTo: "student")
-        .where("userDepartment", isEqualTo: userDepartment)
-        .orderBy("createdAt", descending: true)
-        .snapshots();
+    await IsarUserService.isar!.writeTxn(() async {
+      final unsyncedLeaves = await IsarUserService.isar!.leaveRequests
+          .where()
+          .filter()
+          .isSyncedEqualTo(false)
+          .findAll();
+      for (var leave in unsyncedLeaves) {
+        leave.isSynced = true;
+        await IsarUserService.isar!.leaveRequests.put(leave);
+      }
+    });
   }
 
   @override
   void initState() {
     super.initState();
+    _bloc = LeavesBloc();
+    syncPendingOperations();
+
     getUserName().then((name) {
       setState(() {
         userName = name;
@@ -449,18 +486,171 @@ class _LeavesPageState extends State<LeavesPage> {
                   Row(
                     children: [
                       if (canEdit)
-                        IconButton(
-                          icon: const Icon(Icons.edit),
-                          onPressed: () {
-                            Navigator.pop(context);
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    SubmitLeavePage(leave: leave),
-                              ),
-                            );
-                          },
+                        Row(
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.edit),
+                              onPressed: () {
+                                Navigator.pop(context);
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        SubmitLeavePage(leave: leave),
+                                  ),
+                                );
+                              },
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete),
+                              onPressed: () async {
+                                bool? confirmDelete = await showDialog<bool>(
+                                  context: context,
+                                  barrierDismissible: false,
+                                  builder: (context) => AlertDialog(
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    elevation: 8,
+                                    backgroundColor: Colors.white,
+                                    title: Row(
+                                      children: [
+                                        Text(
+                                          "Delete Leave Request",
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .titleLarge
+                                              ?.copyWith(
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.black87,
+                                              ),
+                                        ),
+                                      ],
+                                    ),
+                                    content: const Text(
+                                      "Are you sure you want to delete this leave request? This action cannot be undone.",
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        color: Colors.black54,
+                                        height: 1.4,
+                                      ),
+                                    ),
+                                    actionsPadding: const EdgeInsets.symmetric(
+                                        horizontal: 16, vertical: 10),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.pop(context, false),
+                                        style: TextButton.styleFrom(
+                                          foregroundColor: Colors.grey,
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 16, vertical: 8),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                          ),
+                                        ),
+                                        child: const Text(
+                                          "Cancel",
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w500,
+                                            color: Colors.black87,
+                                          ),
+                                        ),
+                                      ),
+                                      ElevatedButton(
+                                        onPressed: () =>
+                                            Navigator.pop(context, true),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.redAccent,
+                                          foregroundColor: Colors.white,
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 16, vertical: 8),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                          ),
+                                          elevation: 2,
+                                        ),
+                                        child: const Text(
+                                          "Delete",
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+
+                                if (confirmDelete == true) {
+                                  try {
+                                    bool online = await hasInternet();
+                                    String leaveId = leave['leavesid'];
+
+                                    if (online) {
+                                      await FirebaseFirestore.instance
+                                          .collection('Leaves')
+                                          .doc(leaveId)
+                                          .delete();
+                                    } else {
+                                      FirestoreQueue.queueUpdate(
+                                        collection: 'Leaves',
+                                        docId: leaveId,
+                                        data: {
+                                          'deleted': true,
+                                          'timestamp':
+                                              DateTime.now().toIso8601String(),
+                                        },
+                                      );
+                                    }
+
+                                    if (IsarUserService.isar != null) {
+                                      await IsarUserService.isar!
+                                          .writeTxn(() async {
+                                        await IsarUserService
+                                            .isar!.leaveRequests
+                                            .where()
+                                            .leavesIdEqualTo(leaveId)
+                                            .deleteFirst();
+                                      });
+                                    }
+
+                                    Navigator.pop(context);
+
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content:
+                                            const Text("Leave request deleted"),
+                                        backgroundColor: Colors.green,
+                                        duration: const Duration(seconds: 2),
+                                        behavior: SnackBarBehavior.floating,
+                                        shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(8)),
+                                        margin: const EdgeInsets.all(10),
+                                      ),
+                                    );
+                                  } catch (e) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text("Failed to delete: $e"),
+                                        backgroundColor: Colors.red,
+                                        duration: const Duration(seconds: 3),
+                                        behavior: SnackBarBehavior.floating,
+                                        shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(8)),
+                                        margin: const EdgeInsets.all(10),
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                            ),
+                          ],
                         ),
                       IconButton(
                         icon: const Icon(Icons.close),
@@ -582,6 +772,12 @@ class _LeavesPageState extends State<LeavesPage> {
   }
 
   @override
+  void dispose() {
+    _bloc.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -672,86 +868,207 @@ class _LeavesPageState extends State<LeavesPage> {
                                           ? const Center(
                                               child:
                                                   CircularProgressIndicator())
-                                          : currentData.isEmpty
-                                              ? const Center(
-                                                  child: Text(
-                                                      'No student leave requests found.'))
-                                              : StreamBuilder<
-                                                  Map<String, dynamic>>(
-                                                  stream: fetchUserDetails(),
-                                                  builder:
-                                                      (context, userSnapshot) {
-                                                    if (userSnapshot
-                                                            .connectionState ==
-                                                        ConnectionState
-                                                            .waiting) {
-                                                      return const Center(
-                                                          child:
-                                                              CircularProgressIndicator());
-                                                    }
-                                                    if (userSnapshot.hasError) {
-                                                      return Center(
-                                                          child: Text(
-                                                              'Error: ${userSnapshot.error}'));
-                                                    }
-                                                    if (!userSnapshot.hasData) {
-                                                      return const Center(
-                                                          child: Text(
-                                                              'No user details found.'));
-                                                    }
+                                          : StreamBuilder<Map<String, dynamic>>(
+                                              stream: fetchUserDetails(),
+                                              builder: (context, userSnapshot) {
+                                                if (userSnapshot
+                                                        .connectionState ==
+                                                    ConnectionState.waiting) {
+                                                  return const Center(
+                                                      child:
+                                                          CircularProgressIndicator());
+                                                }
+                                                if (userSnapshot.hasError) {
+                                                  return Center(
+                                                      child: Text(
+                                                          'Error: ${userSnapshot.error}'));
+                                                }
+                                                if (!userSnapshot.hasData) {
+                                                  return const Center(
+                                                      child: Text(
+                                                          'No user details found.'));
+                                                }
 
-                                                    final userData =
-                                                        userSnapshot.data!;
-                                                    final role = userData[
-                                                                'role']
-                                                            ?.toLowerCase() ??
-                                                        '';
+                                                final userData =
+                                                    userSnapshot.data!;
+                                                final role = userData['role']
+                                                        ?.toLowerCase() ??
+                                                    '';
 
-                                                    final isTeacher =
-                                                        role == 'Teacher';
+                                                final isTeacher =
+                                                    role == 'Teacher';
 
-                                                    if (isTeacher) {
-                                                      if (isLoading) {
+                                                if (isTeacher) {
+                                                  if (isLoading) {
+                                                    return const Center(
+                                                        child:
+                                                            CircularProgressIndicator());
+                                                  }
+                                                  if (currentData.isEmpty) {
+                                                    return const Center(
+                                                        child: Text(
+                                                            'No student leave requests found.'));
+                                                  }
+                                                  return ListView.builder(
+                                                    itemCount:
+                                                        currentData.length,
+                                                    itemBuilder:
+                                                        (context, index) {
+                                                      var doc =
+                                                          currentData[index];
+                                                      Map<String, dynamic>
+                                                          leave = doc.data()
+                                                              as Map<String,
+                                                                  dynamic>;
+                                                      if (!searchFunctn(
+                                                          leave, _searchText)) {
+                                                        return SizedBox
+                                                            .shrink();
+                                                      }
+                                                      final startDate =
+                                                          (leave["startDate"]
+                                                                  as Timestamp)
+                                                              .toDate();
+                                                      final endDate =
+                                                          (leave["endDate"]
+                                                                  as Timestamp)
+                                                              .toDate();
+                                                      final duration = endDate
+                                                              .difference(
+                                                                  startDate)
+                                                              .inDays +
+                                                          1;
+
+                                                      return Padding(
+                                                        padding:
+                                                            const EdgeInsets
+                                                                .symmetric(
+                                                                horizontal:
+                                                                    8.0),
+                                                        child: Card(
+                                                          margin:
+                                                              const EdgeInsets
+                                                                  .symmetric(
+                                                                  vertical: 8),
+                                                          child: ListTile(
+                                                            contentPadding:
+                                                                const EdgeInsets
+                                                                    .all(16),
+                                                            onTap: () =>
+                                                                bottomsheet(
+                                                                    context,
+                                                                    leave),
+                                                            subtitle: Text(
+                                                              'User: ${leave["username"]}\n'
+                                                              'Leave Type: ${leave["leaveType"]}\n'
+                                                              'Status: ${leave["status"] ?? "Pending"}\n'
+                                                              'From: ${startDate.toLocal().toString().split(' ')[0]}, '
+                                                              'To: ${endDate.toLocal().toString().split(' ')[0]}\n'
+                                                              'Duration: $duration days',
+                                                            ),
+                                                            trailing:
+                                                                const Icon(Icons
+                                                                    .arrow_forward_ios),
+                                                          ),
+                                                        ),
+                                                      );
+                                                    },
+                                                  );
+                                                } else {
+                                                  return StreamBuilder<
+                                                      QuerySnapshot>(
+                                                    stream: fetchLeaves(),
+                                                    builder:
+                                                        (context, snapshot) {
+                                                      if (snapshot
+                                                              .connectionState ==
+                                                          ConnectionState
+                                                              .waiting) {
                                                         return const Center(
                                                             child:
                                                                 CircularProgressIndicator());
                                                       }
-                                                      if (currentData.isEmpty) {
+                                                      if (snapshot.hasError) {
+                                                        return Center(
+                                                            child: Text(
+                                                                'Error: ${snapshot.error}'));
+                                                      }
+                                                      if (!snapshot.hasData ||
+                                                          snapshot.data!.docs
+                                                              .isEmpty) {
                                                         return const Center(
                                                             child: Text(
-                                                                'No student leave requests found.'));
+                                                                'No leave requests found.'));
+                                                      }
+                                                      final filteredDocs =
+                                                          snapshot.data!.docs
+                                                              .where((doc) {
+                                                        final data = doc.data()
+                                                            as Map<String,
+                                                                dynamic>;
+                                                        return searchFunctn(
+                                                            data, _searchText);
+                                                      }).toList();
+                                                      snapshot.data!.docs
+                                                          .map((doc) =>
+                                                              doc.data() as Map<
+                                                                  String,
+                                                                  dynamic>)
+                                                          .toList();
+                                                      if (filteredDocs
+                                                          .isEmpty) {
+                                                        return const Center(
+                                                            child: Text(
+                                                                'No leave requests found.'));
                                                       }
                                                       return ListView.builder(
                                                         itemCount:
-                                                            currentData.length,
+                                                            filteredDocs.length,
                                                         itemBuilder:
                                                             (context, index) {
-                                                          var doc = currentData[
-                                                              index];
-                                                          Map<String, dynamic>
-                                                              leave = doc.data()
-                                                                  as Map<String,
-                                                                      dynamic>;
-                                                          if (!searchFunctn(
-                                                              leave,
-                                                              _searchText)) {
-                                                            return SizedBox
-                                                                .shrink();
-                                                          }
-                                                          final startDate =
-                                                              (leave["startDate"]
-                                                                      as Timestamp)
-                                                                  .toDate();
-                                                          final endDate = (leave[
-                                                                      "endDate"]
-                                                                  as Timestamp)
-                                                              .toDate();
-                                                          final duration = endDate
-                                                                  .difference(
-                                                                      startDate)
-                                                                  .inDays +
-                                                              1;
+                                                          final doc =
+                                                              filteredDocs[
+                                                                  index];
+                                                          final data =
+                                                              doc.data() as Map<
+                                                                  String,
+                                                                  dynamic>;
 
+                                                          final startDate = doc[
+                                                                      "startDate"]
+                                                                  is Timestamp
+                                                              ? (doc["startDate"]
+                                                                      as Timestamp)
+                                                                  .toDate()
+                                                              : null;
+                                                          final endDate = doc[
+                                                                      "endDate"]
+                                                                  is Timestamp
+                                                              ? (doc["endDate"]
+                                                                      as Timestamp)
+                                                                  .toDate()
+                                                              : null;
+                                                          String duration =
+                                                              "Unknown";
+                                                          if (startDate !=
+                                                                  null &&
+                                                              endDate != null) {
+                                                            final diffDays =
+                                                                endDate
+                                                                    .difference(
+                                                                        startDate)
+                                                                    .inDays;
+                                                            duration = diffDays ==
+                                                                    0
+                                                                ? '1 day'
+                                                                : '$diffDays days';
+                                                          }
+                                                          if (filteredDocs
+                                                              .isEmpty) {
+                                                            return const Center(
+                                                                child: Text(
+                                                                    'No leave requests found.'));
+                                                          }
                                                           return Padding(
                                                             padding:
                                                                 const EdgeInsets
@@ -772,203 +1089,66 @@ class _LeavesPageState extends State<LeavesPage> {
                                                                 onTap: () =>
                                                                     bottomsheet(
                                                                         context,
-                                                                        leave),
-                                                                subtitle: Text(
-                                                                  'User: ${leave["username"]}\n'
-                                                                  'Leave Type: ${leave["leaveType"]}\n'
-                                                                  'Status: ${leave["status"] ?? "Pending"}\n'
-                                                                  'From: ${startDate.toLocal().toString().split(' ')[0]}, '
-                                                                  'To: ${endDate.toLocal().toString().split(' ')[0]}\n'
-                                                                  'Duration: $duration days',
-                                                                ),
-                                                                trailing:
-                                                                    const Icon(Icons
-                                                                        .arrow_forward_ios),
-                                                              ),
-                                                            ),
-                                                          );
-                                                        },
-                                                      );
-                                                    } else {
-                                                      return StreamBuilder<
-                                                          QuerySnapshot>(
-                                                        stream: fetchLeaves(),
-                                                        builder: (context,
-                                                            snapshot) {
-                                                          if (snapshot
-                                                                  .connectionState ==
-                                                              ConnectionState
-                                                                  .waiting) {
-                                                            return const Center(
-                                                                child:
-                                                                    CircularProgressIndicator());
-                                                          }
-                                                          if (snapshot
-                                                              .hasError) {
-                                                            return Center(
-                                                                child: Text(
-                                                                    'Error: ${snapshot.error}'));
-                                                          }
-                                                          if (!snapshot
-                                                                  .hasData ||
-                                                              snapshot
-                                                                  .data!
-                                                                  .docs
-                                                                  .isEmpty) {
-                                                            return const Center(
-                                                                child: Text(
-                                                                    'No leave requests found.'));
-                                                          }
-                                                          final filteredDocs =
-                                                              snapshot
-                                                                  .data!.docs
-                                                                  .where((doc) {
-                                                            final data = doc
-                                                                    .data()
-                                                                as Map<String,
-                                                                    dynamic>;
-                                                            return searchFunctn(
-                                                                data,
-                                                                _searchText);
-                                                          }).toList();
-                                                          snapshot.data!.docs
-                                                              .map((doc) => doc
-                                                                      .data()
-                                                                  as Map<String,
-                                                                      dynamic>)
-                                                              .toList();
-                                                          if (filteredDocs
-                                                              .isEmpty) {
-                                                            return const Center(
-                                                                child: Text(
-                                                                    'No leave requests found.'));
-                                                          }
-                                                          return ListView
-                                                              .builder(
-                                                            itemCount:
-                                                                filteredDocs
-                                                                    .length,
-                                                            itemBuilder:
-                                                                (context,
-                                                                    index) {
-                                                              final doc =
-                                                                  filteredDocs[
-                                                                      index];
-                                                              final data = doc
-                                                                      .data()
-                                                                  as Map<String,
-                                                                      dynamic>;
-
-                                                              final startDate = doc[
-                                                                          "startDate"]
-                                                                      is Timestamp
-                                                                  ? (doc["startDate"]
-                                                                          as Timestamp)
-                                                                      .toDate()
-                                                                  : null;
-                                                              final endDate = doc[
-                                                                          "endDate"]
-                                                                      is Timestamp
-                                                                  ? (doc["endDate"]
-                                                                          as Timestamp)
-                                                                      .toDate()
-                                                                  : null;
-                                                              String duration =
-                                                                  "Unknown";
-                                                              if (startDate !=
-                                                                      null &&
-                                                                  endDate !=
-                                                                      null) {
-                                                                final diffDays = endDate
-                                                                    .difference(
-                                                                        startDate)
-                                                                    .inDays;
-                                                                duration =
-                                                                    diffDays ==
-                                                                            0
-                                                                        ? '1 day'
-                                                                        : '$diffDays days';
-                                                              }
-                                                              if (filteredDocs
-                                                                  .isEmpty) {
-                                                                return const Center(
-                                                                    child: Text(
-                                                                        'No leave requests found.'));
-                                                              }
-                                                              return Padding(
-                                                                padding: const EdgeInsets
-                                                                    .symmetric(
-                                                                    horizontal:
-                                                                        8.0),
-                                                                child: Card(
-                                                                  margin: const EdgeInsets
-                                                                      .symmetric(
-                                                                      vertical:
-                                                                          8),
-                                                                  child:
-                                                                      ListTile(
-                                                                    contentPadding:
-                                                                        const EdgeInsets
-                                                                            .all(
-                                                                            16),
-                                                                    onTap: () =>
-                                                                        bottomsheet(
-                                                                            context,
-                                                                            data),
-                                                                    subtitle:
-                                                                        Column(
-                                                                      crossAxisAlignment:
-                                                                          CrossAxisAlignment
-                                                                              .start,
+                                                                        data),
+                                                                subtitle:
+                                                                    Column(
+                                                                  crossAxisAlignment:
+                                                                      CrossAxisAlignment
+                                                                          .start,
+                                                                  children: [
+                                                                    Text(
+                                                                      'Leave Type: ${doc["leaveType"]}\n'
+                                                                      'From: ${startDate?.toLocal().toString().split(' ')[0] ?? "Unknown"},  '
+                                                                      'To: ${endDate?.toLocal().toString().split(' ')[0] ?? "Unknown"}\n'
+                                                                      'Duration: $duration',
+                                                                      style:
+                                                                          TextStyle(
+                                                                        fontFamily:
+                                                                            GoogleFonts.montserrat().fontFamily,
+                                                                      ),
+                                                                    ),
+                                                                    Row(
+                                                                      mainAxisSize:
+                                                                          MainAxisSize
+                                                                              .min,
                                                                       children: [
                                                                         Text(
-                                                                          'Leave Type: ${doc["leaveType"]}\n'
-                                                                          'From: ${startDate?.toLocal().toString().split(' ')[0] ?? "Unknown"},  '
-                                                                          'To: ${endDate?.toLocal().toString().split(' ')[0] ?? "Unknown"}\n'
-                                                                          'Duration: $duration',
+                                                                          'Status: ',
                                                                           style:
                                                                               TextStyle(
                                                                             fontFamily:
                                                                                 GoogleFonts.montserrat().fontFamily,
                                                                           ),
                                                                         ),
-                                                                        Row(
-                                                                          mainAxisSize:
-                                                                              MainAxisSize.min,
-                                                                          children: [
-                                                                            Text(
-                                                                              'Status: ',
-                                                                              style: TextStyle(
-                                                                                fontFamily: GoogleFonts.montserrat().fontFamily,
-                                                                              ),
-                                                                            ),
-                                                                            Text(
-                                                                              '${doc["status"] ?? "Pending"}',
-                                                                              style: TextStyle(
-                                                                                fontWeight: FontWeight.bold,
-                                                                                color: (doc["status"] == "Approved")
-                                                                                    ? Colors.green
-                                                                                    : (doc["status"] == "Rejected")
-                                                                                        ? Colors.red
-                                                                                        : Colors.orange,
-                                                                              ),
-                                                                            ),
-                                                                          ],
+                                                                        Text(
+                                                                          '${doc["status"] ?? "Pending"}',
+                                                                          style:
+                                                                              TextStyle(
+                                                                            fontWeight:
+                                                                                FontWeight.bold,
+                                                                            color: (doc["status"] == "Approved")
+                                                                                ? Colors.green
+                                                                                : (doc["status"] == "Rejected")
+                                                                                    ? Colors.red
+                                                                                    : Colors.orange,
+                                                                          ),
                                                                         ),
                                                                       ],
                                                                     ),
-                                                                  ),
+                                                                  ],
                                                                 ),
-                                                              );
-                                                            },
+                                                              ),
+                                                            ),
                                                           );
                                                         },
                                                       );
-                                                    }
-                                                  },
-                                                ),
+                                                    },
+                                                  );
+                                                }
+                                              },
+                                            ),
                                       StreamBuilder<QuerySnapshot>(
-                                        stream: fetchStudentLeaves(),
+                                        stream: _bloc.leavesStream,
                                         builder: (context, snapshot) {
                                           if (snapshot.connectionState ==
                                               ConnectionState.waiting) {
@@ -1098,10 +1278,12 @@ class _LeavesPageState extends State<LeavesPage> {
                                   onPressed: () async {
                                     final bool? shouldRefresh =
                                         await Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                                builder: (context) =>
-                                                    const SubmitLeavePage()));
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            const SubmitLeavePage(),
+                                      ),
+                                    );
                                     if (shouldRefresh == true) {
                                       getData();
                                     }
@@ -1439,6 +1621,9 @@ class _SubmitLeavePageState extends State<SubmitLeavePage> {
   bool isEditing = false;
   String? leaveDocId;
   bool _autoValidate = false;
+  bool isOnline = false;
+  StreamSubscription? _connectivitySubscription;
+  bool _isSyncing = false;
 
   @override
   void initState() {
@@ -1465,6 +1650,12 @@ class _SubmitLeavePageState extends State<SubmitLeavePage> {
       print("Edit mode: leaveDocId = $leaveDocId");
     }
     getdata();
+    checkInternet().then((_) {
+      if (isOnline) {
+        syncFirestoreToLocal();
+        syncUnsyncedLeaves();
+      }
+    });
   }
 
   void getdata() {
@@ -1564,103 +1755,322 @@ class _SubmitLeavePageState extends State<SubmitLeavePage> {
       });
     });
   }
+
   Future<bool> isConnected() async {
     var result = await Connectivity().checkConnectivity();
     return result != ConnectivityResult.none;
   }
 
-  Future<void> submitLeaveData() async {
-    if (key.currentState!.validate()) {
-      try {
-        setState(() {
-          isLoading = true;
-          _autoValidate = true;
+  Future<bool> hasInternet() async {
+    try {
+      final result = await InternetAddress.lookup('google.com');
+      return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<void> syncUnsyncedLeaves() async {
+    if (_isSyncing || !await hasInternet()) return;
+    _isSyncing = true;
+
+    try {
+      final unsyncedLeaves = await IsarUserService.isar!.leaveRequests
+          .where()
+          .filter()
+          .isSyncedEqualTo(false)
+          .findAll();
+
+      for (final leave in unsyncedLeaves) {
+        leave.isSynced = true;
+        await IsarUserService.isar!.writeTxn(() async {
+          await IsarUserService.isar!.leaveRequests.put(leave);
         });
 
-        final currentUser = FirebaseAuth.instance.currentUser;
-        if (currentUser == null) return;
+        final leaveData = {
+          'userId': leave.userId,
+          'username': leave.username,
+          'userDepartment': leave.userDepartment,
+          'creator_role': leave.creatorRole,
+          'leaveType': leave.leaveType,
+          'startDate': Timestamp.fromDate(leave.startDate),
+          'endDate': Timestamp.fromDate(leave.endDate),
+          'leaveReason': leave.leaveReason,
+          'createdAt': leave.createdAt != null
+              ? Timestamp.fromDate(leave.createdAt!)
+              : FieldValue.serverTimestamp(),
+          'durationDays': leave.durationDays,
+          'status': leave.status,
+          'leavesid': leave.leavesId,
+        };
 
-        final userDoc = await FirebaseFirestore.instance
-            .collection('Users')
-            .doc(currentUser.uid)
-            .get();
-        if (!userDoc.exists) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("User details not found in Firestore")),
-          );
-          return;
+        final docRef =
+            FirebaseFirestore.instance.collection('Leaves').doc(leave.leavesId);
+        final docSnapshot = await docRef.get();
+
+        try {
+          if (docSnapshot.exists) {
+            if (docSnapshot.data()!['status'] != leave.status) {
+              await docRef.update({'status': leave.status});
+            }
+          } else {
+            await docRef.set(leaveData);
+          }
+
+          if (!docSnapshot.exists ||
+              docSnapshot.data()!['status'] != leave.status) {
+            await sendNotification(
+              userId: leave.userId,
+              title: "Leave Status Updated",
+              message:
+                  "Your leave request for ${leave.leaveReason} from ${leave.startDate.toLocal().toString().split(' ')[0]} to ${leave.endDate.toLocal().toString().split(' ')[0]} has been ${leave.status}.",
+              type: "LeaveStatus",
+              payload: {
+                "userName": leave.username,
+                "userRole": leave.creatorRole,
+                "leaveType": leave.leaveType,
+                "leaveStatus": leave.status,
+              },
+            );
+          }
+        } catch (e) {
+          leave.isSynced = false;
+          await IsarUserService.isar!.writeTxn(() async {
+            await IsarUserService.isar!.leaveRequests.put(leave);
+          });
         }
+      }
+    } catch (e) {
+      debugPrint("Error syncing leaves: $e");
+    } finally {
+      _isSyncing = false;
+    }
+  }
 
-        final userData = userDoc.data() as Map<String, dynamic>;
-        final userDepartment = userData["department"] ?? "";
-        final userName = userData["username"] ?? "";
-        final creatorRole = (userData["role"] ?? "").toString().toLowerCase();
-        DateTime startDate = DateTime.parse(startdateController.text);
-        DateTime endDate = DateTime.parse(enddateController.text);
-        int duration = endDate.difference(startDate).inDays + 1;
+  Future<void> checkInternet() async {
+    bool connected = await hasInternet();
+    setState(() => isOnline = connected);
 
+    if (connected) {
+      await syncFirestoreToLocal();
+      await syncUnsyncedLeaves();
+    }
 
-        final leaveRequest = LeaveRequest()
-          ..userId = currentUser.uid
-          ..username = userName
-          ..userDepartment = userDepartment
-          ..creatorRole = creatorRole
-          ..leaveType = leavetypeController.text
-          ..startDate = startDate
-          ..endDate = endDate
-          ..leaveReason = leavereasonController.text
-          ..durationDays = duration
-          ..status = 'Pending'
-          ..isSynced = false;
+    _connectivitySubscription?.cancel();
+    _connectivitySubscription = Connectivity()
+        .onConnectivityChanged
+        .listen((List<ConnectivityResult> results) async {
+      bool newOnlineStatus =
+          results.any((result) => result != ConnectivityResult.none) &&
+              await hasInternet();
+
+      if (newOnlineStatus != isOnline) {
+        setState(() => isOnline = newOnlineStatus);
+        if (newOnlineStatus) {
+          await syncFirestoreToLocal();
+          await syncUnsyncedLeaves();
+        }
+      }
+    });
+  }
+
+  Future<void> syncFirestoreToLocal() async {
+    if (!await hasInternet()) return;
+
+    try {
+      final leavesSnapshot =
+          await FirebaseFirestore.instance.collection('Leaves').get();
+
+      await IsarUserService.isar!.writeTxn(() async {
+        for (final doc in leavesSnapshot.docs) {
+          final leaveData = doc.data();
+          final leaveId = doc.id;
+
+          final existingLeave = await IsarUserService.isar!.leaveRequests
+              .where()
+              .leavesIdEqualTo(leaveId)
+              .findFirst();
+
+          if (existingLeave == null) {
+            final leaveRequest = LeaveRequest()
+              ..userId = leaveData['userId'] ?? ''
+              ..leavesId = leaveId
+              ..username = leaveData['username'] ?? ''
+              ..userDepartment = leaveData['userDepartment'] ?? ''
+              ..creatorRole = leaveData['creator_role'] ?? ''
+              ..leaveType = leaveData['leaveType'] ?? ''
+              ..startDate = (leaveData['startDate'] as Timestamp).toDate()
+              ..endDate = (leaveData['endDate'] as Timestamp).toDate()
+              ..leaveReason = leaveData['leaveReason'] ?? ''
+              ..durationDays = leaveData['durationDays'] ?? 0
+              ..status = leaveData['status'] ?? 'Pending'
+              ..createdAt = (leaveData['createdAt'] as Timestamp).toDate()
+              ..isSynced = true;
+
+            await IsarUserService.isar!.leaveRequests.put(leaveRequest);
+          }
+        }
+      });
+    } catch (e) {
+      debugPrint("Error syncing Firestore to local: $e");
+    }
+  }
+
+  Future<void> submitLeaveData() async {
+    if (!key.currentState!.validate()) return;
+
+    try {
+      setState(() {
+        isLoading = true;
+        _autoValidate = true;
+      });
+
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) throw Exception("No authenticated user found");
+
+      final userDoc = await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(currentUser.uid)
+          .get();
+      if (!userDoc.exists)
+        throw Exception("User details not found in Firestore");
+
+      final userData = userDoc.data() as Map<String, dynamic>;
+      final userDepartment = userData["department"] ?? "";
+      final userName = userData["username"] ?? "";
+      final creatorRole = (userData["role"] ?? "").toString().toLowerCase();
+
+      DateTime startDate = DateTime.parse(startdateController.text);
+      DateTime endDate = DateTime.parse(enddateController.text);
+      int duration = endDate.difference(startDate).inDays + 1;
+
+      final existingLeaves = await IsarUserService.isar!.leaveRequests
+          .where()
+          .userIdEqualTo(currentUser.uid)
+          .filter()
+          .startDateLessThan(endDate.add(Duration(days: 1)))
+          .and()
+          .endDateGreaterThan(startDate.subtract(Duration(days: 1)))
+          .findAll();
+
+      final filteredLeaves = isEditing && leaveDocId != null
+          ? existingLeaves
+              .where((leave) => leave.leavesId != leaveDocId)
+              .toList()
+          : existingLeaves;
+
+      if (filteredLeaves.isNotEmpty) {
+        _showSnackBar(
+            "You already have a leave request overlapping with these dates.");
+        setState(() => isLoading = false);
+        return;
+      }
+
+      final leaveId =
+          isEditing && leaveDocId != null ? leaveDocId! : Uuid().v4();
+
+      final leaveRequest = LeaveRequest()
+        ..userId = currentUser.uid
+        ..leavesId = leaveId
+        ..username = userName
+        ..userDepartment = userDepartment
+        ..creatorRole = creatorRole
+        ..leaveType = leavetypeController.text
+        ..startDate = startDate
+        ..endDate = endDate
+        ..leaveReason = leavereasonController.text
+        ..durationDays = duration
+        ..status = 'Pending'
+        ..createdAt = DateTime.now()
+        ..isSynced = false;
+
+      await IsarUserService.isar!.writeTxn(() async {
+        await IsarUserService.isar!.leaveRequests.put(leaveRequest);
+      });
+      Navigator.pop(context);
+
+      bool online = await isConnected();
+      if (online) {
+        final leaveData = {
+          'userId': currentUser.uid,
+          'username': userName,
+          'userDepartment': userDepartment,
+          'creator_role': creatorRole,
+          'leaveType': leavetypeController.text,
+          'startDate': Timestamp.fromDate(startDate),
+          'endDate': Timestamp.fromDate(endDate),
+          'leaveReason': leavereasonController.text,
+          'createdAt': FieldValue.serverTimestamp(),
+          'durationDays': duration,
+          'status': 'Pending',
+          'leavesid': leaveRequest.leavesId,
+        };
+
+        await FirebaseFirestore.instance
+            .collection('Leaves')
+            .doc(leaveRequest.leavesId)
+            .set(leaveData, SetOptions(merge: true));
 
         await IsarUserService.isar!.writeTxn(() async {
+          leaveRequest.isSynced = true;
           await IsarUserService.isar!.leaveRequests.put(leaveRequest);
         });
-        Navigator.pop(context);
-
-        bool online = await isConnected();
-        if (online) {
-          String generatedUUID = Uuid().v4();
-          await FirebaseFirestore.instance.collection('Leaves').doc(generatedUUID).set({
-            'leavesid': generatedUUID,
+      } else {
+        FirestoreQueue.queueUpdate(
+          collection: 'Leaves',
+          docId: leaveRequest.leavesId,
+          data: {
             'userId': currentUser.uid,
             'username': userName,
             'userDepartment': userDepartment,
             'creator_role': creatorRole,
             'leaveType': leavetypeController.text,
-            'startDate': startDate,
-            'endDate': endDate,
+            'startDate': Timestamp.fromDate(startDate),
+            'endDate': Timestamp.fromDate(endDate),
             'leaveReason': leavereasonController.text,
             'createdAt': FieldValue.serverTimestamp(),
             'durationDays': duration,
-            'status': 'Pending'
-          });
-
-
-          await IsarUserService.isar!.writeTxn(() async {
-            leaveRequest.isSynced = true;
-            await IsarUserService.isar!.leaveRequests.put(leaveRequest);
-          });
-        }
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Leave request submitted successfully")),
+            'status': 'Pending',
+            'leavesid': leaveRequest.leavesId,
+          },
         );
+      }
 
-        leavetypeController.clear();
-        leavereasonController.clear();
-        startdateController.clear();
-        enddateController.clear();
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error submitting leave request: $e")),
-        );
-      } finally {
+      _showSnackBar(
+          "Leave request submitted successfully", Colors.green.shade500);
+      Navigator.pop(context);
+
+      _clearForm();
+    } catch (e) {
+      _showSnackBar("Error submitting leave request: $e", Colors.red.shade500);
+    } finally {
+      if (mounted) {
         setState(() {
           isLoading = false;
+          isEditing = false;
         });
       }
     }
+  }
+
+  void _showSnackBar(String message, [Color? color]) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        margin: const EdgeInsets.all(10),
+        duration: const Duration(seconds: 2),
+        backgroundColor: color,
+      ),
+    );
+  }
+
+  void _clearForm() {
+    leavetypeController.clear();
+    leavereasonController.clear();
+    startdateController.clear();
+    enddateController.clear();
   }
 
   @override
@@ -1858,6 +2268,32 @@ class _SubmitLeavePageState extends State<SubmitLeavePage> {
   }
 }
 
+void initializeConnectivityListener() {
+  Connectivity()
+      .onConnectivityChanged
+      .listen((ConnectivityResult result) async {
+        if (result != ConnectivityResult.none) {
+          final queuedNotifications =
+              NotificationQueue.getQueuedNotifications();
+          for (int i = queuedNotifications.length - 1; i >= 0; i--) {
+            final notification = queuedNotifications[i];
+            try {
+              await sendNotification(
+                userId: notification['userId'],
+                title: notification['title'],
+                message: notification['message'],
+                type: notification['type'],
+                payload: notification['payload'],
+              );
+              NotificationQueue.clearNotification(i);
+            } catch (e) {
+              debugPrint("Error sending queued notification: $e");
+            }
+          }
+        }
+      } as void Function(List<ConnectivityResult> event)?);
+}
+
 class customstatusButton extends StatefulWidget {
   final String initialStatus;
   final String leaveId;
@@ -1877,12 +2313,95 @@ class customstatusButton extends StatefulWidget {
 class _customstatusButtonState extends State<customstatusButton> {
   late String _status;
   bool showstatusButtons = true;
+  bool isOnline = false;
+  StreamSubscription? _connectivitySubscription;
+  bool _isSyncing = false;
 
   @override
   void initState() {
     super.initState();
     _status = widget.initialStatus;
     showstatusButtons = (_status == 'Pending');
+    checkInternet();
+    syncUnsyncedLeaves();
+  }
+
+  Future<void> syncUnsyncedLeaves() async {
+    if (_isSyncing || !await hasInternet()) return;
+    _isSyncing = true;
+
+    try {
+      final unsyncedLeaves = await IsarUserService.isar!.leaveRequests
+          .where()
+          .filter()
+          .isSyncedEqualTo(false)
+          .findAll();
+
+      for (final leave in unsyncedLeaves) {
+        leave.isSynced = true;
+        await IsarUserService.isar!.writeTxn(() async {
+          await IsarUserService.isar!.leaveRequests.put(leave);
+        });
+
+        final leaveData = {
+          'userId': leave.userId,
+          'username': leave.username,
+          'userDepartment': leave.userDepartment,
+          'creator_role': leave.creatorRole,
+          'leaveType': leave.leaveType,
+          'startDate': Timestamp.fromDate(leave.startDate),
+          'endDate': Timestamp.fromDate(leave.endDate),
+          'leaveReason': leave.leaveReason,
+          'createdAt': leave.createdAt != null
+              ? Timestamp.fromDate(leave.createdAt!)
+              : FieldValue.serverTimestamp(),
+          'durationDays': leave.durationDays,
+          'status': leave.status,
+          'leavesid': leave.leavesId,
+        };
+        print(leaveData);
+
+        final docRef =
+            FirebaseFirestore.instance.collection('Leaves').doc(leave.leavesId);
+        final docSnapshot = await docRef.get();
+
+        try {
+          if (docSnapshot.exists) {
+            if (docSnapshot.data()!['status'] != leave.status) {
+              await docRef.update({'status': leave.status});
+            }
+          } else {
+            await docRef.set(leaveData);
+          }
+
+          if (!docSnapshot.exists ||
+              docSnapshot.data()!['status'] != leave.status) {
+            await sendNotification(
+              userId: leave.userId,
+              title: "Leave Status Updated",
+              message:
+                  "Your leave request for ${leave.leaveReason} from ${leave.startDate.toLocal().toString().split(' ')[0]} to ${leave.endDate.toLocal().toString().split(' ')[0]} has been ${leave.status}.",
+              type: "LeaveStatus",
+              payload: {
+                "userName": leave.username,
+                "userRole": leave.creatorRole,
+                "leaveType": leave.leaveType,
+                "leaveStatus": leave.status,
+              },
+            );
+          }
+        } catch (e) {
+          leave.isSynced = false;
+          await IsarUserService.isar!.writeTxn(() async {
+            await IsarUserService.isar!.leaveRequests.put(leave);
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint("Error syncing leaves: $e");
+    } finally {
+      _isSyncing = false;
+    }
   }
 
   @override
@@ -1896,66 +2415,209 @@ class _customstatusButtonState extends State<customstatusButton> {
     }
   }
 
-  Future<void> _updateLeaveStatus(String newStatus) async {
+  Future<void> checkInternet() async {
+    bool connected = await hasInternet();
+    setState(() {
+      isOnline = connected;
+    });
+
+    _connectivitySubscription?.cancel();
+    _connectivitySubscription = Connectivity()
+        .onConnectivityChanged
+        .listen((List<ConnectivityResult> results) async {
+      bool newOnlineStatus =
+          results.any((result) => result != ConnectivityResult.none) &&
+              await hasInternet();
+      if (newOnlineStatus != isOnline) {
+        setState(() {
+          isOnline = newOnlineStatus;
+        });
+        await Future.delayed(const Duration(seconds: 2));
+        if (newOnlineStatus && !_isSyncing) {
+          await syncUnsyncedLeaves();
+        }
+      }
+    });
+  }
+
+  Future<bool> hasInternet() async {
     try {
-      await FirebaseFirestore.instance
-          .collection('Leaves')
-          .doc(widget.leaveId)
-          .update({'status': newStatus});
+      final result = await InternetAddress.lookup('google.com');
+      return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<void> updateLeaveStatus(String newStatus) async {
+    try {
+      bool online = await hasInternet();
+
+      if (IsarUserService.isar == null) {
+        throw Exception("Local database is not initialized");
+      }
+
+      // Fetch the leave request from local Isar storage first
+      LeaveRequest? leaveRequest = await IsarUserService.isar!.leaveRequests
+          .where()
+          .leavesIdEqualTo(widget.leaveId)
+          .findFirst();
+
+      // If the leave request isn’t in local storage and we’re online, fetch it from Firestore
+      if (leaveRequest == null && online) {
+        DocumentSnapshot leaveDoc = await FirebaseFirestore.instance
+            .collection('Leaves')
+            .doc(widget.leaveId)
+            .get();
+
+        if (leaveDoc.exists) {
+          final leaveData = leaveDoc.data() as Map<String, dynamic>;
+          leaveRequest = LeaveRequest()
+            ..userId = leaveData['userId'] ?? ''
+            ..leavesId = widget.leaveId
+            ..username = leaveData['username'] ?? ''
+            ..userDepartment = leaveData['userDepartment'] ?? ''
+            ..creatorRole = leaveData['creator_role'] ?? ''
+            ..leaveType = leaveData['leaveType'] ?? ''
+            ..startDate = (leaveData['startDate'] as Timestamp).toDate()
+            ..endDate = (leaveData['endDate'] as Timestamp).toDate()
+            ..leaveReason = leaveData['leaveReason'] ?? ''
+            ..durationDays = leaveData['durationDays'] ?? 0
+            ..status = leaveData['status'] ?? 'Pending'
+            ..createdAt = leaveData['createdAt'] != null
+                ? (leaveData['createdAt'] as Timestamp).toDate()
+                : DateTime.now()
+            ..isSynced = true;
+
+          // Store the fetched leave request in the updater's local Isar storage
+          await IsarUserService.isar!.writeTxn(() async {
+            await IsarUserService.isar!.leaveRequests.put(leaveRequest!);
+          });
+        } else {
+          throw Exception("Leave request does not exist in Firestore");
+        }
+      }
+
+      if (leaveRequest == null) {
+        throw Exception(
+            "Leave request not found locally and device is offline");
+      }
+
+      // Update the status and sync flag
+      await IsarUserService.isar!.writeTxn(() async {
+        leaveRequest!.status = newStatus;
+        leaveRequest.isSynced = online;
+        await IsarUserService.isar!.leaveRequests.put(leaveRequest);
+      });
+
+      // If online, update Firestore and send notifications
+      if (online) {
+        await FirebaseFirestore.instance
+            .collection('Leaves')
+            .doc(widget.leaveId)
+            .update({'status': newStatus});
+
+        DocumentSnapshot leaveDoc = await FirebaseFirestore.instance
+            .collection('Leaves')
+            .doc(widget.leaveId)
+            .get();
+
+        if (leaveDoc.exists) {
+          final leaveData = leaveDoc.data() as Map<String, dynamic>;
+          String requesterId = leaveData['userId'] ?? "Unknown";
+          String username = leaveData['username'] ?? "Unknown";
+          String role = leaveData['creator_role'] ?? "Unknown";
+          String leaveType = leaveData['leaveType'] ?? "Unknown";
+          String reason = leaveData['leaveReason'] ?? "No reason provided";
+          String startDate = leaveData['startDate'] != null
+              ? (leaveData['startDate'] as Timestamp)
+                  .toDate()
+                  .toLocal()
+                  .toString()
+                  .split(' ')[0]
+              : "Unknown";
+          String endDate = leaveData['endDate'] != null
+              ? (leaveData['endDate'] as Timestamp)
+                  .toDate()
+                  .toLocal()
+                  .toString()
+                  .split(' ')[0]
+              : "Unknown";
+
+          final Map<String, dynamic> notificationParams = {
+            'userId': requesterId,
+            'title': "Leave Status Updated",
+            'message':
+                "Your leave request for $reason from $startDate to $endDate has been $newStatus.",
+            'type': "LeaveStatus",
+            'payload': <String, dynamic>{
+              "userName": username,
+              "userRole": role,
+              "leaveType": leaveType,
+              "leaveStatus": newStatus,
+            },
+          };
+
+          await sendNotification(
+            userId: notificationParams['userId'] as String,
+            title: notificationParams['title'] as String,
+            message: notificationParams['message'] as String,
+            type: notificationParams['type'] as String,
+            payload: notificationParams['payload'] as Map<String, dynamic>,
+          );
+        }
+      } else {
+        // Queue the update for Firestore if offline
+        FirestoreQueue.queueUpdate(
+          collection: 'Leaves',
+          docId: widget.leaveId,
+          data: {'status': newStatus},
+        );
+
+        // Queue the notification if offline
+        NotificationQueue.queueNotification(
+          userId: leaveRequest.userId,
+          title: "Leave Status Updated",
+          message:
+              "Your leave request for ${leaveRequest.leaveReason} from ${leaveRequest.startDate.toLocal().toString().split(' ')[0]} to ${leaveRequest.endDate.toLocal().toString().split(' ')[0]} has been $newStatus.",
+          type: "LeaveStatus",
+          payload: {
+            "userName": leaveRequest.username,
+            "userRole": leaveRequest.creatorRole,
+            "leaveType": leaveRequest.leaveType,
+            "leaveStatus": newStatus,
+          },
+          leavesId: widget.leaveId,
+        );
+      }
 
       setState(() {
         _status = newStatus;
         showstatusButtons = false;
       });
 
-      DocumentSnapshot leaveDoc = await FirebaseFirestore.instance
-          .collection('Leaves')
-          .doc(widget.leaveId)
-          .get();
-
-      if (leaveDoc.exists) {
-        final leaveData = leaveDoc.data() as Map<String, dynamic>;
-        String requesterId = leaveData['userId'] ?? "Unknown";
-        String username = leaveData['username'] ?? "Unknown";
-        String role = leaveData['creator_role'] ?? "Unknown";
-        String leaveType = leaveData['leaveType'] ?? "Unknown";
-        String reason = leaveData['leaveReason'] ?? "No reason provided";
-        String startDate = leaveData['startDate'] != null
-            ? (leaveData['startDate'] as Timestamp)
-                .toDate()
-                .toLocal()
-                .toString()
-                .split(' ')[0]
-            : "Unknown";
-        String endDate = leaveData['endDate'] != null
-            ? (leaveData['endDate'] as Timestamp)
-                .toDate()
-                .toLocal()
-                .toString()
-                .split(' ')[0]
-            : "Unknown";
-
-        await sendNotification(
-          userId: requesterId,
-          title: "Leave Status Updated",
-          message:
-              "Your leave request for $reason from $startDate to $endDate has been $newStatus.",
-          type: "LeaveStatus",
-          payload: {
-            "userName": username,
-            "userRole": role,
-            "leaveType": leaveType,
-            "leaveStatus": newStatus,
-          },
-        );
-      }
-
       if (widget.closesheet) {
         Navigator.pop(context);
       }
     } catch (e) {
       debugPrint("Error updating leave status: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to update status: $e'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          margin: const EdgeInsets.all(10),
+        ),
+      );
     }
+  }
+
+  @override
+  void dispose() {
+    _connectivitySubscription?.cancel();
+    super.dispose();
   }
 
   @override
@@ -1995,12 +2657,12 @@ class _customstatusButtonState extends State<customstatusButton> {
                 _buildButton(
                   text: 'Approve',
                   color: Colors.green,
-                  onTap: () => _updateLeaveStatus('Approved'),
+                  onTap: () => updateLeaveStatus('Approved'),
                 ),
                 _buildButton(
                   text: 'Reject',
                   color: Colors.red,
-                  onTap: () => _updateLeaveStatus('Rejected'),
+                  onTap: () => updateLeaveStatus('Rejected'),
                 ),
               ],
             ),
@@ -2038,6 +2700,93 @@ class _customstatusButtonState extends State<customstatusButton> {
         ),
       ),
     );
+  }
+}
+
+class NotificationQueue {
+  static final List<Map<String, dynamic>> _queuedNotifications = [];
+
+  static void queueNotification({
+    required String userId,
+    required String title,
+    required String message,
+    required String type,
+    required Map<String, dynamic> payload,
+    required String leavesId,
+  }) {
+    bool alreadyQueued = _queuedNotifications.any(
+        (notification) => notification['payload']?['leavesId'] == leavesId);
+    if (!alreadyQueued) {
+      _queuedNotifications.add({
+        'userId': userId,
+        'title': title,
+        'message': message,
+        'type': type,
+        'payload': {...payload, 'leavesId': leavesId},
+        'timestamp': DateTime.now().toIso8601String(),
+      });
+    }
+  }
+
+  static List<Map<String, dynamic>> getQueuedNotifications() =>
+      _queuedNotifications;
+
+  static void clearNotification(int index) {
+    if (index >= 0 && index < _queuedNotifications.length) {
+      _queuedNotifications.removeAt(index);
+    }
+  }
+
+  static void clearNotificationByLeavesId(String leavesId) {
+    _queuedNotifications.removeWhere(
+        (notification) => notification['payload']?['leavesId'] == leavesId);
+  }
+
+  static Future<void> processQueue() async {
+    if (_queuedNotifications.isEmpty) return;
+
+    final notifications = List<Map<String, dynamic>>.from(_queuedNotifications);
+
+    for (var notification in notifications) {
+      try {
+        await sendNotification(
+          userId: notification['userId'] as String,
+          title: notification['title'] as String,
+          message: notification['message'] as String,
+          type: notification['type'] as String,
+          payload: notification['payload'] as Map<String, dynamic>,
+        );
+
+        clearNotificationByLeavesId(notification['payload']['leavesId']);
+      } catch (e) {
+        print("Error sending queued notification: $e");
+      }
+    }
+  }
+}
+
+class FirestoreQueue {
+  static final List<Map<String, dynamic>> _queuedUpdates = [];
+
+  static void queueUpdate({
+    required String collection,
+    required String docId,
+    required Map<String, dynamic> data,
+  }) {
+    _queuedUpdates.add({
+      'collection': collection,
+      'docId': docId,
+      'data': data,
+      'timestamp': DateTime.now().toIso8601String(),
+    });
+  }
+
+  static List<Map<String, dynamic>> getQueuedUpdates() => _queuedUpdates;
+
+  static void clearUpdate(int index) {
+    if (index >= 0 && index < _queuedUpdates.length) {
+      _queuedUpdates.removeAt(index);
+    }
   }
 }
 

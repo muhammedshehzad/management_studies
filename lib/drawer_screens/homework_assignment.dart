@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -58,7 +61,8 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
   String searchText = '';
   Query newquery = FirebaseFirestore.instance.collection('homeworks');
   List<HomeWorkDetailModel> filteredRecords = [];
-
+  bool isOnline = false;
+  StreamSubscription? _connectivitySubscription;
   List<HomeWorkDetailModel> _originalData = [];
   List<HomeWorkDetailModel> _filteredData = [];
   String _searchText = '';
@@ -68,6 +72,7 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
   @override
   void initState() {
     super.initState();
+    checkInternet();
     _fetchFirebaseData();
     loadRole();
   }
@@ -75,6 +80,33 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
   @override
   void dispose() {
     super.dispose();
+  }
+
+  Future<void> checkInternet() async {
+    bool connected = await hasInternet();
+    setState(() {
+      isOnline = connected;
+    });
+
+    _connectivitySubscription = Connectivity()
+        .onConnectivityChanged
+        .listen((List<ConnectivityResult> results) async {
+      bool connected =
+          results.any((result) => result != ConnectivityResult.none) &&
+              await hasInternet();
+      setState(() {
+        isOnline = connected;
+      });
+    });
+  }
+
+  Future<bool> hasInternet() async {
+    try {
+      final result = await InternetAddress.lookup('google.com');
+      return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
+    } catch (e) {
+      return false;
+    }
   }
 
   Future<void> refreshHomeworkData() async {
@@ -566,7 +598,7 @@ class _HomeWorkScreenState extends State<HomeWorkScreen> {
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8),
               child: TextField(
                 controller: _searchController,
                 decoration: InputDecoration(
@@ -945,8 +977,8 @@ class _HomeWorkDetailsState extends State<HomeWorkDetails> {
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? selectedDate = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime(2010),
+      initialDate: DateTime.now().add(Duration(days: 1)),
+      firstDate: DateTime.now().add(Duration(days: 1)),
       lastDate: DateTime(2050),
     );
     if (selectedDate != null && selectedDate != DateTime.now()) {

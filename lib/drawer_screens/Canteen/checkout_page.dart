@@ -7,13 +7,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:new_school/drawer_screens/Canteen/orders_page.dart';
 import 'package:new_school/drawer_screens/Canteen/success_page.dart';
 import 'package:provider/provider.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
-import '../../sliding_transition.dart';
 import 'cart_provider.dart';
 import 'failure_page.dart';
 
@@ -94,20 +92,26 @@ class _CheckoutPageState extends State<CheckoutPage> {
         status: 'success',
         paymentId: response.paymentId,
       );
-      setState(() => currentTransactionId = null);
-    }
 
-    setState(() => isLoading = false);
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => PaymentSuccessPage()),
-    );
-    context.read<CartProvider>().clearCart();
+      final String transactionIdToPass = currentTransactionId ?? '';
+      setState(() => currentTransactionId = null);
+
+      setState(() => isLoading = false);
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => PaymentSuccessPage(
+            transactionId: transactionIdToPass,
+          ),
+        ),
+      );
+      context.read<CartProvider>().clearCart();
+    }
   }
 
   String generateUniqueOrderId() {
     var uuid = Uuid();
-    return uuid.v4(); // Generates a random UUID
+    return uuid.v4();
   }
 
   Future<void> saveTransactionToFirestore(double totalAmount,
@@ -174,7 +178,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
   Future<void> updateCartItems(DocumentReference transactionRef,
       Map<String, dynamic> cartItems, String? orderId) async {
-    // Clear existing items if updating
+
     if (currentTransactionId != null) {
       await deleteSubCollection(transactionRef, 'Items');
     }
@@ -406,6 +410,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
   void dispose() {
     super.dispose();
     _razorpay.clear();
+    _connectivitySubscription?.cancel();
   }
 
   @override
@@ -413,9 +418,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
     return Stack(
       children: [
         Scaffold(
-          backgroundColor: Colors.white,
           appBar: AppBar(
-            backgroundColor: Colors.white,
             title: Text('Checkout Page'),
             centerTitle: true,
             actions: [
@@ -436,7 +439,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
             children: [
               Center(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16.0, vertical: 16),
                   child: Column(
                     children: [
                       Consumer<CartProvider>(
@@ -519,82 +523,98 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 right: 10,
                 child: Padding(
                   padding: const EdgeInsets.only(bottom: 8.0),
-                  child: Container(
-                    decoration: BoxDecoration(
-                        color: Colors.teal.shade50,
-                        borderRadius: BorderRadius.circular(8)),
-                    child: Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Column(
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Text(
-                                  'Amount Payable:',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w500,
-                                    fontSize: 16,
+                  child: Card(
+                    child: Container(
+                      decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8)),
+                      child: Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Column(
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    'Amount Payable:',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w500,
+                                      fontSize: 16,
+                                    ),
                                   ),
-                                ),
-                                Consumer<CartProvider>(
-                                  builder: (context, cartProvider, _) {
-                                    return Text(
-                                      '₹${cartProvider.calculateTotal().toStringAsFixed(2)}',
-                                      style: TextStyle(
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 18,
-                                          color: Colors.green.shade700),
-                                    );
-                                  },
-                                ),
-                              ],
+                                  Consumer<CartProvider>(
+                                    builder: (context, cartProvider, _) {
+                                      return Text(
+                                        '₹${cartProvider.calculateTotal().toStringAsFixed(2)}',
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 18,
+                                            color: Colors.green.shade700),
+                                      );
+                                    },
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 4.0),
-                            child: SizedBox(
-                              width: MediaQuery.of(context).size.width,
-                              child: ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  foregroundColor: Colors.white,
-                                  backgroundColor: Color(0xff3e948e),
-                                  elevation: 3,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(6),
+                            Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 4.0),
+                              child: SizedBox(
+                                width: MediaQuery.of(context).size.width,
+                                child: ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    foregroundColor: Colors.white,
+                                    backgroundColor: Color(0xff3e948e),
+                                    elevation: 3,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
                                   ),
-                                ),
-                                onPressed: () async {
-                                  setState(() {
-                                    isLoading = true; // Show loading screen
-                                  });
-                                  isOnline
-                                      ? await initiatePayment()
-                                      : ScaffoldMessenger.of(context)
-                                          .showSnackBar(
-                                          SnackBar(
+                                  onPressed: () async {
+                                    setState(() {
+                                      isLoading = true; // Show loading screen
+                                    });
+                                    isOnline
+                                        ? await initiatePayment()
+                                        : ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                            SnackBar(
                                               content: Text(
-                                                  'No internet connection detected. Please check your connection and try again later.')),
-                                        );
+                                                  'No internet connection detected. Please check your connection and try again later.'),
+                                              behavior:
+                                                  SnackBarBehavior.floating,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
+                                              margin: const EdgeInsets.all(10),
+                                              duration:
+                                                  const Duration(seconds: 2),
+                                              backgroundColor:
+                                                  Colors.red.shade500,
+                                            ),
+                                          );
 
-                                  setState(() {
-                                    isLoading = false;
-                                  });
-                                },
-                                child: Text(
-                                  'Proceed To Payment',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14,
+                                    setState(() {
+                                      isLoading = false;
+                                    });
+                                  },
+                                  child: Text(
+                                    'Proceed To Payment',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                          )
-                        ],
+                            )
+                          ],
+                        ),
                       ),
                     ),
                   ),
