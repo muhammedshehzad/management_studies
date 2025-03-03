@@ -80,3 +80,22 @@ class NotificationService {
     );
   }
 }
+
+Future<void> sendNotification({
+  required String userId,
+  required String title,
+  required String message,
+  required String type,
+  Map<String, dynamic>? payload,
+}) async {
+  await FirebaseFirestore.instance.collection('notifications').add({
+    'userId': userId,
+    'title': title,
+    'message': message,
+    'type': type,
+    'timestamp': DateTime.now().toUtc(),
+    'isRead': false,
+    'isNotified': false,
+    'payload': payload,
+  });
+}

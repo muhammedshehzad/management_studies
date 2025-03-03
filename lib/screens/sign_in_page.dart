@@ -1,7 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:isar/isar.dart' hide Query;
 import 'package:new_school/isar_storage/academic_records_model.dart';
 import 'package:new_school/isar_storage/homework_records_model.dart';
@@ -15,6 +14,123 @@ import '../Dashboard/dashboard.dart';
 import '../firebase_auth_implementation/firebase_auth_services.dart';
 import '../isar_storage/isar_user_service.dart';
 import '../isar_storage/school_details_model.dart';
+
+Future<void> syncLeavesFirestoreToIsar() async {
+  try {
+    final User? currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) {
+      print("User not logged in.");
+      return;
+    }
+
+    final String userRole = await _getUserRole();
+    Query<Map<String, dynamic>> query;
+
+    if (userRole == 'Student') {
+      query = FirebaseFirestore.instance
+          .collection('Leaves')
+          .where('userId', isEqualTo: currentUser.uid)
+          .orderBy('createdAt', descending: true);
+      print("Fetching leave records for Student...");
+    } else if (userRole == 'Teacher') {
+      final userDocSnapshot = await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(currentUser.uid)
+          .get();
+
+      if (!userDocSnapshot.exists ||
+          userDocSnapshot.data()?['department'] == null) {
+        print("User department not found.");
+        return;
+      }
+
+      final userDepartment = userDocSnapshot.data()!['department'];
+
+      query = FirebaseFirestore.instance
+          .collection('Leaves')
+          .where(Filter.or(
+            Filter('userId', isEqualTo: currentUser.uid),
+            Filter.and(
+              Filter('creator_role', isEqualTo: 'student'),
+              Filter('userDepartment', isEqualTo: userDepartment),
+            ),
+          ))
+          .orderBy('createdAt', descending: true);
+
+      print(
+          "Fetching leave records for $userRole in department: $userDepartment...");
+    } else {
+      query = FirebaseFirestore.instance
+          .collection('Leaves')
+          .orderBy('createdAt', descending: true);
+      print("Fetching all leave records...");
+    }
+
+    final snapshot = await query.get();
+
+    if (snapshot.docs.isEmpty) {
+      print("No leave records found in Firestore.");
+      return;
+    }
+
+    await IsarUserService.isar!.writeTxn(() async {
+      await IsarUserService.isar!.leaveRequests.clear();
+    });
+
+    List<LeaveRequest> leaveRecords = [];
+
+    for (var doc in snapshot.docs) {
+      final data = doc.data();
+      DateTime startDate = (data['startDate'] as Timestamp).toDate();
+      DateTime endDate = (data['endDate'] as Timestamp).toDate();
+
+      leaveRecords.add(LeaveRequest()
+        ..userId = data['userId'] ?? ''
+        ..leavesId = data['leavesid'] ?? ''
+        ..username = data['username'] ?? ''
+        ..userDepartment = data['userDepartment'] ?? ''
+        ..creatorRole = data['creator_role'] ?? ''
+        ..leaveType = data['leaveType'] ?? ''
+        ..startDate = startDate
+        ..endDate = endDate
+        ..createdAt =
+            (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now()
+        ..leaveReason = data['leaveReason'] ?? ''
+        ..durationDays = data['durationDays'] ?? 0
+        ..status = data['status'] ?? ''
+        ..isSynced = true);
+    }
+
+    if (leaveRecords.isNotEmpty) {
+      await IsarUserService.isar!.writeTxn(() async {
+        await IsarUserService.isar!.leaveRequests.putAll(leaveRecords);
+      });
+      print(
+          "Synced ${leaveRecords.length} leave records from Firestore to Isar.");
+    } else {
+      print("No new leave records to sync.");
+    }
+  } catch (e) {
+    print("Error during leave records sync: $e");
+  }
+}
+
+Future<String> _getUserRole() async {
+  final currentUser = FirebaseAuth.instance.currentUser;
+  if (currentUser == null) return 'guest';
+
+  try {
+    final userDoc = await FirebaseFirestore.instance
+        .collection('Users')
+        .doc(currentUser.uid)
+        .get();
+
+    return userDoc.data()?['role'] ?? 'guest';
+  } catch (e) {
+    print('Error getting user role: $e');
+    return 'guest';
+  }
+}
 
 class SignIn extends StatefulWidget {
   const SignIn({super.key});
@@ -37,22 +153,6 @@ class _SignInState extends State<SignIn> {
     super.dispose();
   }
 
-  Future<String> _getUserRole() async {
-    final currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser == null) return 'guest';
-
-    try {
-      final userDoc = await FirebaseFirestore.instance
-          .collection('Users')
-          .doc(currentUser.uid)
-          .get();
-
-      return userDoc.data()?['role'] ?? 'guest';
-    } catch (e) {
-      print('Error getting user role: $e');
-      return 'guest';
-    }
-  }
 
   Future<void> syncHomeworkRecordsFirestoreToIsar() async {
     try {

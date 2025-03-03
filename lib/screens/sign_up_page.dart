@@ -98,7 +98,7 @@ class _SignUpState extends State<SignUp> {
       String password = _passwordController.text.trim();
 
       User? userCredential =
-          await _auth.signUpWithEmailAndPassword(email, password);
+      await _auth.signUpWithEmailAndPassword(email, password);
 
       if (userCredential != null) {
         await FirebaseFirestore.instance
@@ -225,7 +225,7 @@ class _SignUpState extends State<SignUp> {
                         decoration: InputDecoration(
                           labelText: 'Select Role',
                           prefixIcon:
-                              Icon(Icons.person, color: Color(0xff3e948e)),
+                          Icon(Icons.person, color: Color(0xff3e948e)),
                           filled: true,
                           fillColor: Colors.grey[50],
                           border: OutlineInputBorder(
@@ -244,7 +244,7 @@ class _SignUpState extends State<SignUp> {
                         decoration: InputDecoration(
                           labelText: 'Username',
                           prefixIcon:
-                              Icon(Icons.person, color: Color(0xff3e948e)),
+                          Icon(Icons.person, color: Color(0xff3e948e)),
                           filled: true,
                           fillColor: Colors.grey[50],
                           border: OutlineInputBorder(
@@ -269,7 +269,7 @@ class _SignUpState extends State<SignUp> {
                         decoration: InputDecoration(
                           labelText: 'Email',
                           prefixIcon:
-                              Icon(Icons.email, color: Color(0xff3e948e)),
+                          Icon(Icons.email, color: Color(0xff3e948e)),
                           filled: true,
                           fillColor: Colors.grey[50],
                           border: OutlineInputBorder(
@@ -298,7 +298,7 @@ class _SignUpState extends State<SignUp> {
                         decoration: InputDecoration(
                           labelText: 'Phone Number',
                           prefixIcon:
-                              Icon(Icons.phone, color: Color(0xff3e948e)),
+                          Icon(Icons.phone, color: Color(0xff3e948e)),
                           filled: true,
                           fillColor: Colors.grey[50],
                           border: OutlineInputBorder(
@@ -328,7 +328,7 @@ class _SignUpState extends State<SignUp> {
                         decoration: InputDecoration(
                           labelText: 'Department',
                           prefixIcon:
-                              Icon(Icons.school, color: Color(0xff3e948e)),
+                          Icon(Icons.school, color: Color(0xff3e948e)),
                           filled: true,
                           fillColor: Colors.grey[50],
                           border: OutlineInputBorder(
@@ -370,7 +370,7 @@ class _SignUpState extends State<SignUp> {
                         decoration: InputDecoration(
                           labelText: 'Address',
                           prefixIcon:
-                              Icon(Icons.location_on, color: Color(0xff3e948e)),
+                          Icon(Icons.location_on, color: Color(0xff3e948e)),
                           filled: true,
                           fillColor: Colors.grey[50],
                           border: OutlineInputBorder(
@@ -396,7 +396,7 @@ class _SignUpState extends State<SignUp> {
                         decoration: InputDecoration(
                           labelText: 'Password',
                           prefixIcon:
-                              Icon(Icons.lock, color: Color(0xff3e948e)),
+                          Icon(Icons.lock, color: Color(0xff3e948e)),
                           filled: true,
                           fillColor: Colors.grey[50],
                           border: OutlineInputBorder(
@@ -425,7 +425,7 @@ class _SignUpState extends State<SignUp> {
                         decoration: InputDecoration(
                           labelText: 'Confirm Password',
                           prefixIcon:
-                              Icon(Icons.lock, color: Color(0xff3e948e)),
+                          Icon(Icons.lock, color: Color(0xff3e948e)),
                           filled: true,
                           fillColor: Colors.grey[50],
                           border: OutlineInputBorder(

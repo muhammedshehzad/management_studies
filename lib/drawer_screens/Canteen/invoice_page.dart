@@ -46,60 +46,65 @@ class DownloadInvoice extends StatelessWidget {
             return pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
-                // Title
                 pw.Text(
                   'Invoice',
                   style: pw.TextStyle(
-                    fontSize: 30,
+                    fontSize: 18,
                     fontWeight: pw.FontWeight.bold,
                     color: PdfColors.black,
                   ),
                 ),
+                pw.SizedBox(height: 16),
+                pw.Divider(height: 1, thickness: 0.5, color: PdfColors.grey300),
                 pw.SizedBox(height: 12),
-                pw.Divider(),
-                pw.SizedBox(height: 8),
-                // Customer info
-                pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                  children: [
-                    pw.Text(
-                      'Customer Name:',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                        color: PdfColors.black,
-                      ),
-                    ),
-                    pw.Text(
-                      '${transaction['userName']}',
-                      style: pw.TextStyle(fontSize: 14),
-                    ),
-                  ],
+
+                // Customer Info Section
+                pw.Text(
+                  'Customer Details',
+                  style: pw.TextStyle(
+                    fontSize: 14,
+                    fontWeight: pw.FontWeight.bold,
+                    color: PdfColors.black,
+                  ),
                 ),
                 pw.SizedBox(height: 8),
                 pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
                     pw.Text(
-                      'Transaction Time:',
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                        color: PdfColors.black,
-                      ),
+                      'Name',
+                      style: pw.TextStyle(fontSize: 12, color: PdfColors.black),
+                    ),
+                    pw.Text(
+                      '${transaction['userName']}',
+                      style:
+                          pw.TextStyle(fontSize: 12, color: PdfColors.grey800),
+                    ),
+                  ],
+                ),
+                pw.SizedBox(height: 6),
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text(
+                      'Date & Time',
+                      style: pw.TextStyle(fontSize: 12, color: PdfColors.black),
                     ),
                     pw.Text(
                       '$formattedDate, $formattedTime',
-                      style: pw.TextStyle(fontSize: 14),
+                      style:
+                          pw.TextStyle(fontSize: 12, color: PdfColors.grey800),
                     ),
                   ],
                 ),
                 pw.SizedBox(height: 16),
-                // Items section
+                pw.Divider(height: 1, thickness: 0.5, color: PdfColors.grey300),
+                pw.SizedBox(height: 12),
+
                 pw.Text(
-                  'Items Purchased:',
+                  'Items Purchased',
                   style: pw.TextStyle(
-                    fontSize: 18,
+                    fontSize: 14,
                     fontWeight: pw.FontWeight.bold,
                     color: PdfColors.black,
                   ),
@@ -107,36 +112,37 @@ class DownloadInvoice extends StatelessWidget {
                 pw.SizedBox(height: 8),
                 pw.Column(
                   children: items.map((item) {
-                    return pw.Row(
-                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                      children: [
-                        pw.Text(
-                          '${item['name']} x${item['quantity']}',
-                          style: pw.TextStyle(fontSize: 14),
-                        ),
-                        pw.Text(
-                          '${(item['discountedPrice'] * item['quantity']).toStringAsFixed(2)}',
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.normal,
-                            color: PdfColors.grey.shade(700),
+                    return pw.Padding(
+                      padding: const pw.EdgeInsets.symmetric(vertical: 4),
+                      child: pw.Row(
+                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                        children: [
+                          pw.Text(
+                            '${item['name']} x${item['quantity']}',
+                            style: pw.TextStyle(
+                                fontSize: 12, color: PdfColors.black),
                           ),
-                        ),
-                      ],
+                          pw.Text(
+                            '${(item['discountedPrice'] * item['quantity']).toStringAsFixed(2)}',
+                            style: pw.TextStyle(
+                                fontSize: 12, color: PdfColors.grey800),
+                          ),
+                        ],
+                      ),
                     );
                   }).toList(),
                 ),
                 pw.SizedBox(height: 16),
-                pw.Divider(),
-                pw.SizedBox(height: 16),
-                // Total section
+                pw.Divider(height: 1, thickness: 0.5, color: PdfColors.grey300),
+                pw.SizedBox(height: 12),
+
                 pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
                     pw.Text(
-                      'Total Amount Paid:',
+                      'Total Amount Paid',
                       style: pw.TextStyle(
-                        fontSize: 16,
+                        fontSize: 14,
                         fontWeight: pw.FontWeight.bold,
                         color: PdfColors.black,
                       ),
@@ -144,23 +150,23 @@ class DownloadInvoice extends StatelessWidget {
                     pw.Text(
                       '${transaction['totalAmount'].toStringAsFixed(2)}',
                       style: pw.TextStyle(
-                        fontSize: 18,
+                        fontSize: 14,
                         fontWeight: pw.FontWeight.bold,
-                        color: PdfColors.grey700,
+                        color: PdfColors.black,
                       ),
                     ),
                   ],
                 ),
                 pw.SizedBox(height: 16),
-                pw.Divider(),
-                pw.SizedBox(height: 8),
+                pw.Divider(height: 1, thickness: 0.5, color: PdfColors.grey300),
+
+                // Footer
                 pw.Spacer(),
                 pw.Text(
-                  'School Management App.',
+                  'School Management App',
                   style: pw.TextStyle(
                     fontSize: 10,
-                    fontWeight: pw.FontWeight.normal,
-                    color: PdfColors.grey,
+                    color: PdfColors.grey600,
                   ),
                 ),
               ],

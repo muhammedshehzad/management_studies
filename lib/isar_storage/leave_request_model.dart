@@ -24,4 +24,5 @@ class LeaveRequest {
   late int durationDays;
   late String status;
   late bool isSynced;
+  bool notificationSent = false;
 }
