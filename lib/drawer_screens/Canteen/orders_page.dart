@@ -294,14 +294,10 @@ class _OrdersPageState extends State<OrdersPage> {
                                     ),
                                   ),
                                   onPressed: () async {
-                                    // isOnline
-                                    //     ?
+
                                     await retryDraftOrder(
                                         transaction['transactionId']);
-                                    // : ScaffoldMessenger.of(context)
-                                    //     .showSnackBar(
-                                    //     SnackBar(
-                                    //         content: Text('No internet connection detected. Please check your connection and try again later.')),                                        );
+
                                   },
                                   child: const Text(
                                     'Retry Payment',

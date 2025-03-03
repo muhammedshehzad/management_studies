@@ -3,8 +3,6 @@ import 'dart:io';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
-import '../../screens/sign_in_page.dart';
 import 'leave_status_provider.dart';
 
 class CustomStatusButton extends StatefulWidget {
@@ -32,83 +30,64 @@ class _CustomStatusButtonState extends State<CustomStatusButton> {
   void initState() {
     super.initState();
     _wasOffline = true;
-    _checkInternet();
+    checkInternet();
     final provider = Provider.of<LeaveStatusProvider>(context, listen: false);
     provider.getStatus(widget.leaveId, widget.initialStatus);
-    provider.syncUnsyncedLeaves(context);
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _checkInternet();
+    checkInternet();
   }
 
-  Future<void> _checkInternet() async {
+  Future<void> checkInternet() async {
     try {
       final result = await InternetAddress.lookup('google.com');
       bool newOnlineStatus =
           result.isNotEmpty && result[0].rawAddress.isNotEmpty;
 
-      setState(() {
-        isOnline = newOnlineStatus;
-      });
-
-      if (_wasOffline && newOnlineStatus) {
-        debugPrint('Connectivity restored, triggering sync of unsynced leaves');
-        final provider =
-            Provider.of<LeaveStatusProvider>(context, listen: false);
-        await provider.syncUnsyncedLeaves(context);
+      if (mounted) {
+        setState(() {
+          isOnline = newOnlineStatus;
+        });
       }
-
-      _wasOffline = !newOnlineStatus;
 
       _connectivitySubscription?.cancel();
       _connectivitySubscription =
           Connectivity().onConnectivityChanged.listen((results) {
-        final ConnectivityResult result =
-            results.isNotEmpty ? results.first : ConnectivityResult.none;
-        _handleConnectivityChange(result);
+        _handleConnectivityChange(results);
       });
     } catch (e) {
-      setState(() {
-        isOnline = false;
-        _wasOffline = true;
-      });
+      if (mounted) {
+        setState(() {
+          isOnline = false;
+        });
+      }
     }
   }
 
-  Future<void> _handleConnectivityChange(ConnectivityResult result) async {
+  Future<void> _handleConnectivityChange(
+      List<ConnectivityResult> results) async {
     try {
       bool newOnlineStatus = false;
-      if (result != ConnectivityResult.none) {
+      if (results.isNotEmpty && results.first != ConnectivityResult.none) {
         final lookupResult = await InternetAddress.lookup('google.com');
         newOnlineStatus =
             lookupResult.isNotEmpty && lookupResult[0].rawAddress.isNotEmpty;
       }
 
-      bool statusChanged = newOnlineStatus != isOnline;
-
-      if (statusChanged) {
+      if (mounted) {
         setState(() {
           isOnline = newOnlineStatus;
         });
-
-        if (newOnlineStatus && _wasOffline) {
-          debugPrint(
-              'Connectivity changed to online after being offline, syncing leaves');
-          final provider =
-              Provider.of<LeaveStatusProvider>(context, listen: false);
-          await provider.syncUnsyncedLeaves(context);
-          await syncLeavesFirestoreToIsar();
-          await provider.loadLeaveStatus(widget.leaveId);
-          await provider.refreshLeaveStatuses();
-        }
-
-        _wasOffline = !newOnlineStatus;
       }
     } catch (e) {
-      debugPrint("Error handling connectivity change: $e");
+      if (mounted) {
+        setState(() {
+          isOnline = false;
+        });
+      }
     }
   }
 

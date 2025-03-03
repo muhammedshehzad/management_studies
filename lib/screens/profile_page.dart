@@ -229,9 +229,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       page: SettingsPage(),
                     ),
                   );
-                  if (settingsPath != null) {
-
-                  }
+                  if (settingsPath != null) {}
                 },
               ),
             ],

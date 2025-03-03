@@ -6,7 +6,6 @@ import 'package:isar/isar.dart';
 import 'package:new_school/isar_storage/leave_request_model.dart';
 import 'package:new_school/isar_storage/isar_user_service.dart';
 import '../../notifications/notification_services.dart';
-import 'leaves_page.dart';
 
 class SyncManager {
   static final SyncManager _instance = SyncManager._internal();

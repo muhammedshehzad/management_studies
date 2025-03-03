@@ -12,7 +12,6 @@ import 'package:uuid/uuid.dart';
 
 import '../../isar_storage/isar_user_service.dart';
 import '../../notifications/notification_services.dart';
-import 'leaves_page.dart';
 
 class SubmitLeavePage extends StatefulWidget {
   final Map<String, dynamic>? leave;

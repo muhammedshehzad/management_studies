@@ -6,7 +6,6 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
-import 'package:path_provider/path_provider.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
@@ -27,7 +26,7 @@ class _HomeworkDetailsPageState extends State<HomeworkDetailsPage> {
   String? imageurl;
   List<String> allPdfUrls = [];
   List<String> allImageUrls = [];
-  Set<String> _loadingFiles = {}; // To track loading files
+  Set<String> _loadingFiles = {};
 
   Future<DocumentSnapshot<Map<String, dynamic>>> fetchDetails() async {
     return firestore.collection('homeworks').doc(widget.docId).get();
@@ -45,7 +44,7 @@ class _HomeworkDetailsPageState extends State<HomeworkDetailsPage> {
 
       for (var file in selectedFiles) {
         setState(() {
-          _loadingFiles.add(file.path); // Mark file as loading
+          _loadingFiles.add(file.path);
         });
 
         if (file.path.endsWith('.pdf')) {
@@ -55,7 +54,7 @@ class _HomeworkDetailsPageState extends State<HomeworkDetailsPage> {
         }
 
         setState(() {
-          _loadingFiles.remove(file.path); // Remove file from loading state
+          _loadingFiles.remove(file.path);
         });
       }
     } else {
@@ -88,7 +87,7 @@ class _HomeworkDetailsPageState extends State<HomeworkDetailsPage> {
       setState(() {
         imageurl = jsonMap['url'];
         allImageUrls.add(imageurl!);
-        pickedFiles.add(file); // Add to pickedFiles for display
+        pickedFiles.add(file);
       });
 
       final homeworkDoc =
@@ -148,7 +147,7 @@ class _HomeworkDetailsPageState extends State<HomeworkDetailsPage> {
 
         setState(() {
           allPdfUrls.add(pdfUrl);
-          pickedFiles.add(file); // Add to pickedFiles for display
+          pickedFiles.add(file);
         });
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -466,8 +465,6 @@ class _HomeworkDetailsPageState extends State<HomeworkDetailsPage> {
                   ),
                 ),
                 const SizedBox(height: 16),
-
-                // Attachments Section
                 Card(
                   elevation: 2,
                   shape: RoundedRectangleBorder(

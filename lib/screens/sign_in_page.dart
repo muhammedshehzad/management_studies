@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -145,6 +146,11 @@ class _SignInState extends State<SignIn> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  StreamSubscription<User?>? _userSubscription;
+  final _db = FirebaseFirestore.instance;
+  bool _isUpdatingEmail = false;
+  final TextEditingController emailController = TextEditingController();
+  String? userid;
 
   @override
   void dispose() {
@@ -153,6 +159,32 @@ class _SignInState extends State<SignIn> {
     super.dispose();
   }
 
+  Future<void> _saveProfileToIsar(Map<String, dynamic> data,
+      {bool updateEmail = true}) async {
+    await IsarUserService.isar!.writeTxn(() async {
+      final existingUser = await IsarUserService.isar!.userModels
+          .filter()
+          .uidEqualTo(userid!)
+          .findFirst();
+
+      final user = existingUser ?? UserModel();
+      user.uid = userid!;
+      user.username = data['username'] ?? 'N/A';
+      user.role = data['role'] ?? 'N/A';
+      user.url = data['url'] ?? '';
+      user.department = data['department'] ?? '';
+      user.address = data['address'] ?? '';
+      user.phone = data['phone'] ?? 'N/A';
+
+      if (updateEmail) {
+        user.email = data['email'] ?? 'N/A';
+      } else {
+        user.email = existingUser?.email ?? data['email'] ?? 'N/A';
+      }
+
+      await IsarUserService.isar!.userModels.put(user);
+    });
+  }
 
   Future<void> syncHomeworkRecordsFirestoreToIsar() async {
     try {
@@ -257,7 +289,6 @@ class _SignInState extends State<SignIn> {
       Query<Map<String, dynamic>> query;
 
       if (userRole == 'Student') {
-        // Original student branch: fetch only leave records for the current student.
         query = FirebaseFirestore.instance
             .collection('Leaves')
             .where('userId', isEqualTo: currentUser.uid)
@@ -276,8 +307,6 @@ class _SignInState extends State<SignIn> {
         }
 
         final userDepartment = userDocSnapshot.data()!['department'];
-
-        // Single query combining both conditions
         query = FirebaseFirestore.instance
             .collection('Leaves')
             .where(Filter.or(
@@ -292,7 +321,6 @@ class _SignInState extends State<SignIn> {
         print(
             "Fetching leave records for $userRole in department: $userDepartment...");
       } else {
-        // (Optional) If additional roles exist, fallback to fetching all records.
         query = FirebaseFirestore.instance
             .collection('Leaves')
             .orderBy('createdAt', descending: true);
@@ -593,7 +621,6 @@ class _SignInState extends State<SignIn> {
         final String status = data['status'] ?? '';
         final String paymentId = data['paymentId'] ?? '';
 
-        // if (status == 'draft' || status == 'failed') {
         TransactionModel transaction = TransactionModel()
           ..transactionId = transactionId
           ..userId = userId
@@ -628,7 +655,6 @@ class _SignInState extends State<SignIn> {
         }
 
         transactions.add(transaction);
-        // }
       }
 
       if (transactions.isNotEmpty) {
@@ -641,6 +667,36 @@ class _SignInState extends State<SignIn> {
       }
     } catch (e) {
       print("Error during sync: $e");
+    }
+  }
+
+  Future<void> _handleUserChange(User user) async {
+    if (_isUpdatingEmail) return;
+
+    final currentFirebaseEmail = user.email;
+    if (currentFirebaseEmail == null) return;
+
+    print("Updating Firestore email to: $currentFirebaseEmail");
+
+    try {
+      await _db.collection('Users').doc(userid).update({
+        'email': currentFirebaseEmail,
+      });
+    } catch (e) {
+      print("Error updating Firestore email: $e");
+      return;
+    }
+
+    final snapshot = await _db.collection('Users').doc(userid).get();
+    if (snapshot.exists) {
+      final data = snapshot.data()!;
+
+      await _saveProfileToIsar(data, updateEmail: true);
+      if (mounted) {
+        setState(() {
+          emailController.text = currentFirebaseEmail;
+        });
+      }
     }
   }
 
@@ -657,7 +713,16 @@ class _SignInState extends State<SignIn> {
       String password = _passwordController.text.trim();
       User? userCredential =
           await _auth.signInWithEmailAndPassword(email, password);
-
+      final User? user = FirebaseAuth.instance.currentUser;
+      userid = user?.uid;
+      if (userid != null) {
+        _userSubscription =
+            FirebaseAuth.instance.userChanges().listen((User? user) {
+          if (user != null && mounted) {
+            _handleUserChange(user);
+          }
+        });
+      }
       if (userCredential != null) {
         var userDoc = await FirebaseFirestore.instance
             .collection('Users')
@@ -727,7 +792,7 @@ class _SignInState extends State<SignIn> {
   Widget build(BuildContext context) {
     return Scaffold(
       resizeToAvoidBottomInset: true,
-      backgroundColor: Colors.grey[100], // Softer background
+      backgroundColor: Colors.grey[100],
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -737,7 +802,6 @@ class _SignInState extends State<SignIn> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // Logo with subtle animation
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 500),
                   curve: Curves.easeInOut,
@@ -745,7 +809,6 @@ class _SignInState extends State<SignIn> {
                   child: Image.asset('lib/assets/access.png'),
                 ),
                 const SizedBox(height: 24),
-                // Title with gradient text
                 ShaderMask(
                   shaderCallback: (bounds) => LinearGradient(
                     colors: [Color(0xff3e948e), Color(0xff56c1ba)],
@@ -757,7 +820,7 @@ class _SignInState extends State<SignIn> {
                     style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
-                      color: Colors.white, // Base color for gradient
+                      color: Colors.white,
                     ),
                   ),
                 ),
@@ -771,7 +834,6 @@ class _SignInState extends State<SignIn> {
                   ),
                 ),
                 const SizedBox(height: 40),
-                // Form with subtle shadow
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(

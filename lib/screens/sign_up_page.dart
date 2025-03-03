@@ -107,7 +107,7 @@ class _SignUpState extends State<SignUp> {
             .set(user.toJson());
 
         print('User details added to Firestore.');
-        // await NotificationService.initializeNotifications();
+
 
         await _checkIfAdmin(userCredential.uid);
 
@@ -167,7 +167,7 @@ class _SignUpState extends State<SignUp> {
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
         backgroundColor: Colors.grey[100],
-        elevation: 0, // Flat design
+        elevation: 0,
         title: ShaderMask(
           shaderCallback: (bounds) => LinearGradient(
             colors: [Color(0xff3e948e), Color(0xff56c1ba)],
@@ -179,7 +179,7 @@ class _SignUpState extends State<SignUp> {
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
-              color: Colors.white, // Base color for gradient
+              color: Colors.white,
             ),
           ),
         ),

@@ -55,7 +55,7 @@ class _TwoFactorAuthState extends State<TwoFactorAuth>
           ),
         );
       } else {
-        // Optionally do something after successful authentication
+
       }
     }
   }
