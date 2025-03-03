@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -12,23 +10,20 @@ import 'package:new_school/screens/sign_in_page.dart';
 import 'package:new_school/screens/sign_up_page.dart';
 import 'package:new_school/settings/settings_page.dart';
 import 'package:new_school/settings/two-factor_authentication.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'Dashboard/dashboard.dart';
+import 'drawer_screens/leaves/leave_status_provider.dart';
+import 'drawer_screens/leaves/sync_manager.dart';
 import 'firebase_auth_implementation/firebase_options.dart';
 import 'isar_storage/isar_user_service.dart';
-import 'isar_storage/school_details_model.dart';
-import 'isar_storage/user_model.dart';
 import 'notifications/backservice.dart';
 import 'drawer_screens/Canteen/cart_provider.dart';
 import 'package:isar/isar.dart';
 
-// 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  ---github passkey---
-
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 late Isar isar;
-//hello
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   isar = await IsarUserService.init();
@@ -37,6 +32,7 @@ Future<void> main() async {
   );
   await NotificationService.init();
   await initializeService();
+  SyncManager().init();
 
   try {
     await IsarUserService.init();
@@ -51,6 +47,7 @@ Future<void> main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => CartProvider()),
+        ChangeNotifierProvider(create: (_) => LeaveStatusProvider()),
       ],
       child: MyApp(
         initialRoute: email == null

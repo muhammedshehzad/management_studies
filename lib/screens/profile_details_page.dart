@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:ui';
@@ -33,6 +34,10 @@ class _ProfileDetailsPageState extends State<ProfileDetailsPage> {
   String? userid;
   final _db = FirebaseFirestore.instance;
   bool _isLoading = true;
+  bool _isOnline = true;
+  StreamSubscription? _connectivitySubscription;
+  StreamSubscription<User?>? _userSubscription;
+  bool _isUpdatingEmail = false;
 
   final TextEditingController nameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
@@ -51,10 +56,78 @@ class _ProfileDetailsPageState extends State<ProfileDetailsPage> {
           setState(() => _isLoading = false);
         }
       });
+
+      _userSubscription =
+          FirebaseAuth.instance.userChanges().listen((User? user) {
+        if (user != null && mounted) {
+          _handleUserChange(user);
+        }
+      });
     } else {
       if (mounted) {
         setState(() => _isLoading = false);
       }
+    }
+    checkInternet();
+  }
+
+  Future<void> _handleUserChange(User user) async {
+    if (_isUpdatingEmail) return;
+
+    final currentEmailInController = emailController.text;
+    if (user.email != null && user.email != currentEmailInController) {
+      print("Detected email change in Firebase: ${user.email}");
+      setState(() {
+        emailController.text = user.email!;
+      });
+
+      await _db.collection('Users').doc(userid).update({
+        'email': user.email,
+      });
+
+      final snapshot = await _db.collection('Users').doc(userid).get();
+      if (snapshot.exists) {
+        final data = snapshot.data()!;
+        await _saveProfileToIsar(data, updateEmail: true);
+      }
+
+      // ScaffoldMessenger.of(context).showSnackBar(
+      //   SnackBar(
+      //     content: Text("Email updated successfully in profile!"),
+      //     backgroundColor: Colors.green.shade500,
+      //     behavior: SnackBarBehavior.floating,
+      //     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      //     margin: const EdgeInsets.all(10),
+      //     duration: const Duration(seconds: 2),
+      //   ),
+      // );
+    }
+  }
+
+  Future<void> checkInternet() async {
+    bool connected = await hasInternet();
+    setState(() {
+      _isOnline = connected;
+    });
+
+    _connectivitySubscription = Connectivity()
+        .onConnectivityChanged
+        .listen((List<ConnectivityResult> results) async {
+      bool connected =
+          results.any((result) => result != ConnectivityResult.none) &&
+              await hasInternet();
+      setState(() {
+        _isOnline = connected;
+      });
+    });
+  }
+
+  Future<bool> hasInternet() async {
+    try {
+      final result = await InternetAddress.lookup('google.com');
+      return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
+    } catch (e) {
+      return false;
     }
   }
 
@@ -166,7 +239,7 @@ class _ProfileDetailsPageState extends State<ProfileDetailsPage> {
             phoneController.text = data["phone"] ?? 'N/A';
             imageurl = data['url'];
           });
-          await _saveProfileToIsar(data);
+          await _saveProfileToIsar(data, updateEmail: true);
           if (data['url'] != null) {
             await saveImagePath(data['url']!);
           }
@@ -177,18 +250,29 @@ class _ProfileDetailsPageState extends State<ProfileDetailsPage> {
     }
   }
 
-  Future<void> _saveProfileToIsar(Map<String, dynamic> data) async {
-    final user = UserModel()
-      ..uid = userid!
-      ..username = data['username'] ?? 'N/A'
-      ..email = data['email'] ?? 'N/A'
-      ..role = data['role'] ?? 'N/A'
-      ..url = data['url'] ?? ''
-      ..department = data['department'] ?? ''
-      ..address = data['address'] ?? ''
-      ..phone = data['phone'] ?? 'N/A';
-
+  Future<void> _saveProfileToIsar(Map<String, dynamic> data,
+      {bool updateEmail = true}) async {
     await IsarUserService.isar!.writeTxn(() async {
+      final existingUser = await IsarUserService.isar!.userModels
+          .filter()
+          .uidEqualTo(userid!)
+          .findFirst();
+
+      final user = existingUser ?? UserModel();
+      user.uid = userid!;
+      user.username = data['username'] ?? 'N/A';
+      user.role = data['role'] ?? 'N/A';
+      user.url = data['url'] ?? '';
+      user.department = data['department'] ?? '';
+      user.address = data['address'] ?? '';
+      user.phone = data['phone'] ?? 'N/A';
+
+      if (updateEmail) {
+        user.email = data['email'] ?? 'N/A';
+      } else {
+        user.email = existingUser?.email ?? data['email'] ?? 'N/A';
+      }
+
       await IsarUserService.isar!.userModels.put(user);
     });
   }
@@ -217,37 +301,31 @@ class _ProfileDetailsPageState extends State<ProfileDetailsPage> {
     }
   }
 
-  Future<void> _loadImage() async {
-    final path = await getImagePath();
-    if (path != null && mounted) {
-      setState(() {
-        selectedImage = File(path);
-      });
-      return;
-    }
-
-    final user = await IsarUserService.isar!.userModels
-        .filter()
-        .uidEqualTo(userid!)
-        .findFirst();
-    if (user != null && user.url != null && user.url!.isNotEmpty) {
-      setState(() {
-        selectedImage = File(user.url!);
-      });
-      await saveImagePath(user.url!);
-    }
-  }
-
   Future<void> updateUser(String userId) async {
     String? uploadedImageUrl;
+    bool emailChanged = false;
+    String originalEmail = '';
+    final currentUser = FirebaseAuth.instance.currentUser;
+    String? newEmail;
 
+    if (currentUser != null) {
+      originalEmail = currentUser.email ?? '';
+      emailChanged = originalEmail != emailController.text &&
+          emailController.text.isNotEmpty;
+      if (emailChanged) {
+        newEmail = emailController.text;
+      }
+      print(
+          "Original email: $originalEmail, New email: ${emailController.text}, Changed: $emailChanged");
+    }
     if (tempImage != null) {
       uploadedImageUrl = await imageUpload();
     }
 
+    bool online = await isConnected();
     final updatedData = {
       "username": nameController.text,
-      "email": emailController.text,
+      "email": emailChanged && !online ? originalEmail : emailController.text,
       "address": addressController.text,
       "phone": phoneController.text,
       "url": uploadedImageUrl ?? imageurl,
@@ -255,70 +333,99 @@ class _ProfileDetailsPageState extends State<ProfileDetailsPage> {
 
     await updateUserOffline(userId, updatedData);
 
-    bool online = await isConnected();
-    if (online) {
-      try {
-        await _db.collection("Users").doc(userId).update(updatedData);
-
-        DocumentSnapshot snapshot =
-            await _db.collection("Users").doc(userId).get();
-        if (snapshot.exists) {
-          final data = snapshot.data() as Map<String, dynamic>;
-          final user = UserModel()
-            ..uid = userId
-            ..username = data['username'] ?? 'N/A'
-            ..email = data['email'] ?? 'N/A'
-            ..role = data['role'] ?? 'N/A'
-            ..url = data['url'] ?? ''
-            ..department = data['department'] ?? ''
-            ..address = data['address'] ?? ''
-            ..phone = data['phone'] ?? 'N/A';
-
-          await IsarUserService.isar!.writeTxn(() async {
-            final existingUser = await IsarUserService.isar!.userModels
-                .filter()
-                .uidEqualTo(userId)
-                .findFirst();
-            if (existingUser != null) {
-              user.id = existingUser.id;
-            }
-            await IsarUserService.isar!.userModels.put(user);
-          });
-
-          ScaffoldMessenger.of(context).showSnackBar(
-             SnackBar(content: Text("User details updated successfully!"),   backgroundColor: Colors.green.shade500,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              margin: const EdgeInsets.all(10),
-              duration: const Duration(seconds: 2),),
-          );
-        }
-      } catch (e) {
-        print("Error updating Firestore: $e");
-        ScaffoldMessenger.of(context).showSnackBar(
-           SnackBar(content: Text("Failed to update user online."), backgroundColor: Colors.red.shade500,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-            margin: const EdgeInsets.all(10),
-            duration: const Duration(seconds: 2),),
-        );
+    if (online && emailChanged) {
+      setState(() => _isUpdatingEmail = true);
+      print("Email before reauth: ${emailController.text}");
+      final password = await _promptForPassword();
+      if (password == null) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text("Email change cancelled."),
+          backgroundColor: Colors.orange,
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(10),
+        ));
+        return;
       }
+
+      final reauthSuccess = await reauthenticateUser(password);
+      if (!reauthSuccess) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text("Authentication failed. Please check your password."),
+          backgroundColor: Colors.red.shade500,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          margin: const EdgeInsets.all(10),
+        ));
+        return;
+      }
+
+      print("Sending verification email to: ${emailController.text}");
+      await currentUser?.verifyBeforeUpdateEmail(emailController.text);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+              "A verification email has been sent to ${emailController.text}. Please verify to complete the change."),
+          backgroundColor: Colors.blue.shade500,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          margin: const EdgeInsets.all(10),
+          duration: const Duration(seconds: 5),
+        ),
+      );
+      await Future.delayed(Duration(seconds: 1));
+      final updatedUser = FirebaseAuth.instance.currentUser;
+      if (updatedUser != null && updatedUser.email != originalEmail) {
+        await _handleUserChange(updatedUser);
+      }
+      setState(() => _isUpdatingEmail = false);
+      await _refreshProfile(); // Force UI and data refresh
+    } else if (online) {
+      await _db.collection("Users").doc(userId).update(updatedData);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("User details updated successfully!"),
+          backgroundColor: Colors.green.shade500,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          margin: const EdgeInsets.all(10),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    } else if (emailChanged) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content:
+              Text("Offline: Email change requires internet. Saved locally."),
+          backgroundColor: Colors.orange,
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(10),
+        ),
+      );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-         SnackBar(
-            content: Text(
-                "Offline: Changes saved locally and will sync when online."),
+        SnackBar(
+          content:
+              Text("Offline: Changes saved locally and will sync when online."),
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
           margin: const EdgeInsets.all(10),
-          duration: const Duration(seconds: 2),),
+        ),
       );
+      await _refreshProfile(); // Ensure UI is updated after any change
+    }
+
+    final snapshot = await _db.collection("Users").doc(userId).get();
+    if (snapshot.exists) {
+      final data = snapshot.data() as Map<String, dynamic>;
+      await _saveProfileToIsar(data, updateEmail: !emailChanged);
+    }
+  }
+
+  Future<void> _refreshProfile() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      await _handleUserChange(user);
+      await _loadProfileData();
     }
   }
 
@@ -326,7 +433,6 @@ class _ProfileDetailsPageState extends State<ProfileDetailsPage> {
       String userId, Map<String, dynamic> updatedData) async {
     setState(() => isEditing = false);
 
-    // Ensure Isar is initialized
     if (!IsarUserService.isInitialized) {
       await IsarUserService.init();
     }
@@ -339,7 +445,7 @@ class _ProfileDetailsPageState extends State<ProfileDetailsPage> {
 
     localUser.uid = userId;
     localUser.username = updatedData["username"] ?? localUser.username;
-    localUser.email = updatedData["email"] ?? localUser.email;
+    localUser.email = localUser.email ?? 'N/A';
     localUser.address = updatedData["address"] ?? localUser.address;
     localUser.phone = updatedData["phone"] ?? localUser.phone;
     localUser.url = updatedData["url"] ?? localUser.url;
@@ -347,7 +453,179 @@ class _ProfileDetailsPageState extends State<ProfileDetailsPage> {
     await IsarUserService.isar!.writeTxn(() async {
       await IsarUserService.isar!.userModels.put(localUser);
     });
-    print('Local Isar updated.');
+    print('Local Isar updated (email not changed).');
+  }
+
+  @override
+  void dispose() {
+    _connectivitySubscription?.cancel();
+    _userSubscription?.cancel();
+    nameController.dispose();
+    emailController.dispose();
+    addressController.dispose();
+    phoneController.dispose();
+    super.dispose();
+  }
+
+  Future<String?> _promptForPassword() async {
+    final passwordController = TextEditingController();
+    bool isPasswordVisible = false;
+
+    return showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: Text(
+                'Confirm your password',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 20,
+                ),
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'To change your email address, please confirm your current password.',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.grey[700],
+                      ),
+                    ),
+                    SizedBox(height: 24),
+                    TextField(
+                      controller: passwordController,
+                      obscureText: !isPasswordVisible,
+                      autofocus: true,
+                      decoration: InputDecoration(
+                        labelText: 'Password',
+                        floatingLabelBehavior: FloatingLabelBehavior.auto,
+                        hintText: 'Enter your current password',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(
+                            color: const Color(0xff3e948e),
+                            width: 2,
+                          ),
+                        ),
+                        prefixIcon: Icon(
+                          Icons.lock_outline,
+                          color: Colors.grey[600],
+                        ),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            isPasswordVisible
+                                ? Icons.visibility_off
+                                : Icons.visibility,
+                            color: Colors.grey[600],
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              isPasswordVisible = !isPasswordVisible;
+                            });
+                          },
+                        ),
+                      ),
+                      onSubmitted: (value) {
+                        if (value.isNotEmpty) {
+                          Navigator.pop(context, value);
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () {
+                        Navigator.pop(context, null);
+                      },
+                      child: Text(
+                        'Cancel',
+                        style: TextStyle(
+                          color: Colors.grey[700],
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                    ElevatedButton(
+                      onPressed: () async {
+                        if (passwordController.text.isNotEmpty) {
+                          Navigator.pop(context, passwordController.text);
+                          final reauthSuccess =
+                              await reauthenticateUser(passwordController.text);
+                          if (reauthSuccess) {
+                            final user = FirebaseAuth.instance.currentUser;
+                            if (user != null) {
+                              await user.verifyBeforeUpdateEmail(
+                                  emailController.text);
+                              await _refreshProfile();
+                              await Future.delayed(Duration(seconds: 1));
+                              final updatedUser =
+                                  FirebaseAuth.instance.currentUser;
+                              if (updatedUser != null) {
+                                await _handleUserChange(updatedUser);
+                              }
+                            }
+                          }
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xff3e948e),
+                        foregroundColor: Colors.white,
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        elevation: 2,
+                      ),
+                      child: Text(
+                        'Confirm',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<bool> reauthenticateUser(String password) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      final credential = EmailAuthProvider.credential(
+        email: user!.email!,
+        password: password,
+      );
+      await user.reauthenticateWithCredential(credential);
+      return true;
+    } catch (e) {
+      print("Reauth error: $e");
+      return false;
+    }
   }
 
   Widget buildPhotoView(String imageurl) {
@@ -462,26 +740,13 @@ class _ProfileDetailsPageState extends State<ProfileDetailsPage> {
                       ),
                     ),
                     const SizedBox(height: 5),
+                    buildEditableRow('Name', nameController, isEditing, false),
                     buildEditableRow(
-                      'Name',
-                      nameController,
-                      isEditing,
-                    ),
+                        'Mail', emailController, isEditing, !_isOnline),
                     buildEditableRow(
-                      'Mail',
-                      emailController,
-                      isEditing,
-                    ),
+                        'Address', addressController, isEditing, false),
                     buildEditableRow(
-                      'Address',
-                      addressController,
-                      isEditing,
-                    ),
-                    buildEditableRow(
-                      'Phone Number',
-                      phoneController,
-                      isEditing,
-                    ),
+                        'Phone Number', phoneController, isEditing, false),
                     Padding(
                       padding: const EdgeInsets.all(8.0),
                       child: SizedBox(
@@ -522,17 +787,14 @@ class _ProfileDetailsPageState extends State<ProfileDetailsPage> {
   }
 }
 
-Widget buildEditableRow(
-  String label,
-  TextEditingController controller,
-  bool isEditing,
-) {
+Widget buildEditableRow(String label, TextEditingController controller,
+    bool isEditing, bool forceReadOnly) {
   return Padding(
     padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 8),
     child: TextField(
       minLines: 1,
       maxLines: 4,
-      readOnly: !isEditing,
+      readOnly: !isEditing || forceReadOnly,
       decoration: InputDecoration(
         labelText: label,
         border: const OutlineInputBorder(),

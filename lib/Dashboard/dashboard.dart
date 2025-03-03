@@ -23,7 +23,7 @@ import 'package:badges/badges.dart' as badges;
 import 'admin_dashboard_charts.dart';
 
 import '../drawer_screens/Canteen/canteen_page.dart';
-import '../drawer_screens/leaves_page.dart';
+import '../drawer_screens/leaves/leaves_page.dart';
 import '../screens/notifications_page.dart';
 import '../sliding_transition.dart';
 
@@ -378,80 +378,107 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
                 dragStartBehavior: DragStartBehavior.start,
                 children: [
                   Container(
-                    height: 200, // Fixed height for consistency
+                    height: 200,
                     child: DrawerHeader(
                       decoration: BoxDecoration(
-                        color: Colors.grey[900], // Dark background for header
-                        image: DecorationImage(
-                          image: NetworkImage(profileImageUrl),
-                          fit: BoxFit.cover,
-                          colorFilter: ColorFilter.mode(
-                            Colors.black.withOpacity(0.4),
-                            BlendMode.darken,
-                          ),
-                        ),
+                        color: Colors.grey[900],
+                        gradient: profileImageUrl.isEmpty
+                            ? LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [Colors.grey[900]!, Colors.grey[800]!],
+                              )
+                            : null,
+                        image: profileImageUrl.isNotEmpty
+                            ? DecorationImage(
+                                image: NetworkImage(profileImageUrl),
+                                fit: BoxFit.cover,
+                                colorFilter: ColorFilter.mode(
+                                  Colors.black.withOpacity(0.4),
+                                  BlendMode.darken,
+                                ),
+                                onError: (exception, stackTrace) => null,
+                              )
+                            : null,
                       ),
-                      child: GestureDetector(
-                        onTap: () async {
-                          await Navigator.push(
-                            context,
-                            SlidingPageTransitionLR(page: ProfilePage()),
-                          );
-                        },
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (role != 'Admin') ...[
-                              Text(
-                                data["username"] ?? 'N/A',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                  color: Colors.white,
+                      child: Stack(
+                        children: [
+                          if (profileImageUrl.isEmpty)
+                            Positioned.fill(
+                              child: Align(
+                                alignment: Alignment.center,
+                                child: Icon(
+                                  Icons.account_circle,
+                                  size: 100,
+                                  color: Colors.grey[400]!.withOpacity(0.6),
                                 ),
-                                overflow: TextOverflow.ellipsis,
                               ),
-                              SizedBox(height: 6),
-                              Text(
-                                '${data["department"] ?? "N/A"} Dept',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.white70,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              SizedBox(height: 6),
-                              Text(
-                                data["email"] ?? 'N/A',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.white70,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              SizedBox(height: 4),
-                            ],
-                            Row(
+                            ),
+                          // Content
+                          GestureDetector(
+                            onTap: () async {
+                              await Navigator.push(
+                                context,
+                                SlidingPageTransitionLR(page: ProfilePage()),
+                              );
+                            },
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Icon(
-                                  Icons.verified_user,
-                                  size: 16,
-                                  color: Colors.yellowAccent,
-                                ),
-                                SizedBox(width: 4),
-                                Text(
-                                  role,
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 12,
-                                    color: Colors.yellowAccent,
+                                if (role != 'Admin') ...[
+                                  Text(
+                                    data["username"] ?? 'N/A',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 18,
+                                      color: Colors.white,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    '${data["department"] ?? "N/A"} Dept',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.white.withOpacity(0.8),
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    data["email"] ?? 'N/A',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.white.withOpacity(0.8),
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 6),
+                                ],
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.verified_user,
+                                      size: 16,
+                                      color: Colors.yellow,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      role,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 13,
+                                        color: Colors.yellow,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -620,7 +647,7 @@ class _ContentAreaState extends State<ContentArea> {
               padding: const EdgeInsets.only(left: 8.0),
               child: Text(
                 'Welcome to the ${widget.role} Dashboard!',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold,),
               ),
             ),
             if (isStudent)

@@ -57,33 +57,38 @@ const LeaveRequestSchema = CollectionSchema(
       name: r'leavesId',
       type: IsarType.string,
     ),
-    r'pendingSync': PropertySchema(
+    r'notificationSent': PropertySchema(
       id: 8,
+      name: r'notificationSent',
+      type: IsarType.bool,
+    ),
+    r'pendingSync': PropertySchema(
+      id: 9,
       name: r'pendingSync',
       type: IsarType.bool,
     ),
     r'startDate': PropertySchema(
-      id: 9,
+      id: 10,
       name: r'startDate',
       type: IsarType.dateTime,
     ),
     r'status': PropertySchema(
-      id: 10,
+      id: 11,
       name: r'status',
       type: IsarType.string,
     ),
     r'userDepartment': PropertySchema(
-      id: 11,
+      id: 12,
       name: r'userDepartment',
       type: IsarType.string,
     ),
     r'userId': PropertySchema(
-      id: 12,
+      id: 13,
       name: r'userId',
       type: IsarType.string,
     ),
     r'username': PropertySchema(
-      id: 13,
+      id: 14,
       name: r'username',
       type: IsarType.string,
     )
@@ -160,12 +165,13 @@ void _leaveRequestSerialize(
   writer.writeString(offsets[5], object.leaveReason);
   writer.writeString(offsets[6], object.leaveType);
   writer.writeString(offsets[7], object.leavesId);
-  writer.writeBool(offsets[8], object.pendingSync);
-  writer.writeDateTime(offsets[9], object.startDate);
-  writer.writeString(offsets[10], object.status);
-  writer.writeString(offsets[11], object.userDepartment);
-  writer.writeString(offsets[12], object.userId);
-  writer.writeString(offsets[13], object.username);
+  writer.writeBool(offsets[8], object.notificationSent);
+  writer.writeBool(offsets[9], object.pendingSync);
+  writer.writeDateTime(offsets[10], object.startDate);
+  writer.writeString(offsets[11], object.status);
+  writer.writeString(offsets[12], object.userDepartment);
+  writer.writeString(offsets[13], object.userId);
+  writer.writeString(offsets[14], object.username);
 }
 
 LeaveRequest _leaveRequestDeserialize(
@@ -184,12 +190,13 @@ LeaveRequest _leaveRequestDeserialize(
   object.leaveReason = reader.readString(offsets[5]);
   object.leaveType = reader.readString(offsets[6]);
   object.leavesId = reader.readString(offsets[7]);
-  object.pendingSync = reader.readBool(offsets[8]);
-  object.startDate = reader.readDateTime(offsets[9]);
-  object.status = reader.readString(offsets[10]);
-  object.userDepartment = reader.readString(offsets[11]);
-  object.userId = reader.readString(offsets[12]);
-  object.username = reader.readString(offsets[13]);
+  object.notificationSent = reader.readBool(offsets[8]);
+  object.pendingSync = reader.readBool(offsets[9]);
+  object.startDate = reader.readDateTime(offsets[10]);
+  object.status = reader.readString(offsets[11]);
+  object.userDepartment = reader.readString(offsets[12]);
+  object.userId = reader.readString(offsets[13]);
+  object.username = reader.readString(offsets[14]);
   return object;
 }
 
@@ -219,14 +226,16 @@ P _leaveRequestDeserializeProp<P>(
     case 8:
       return (reader.readBool(offset)) as P;
     case 9:
-      return (reader.readDateTime(offset)) as P;
+      return (reader.readBool(offset)) as P;
     case 10:
-      return (reader.readString(offset)) as P;
+      return (reader.readDateTime(offset)) as P;
     case 11:
       return (reader.readString(offset)) as P;
     case 12:
       return (reader.readString(offset)) as P;
     case 13:
+      return (reader.readString(offset)) as P;
+    case 14:
       return (reader.readString(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -1193,6 +1202,16 @@ extension LeaveRequestQueryFilter
   }
 
   QueryBuilder<LeaveRequest, LeaveRequest, QAfterFilterCondition>
+      notificationSentEqualTo(bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'notificationSent',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<LeaveRequest, LeaveRequest, QAfterFilterCondition>
       pendingSyncEqualTo(bool value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
@@ -1908,6 +1927,20 @@ extension LeaveRequestQuerySortBy
     });
   }
 
+  QueryBuilder<LeaveRequest, LeaveRequest, QAfterSortBy>
+      sortByNotificationSent() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'notificationSent', Sort.asc);
+    });
+  }
+
+  QueryBuilder<LeaveRequest, LeaveRequest, QAfterSortBy>
+      sortByNotificationSentDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'notificationSent', Sort.desc);
+    });
+  }
+
   QueryBuilder<LeaveRequest, LeaveRequest, QAfterSortBy> sortByPendingSync() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'pendingSync', Sort.asc);
@@ -2097,6 +2130,20 @@ extension LeaveRequestQuerySortThenBy
     });
   }
 
+  QueryBuilder<LeaveRequest, LeaveRequest, QAfterSortBy>
+      thenByNotificationSent() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'notificationSent', Sort.asc);
+    });
+  }
+
+  QueryBuilder<LeaveRequest, LeaveRequest, QAfterSortBy>
+      thenByNotificationSentDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'notificationSent', Sort.desc);
+    });
+  }
+
   QueryBuilder<LeaveRequest, LeaveRequest, QAfterSortBy> thenByPendingSync() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'pendingSync', Sort.asc);
@@ -2227,6 +2274,13 @@ extension LeaveRequestQueryWhereDistinct
     });
   }
 
+  QueryBuilder<LeaveRequest, LeaveRequest, QDistinct>
+      distinctByNotificationSent() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'notificationSent');
+    });
+  }
+
   QueryBuilder<LeaveRequest, LeaveRequest, QDistinct> distinctByPendingSync() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'pendingSync');
@@ -2322,6 +2376,13 @@ extension LeaveRequestQueryProperty
   QueryBuilder<LeaveRequest, String, QQueryOperations> leavesIdProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'leavesId');
+    });
+  }
+
+  QueryBuilder<LeaveRequest, bool, QQueryOperations>
+      notificationSentProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'notificationSent');
     });
   }
 
