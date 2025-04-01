@@ -20,6 +20,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 import 'package:badges/badges.dart' as badges;
+import '../sample.dart';
 import 'admin_dashboard_charts.dart';
 
 import '../drawer_screens/Canteen/canteen_page.dart';
@@ -370,6 +371,7 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
                     ),
                   ),
                 ),
+
               ],
             ),
             drawer: Drawer(

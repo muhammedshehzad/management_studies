@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -24,6 +25,47 @@ import 'package:isar/isar.dart';
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 late Isar isar;
 
+class Wrapper extends StatefulWidget {
+  const Wrapper({super.key});
+
+  @override
+  State<Wrapper> createState() => _WrapperState();
+}
+
+class _WrapperState extends State<Wrapper> {
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+        if (snapshot.hasData) {
+          return FutureBuilder<SharedPreferences>(
+            future: SharedPreferences.getInstance(),
+            builder: (context, prefSnapshot) {
+              if (!prefSnapshot.hasData) {
+                return const Scaffold(
+                  body: Center(child: CircularProgressIndicator()),
+                );
+              }
+              final String? role = prefSnapshot.data?.getString('role');
+              return Dashboard(
+                role: role ?? 'Student',
+              );
+            },
+          );
+        } else {
+          return const SignIn();
+        }
+      },
+    );
+  }
+}
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   isar = await IsarUserService.init();
@@ -40,32 +82,19 @@ Future<void> main() async {
     print(e);
   }
 
-  SharedPreferences prefs = await SharedPreferences.getInstance();
-  final String? email = prefs.getString('email');
-  final String? role = prefs.getString('role');
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => CartProvider()),
         ChangeNotifierProvider(create: (_) => LeaveStatusProvider()),
       ],
-      child: MyApp(
-        initialRoute: email == null
-            ? '/signin'
-            : role == 'Admin'
-                ? '/dashboardAdmin'
-                : role == 'Teacher'
-                    ? '/dashboardTeacher'
-                    : '/dashboardStudent',
-      ),
+      child: const MyApp(),
     ),
   );
 }
 
 class MyApp extends StatelessWidget {
-  final String initialRoute;
-
-  const MyApp({Key? key, required this.initialRoute}) : super(key: key);
+  const MyApp({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -77,7 +106,7 @@ class MyApp extends StatelessWidget {
         scaffoldBackgroundColor: Colors.blueGrey.shade50,
         fontFamily: GoogleFonts.montserrat().fontFamily,
       ),
-      initialRoute: initialRoute,
+      home: const Wrapper(),
       routes: {
         '/loginStudent': (context) => const Loginpage(type: 'Student'),
         '/loginTeacher': (context) => const Loginpage(type: 'Teacher'),

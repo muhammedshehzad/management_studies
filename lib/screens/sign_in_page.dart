@@ -50,12 +50,12 @@ Future<void> syncLeavesFirestoreToIsar() async {
       query = FirebaseFirestore.instance
           .collection('Leaves')
           .where(Filter.or(
-            Filter('userId', isEqualTo: currentUser.uid),
-            Filter.and(
-              Filter('creator_role', isEqualTo: 'student'),
-              Filter('userDepartment', isEqualTo: userDepartment),
-            ),
-          ))
+        Filter('userId', isEqualTo: currentUser.uid),
+        Filter.and(
+          Filter('creator_role', isEqualTo: 'student'),
+          Filter('userDepartment', isEqualTo: userDepartment),
+        ),
+      ))
           .orderBy('createdAt', descending: true);
 
       print(
@@ -107,7 +107,8 @@ Future<void> syncLeavesFirestoreToIsar() async {
         await IsarUserService.isar!.leaveRequests.putAll(leaveRecords);
       });
       print(
-          "Synced ${leaveRecords.length} leave records from Firestore to Isar.");
+          "Synced ${leaveRecords
+              .length} leave records from Firestore to Isar.");
     } else {
       print("No new leave records to sync.");
     }
@@ -236,9 +237,9 @@ class _SignInState extends State<SignIn> {
       }
 
       final existingRecords =
-          await IsarUserService.isar!.homeworkRecordModels.where().findAll();
+      await IsarUserService.isar!.homeworkRecordModels.where().findAll();
       final existingDocIds =
-          existingRecords.map((record) => record.docid).toSet();
+      existingRecords.map((record) => record.docid).toSet();
 
       List<HomeworkRecordModel> homeworkRecords = [];
 
@@ -268,7 +269,8 @@ class _SignInState extends State<SignIn> {
               .putAll(homeworkRecords);
         });
         print(
-            "Synced ${homeworkRecords.length} new homework record(s) from Firestore to Isar.");
+            "Synced ${homeworkRecords
+                .length} new homework record(s) from Firestore to Isar.");
       } else {
         print("No new homework records to sync.");
       }
@@ -310,12 +312,12 @@ class _SignInState extends State<SignIn> {
         query = FirebaseFirestore.instance
             .collection('Leaves')
             .where(Filter.or(
-              Filter('userId', isEqualTo: currentUser.uid),
-              Filter.and(
-                Filter('creator_role', isEqualTo: 'student'),
-                Filter('userDepartment', isEqualTo: userDepartment),
-              ),
-            ))
+          Filter('userId', isEqualTo: currentUser.uid),
+          Filter.and(
+            Filter('creator_role', isEqualTo: 'student'),
+            Filter('userDepartment', isEqualTo: userDepartment),
+          ),
+        ))
             .orderBy('createdAt', descending: true);
 
         print(
@@ -367,7 +369,8 @@ class _SignInState extends State<SignIn> {
           await IsarUserService.isar!.leaveRequests.putAll(leaveRecords);
         });
         print(
-            "Synced ${leaveRecords.length} leave records from Firestore to Isar.");
+            "Synced ${leaveRecords
+                .length} leave records from Firestore to Isar.");
       } else {
         print("No new leave records to sync.");
       }
@@ -446,7 +449,7 @@ class _SignInState extends State<SignIn> {
           ..name = data['name'] ?? ''
           ..email = data['email'] ?? ''
           ..score =
-              (data['score'] is num) ? (data['score'] as num).toDouble() : 0.0
+          (data['score'] is num) ? (data['score'] as num).toDouble() : 0.0
           ..percentage = (data['percentage'] is num)
               ? (data['percentage'] as num).toDouble()
               : 0.0
@@ -472,7 +475,8 @@ class _SignInState extends State<SignIn> {
               .putAll(studentRecords);
         });
         print(
-            "Synced ${studentRecords.length} new record(s) from Firestore to Isar.");
+            "Synced ${studentRecords
+                .length} new record(s) from Firestore to Isar.");
       } else {
         print("No new records to sync.");
       }
@@ -712,16 +716,16 @@ class _SignInState extends State<SignIn> {
       String email = _emailController.text.trim();
       String password = _passwordController.text.trim();
       User? userCredential =
-          await _auth.signInWithEmailAndPassword(email, password);
+      await _auth.signInWithEmailAndPassword(email, password);
       final User? user = FirebaseAuth.instance.currentUser;
       userid = user?.uid;
       if (userid != null) {
         _userSubscription =
             FirebaseAuth.instance.userChanges().listen((User? user) {
-          if (user != null && mounted) {
-            _handleUserChange(user);
-          }
-        });
+              if (user != null && mounted) {
+                _handleUserChange(user);
+              }
+            });
       }
       if (userCredential != null) {
         var userDoc = await FirebaseFirestore.instance
@@ -797,7 +801,7 @@ class _SignInState extends State<SignIn> {
         child: Center(
           child: SingleChildScrollView(
             padding:
-                const EdgeInsets.symmetric(horizontal: 32.0, vertical: 20.0),
+            const EdgeInsets.symmetric(horizontal: 32.0, vertical: 20.0),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.center,
@@ -810,11 +814,12 @@ class _SignInState extends State<SignIn> {
                 ),
                 const SizedBox(height: 24),
                 ShaderMask(
-                  shaderCallback: (bounds) => LinearGradient(
-                    colors: [Color(0xff3e948e), Color(0xff56c1ba)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ).createShader(bounds),
+                  shaderCallback: (bounds) =>
+                      LinearGradient(
+                        colors: [Color(0xff3e948e), Color(0xff56c1ba)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ).createShader(bounds),
                   child: const Text(
                     "Welcome Back!",
                     style: TextStyle(
@@ -856,7 +861,7 @@ class _SignInState extends State<SignIn> {
                           decoration: InputDecoration(
                             labelText: 'Email',
                             prefixIcon:
-                                Icon(Icons.email, color: Color(0xff3e948e)),
+                            Icon(Icons.email, color: Color(0xff3e948e)),
                             filled: true,
                             fillColor: Colors.grey[50],
                             border: OutlineInputBorder(
@@ -884,7 +889,7 @@ class _SignInState extends State<SignIn> {
                           decoration: InputDecoration(
                             labelText: 'Password',
                             prefixIcon:
-                                Icon(Icons.lock, color: Color(0xff3e948e)),
+                            Icon(Icons.lock, color: Color(0xff3e948e)),
                             filled: true,
                             fillColor: Colors.grey[50],
                             border: OutlineInputBorder(
@@ -907,31 +912,31 @@ class _SignInState extends State<SignIn> {
                         const SizedBox(height: 30),
                         isloading
                             ? const CircularProgressIndicator(
-                                color: Color(0xff3e948e),
-                              )
+                          color: Color(0xff3e948e),
+                        )
                             : SizedBox(
-                                width: double.infinity,
-                                height: 42,
-                                child: ElevatedButton(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Color(0xff3e948e),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    elevation: 2,
-                                    shadowColor: Colors.black26,
-                                  ),
-                                  onPressed: _signIn,
-                                  child: const Text(
-                                    'Sign In',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
+                          width: double.infinity,
+                          height: 42,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Color(0xff3e948e),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
                               ),
+                              elevation: 2,
+                              shadowColor: Colors.black26,
+                            ),
+                            onPressed: _signIn,
+                            child: const Text(
+                              'Sign In',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
                         const SizedBox(height: 16),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -941,10 +946,11 @@ class _SignInState extends State<SignIn> {
                               style: TextStyle(color: Colors.black54),
                             ),
                             TextButton(
-                              onPressed: () => Navigator.pushReplacement(
-                                context,
-                                SlidingPageTransitionRL(page: SignUp()),
-                              ),
+                              onPressed: () =>
+                                  Navigator.pushReplacement(
+                                    context,
+                                    SlidingPageTransitionRL(page: SignUp()),
+                                  ),
                               child: const Text(
                                 'Sign Up',
                                 style: TextStyle(
