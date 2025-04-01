@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:isar/isar.dart' hide Query;
 import 'package:new_school/isar_storage/academic_records_model.dart';
 import 'package:new_school/isar_storage/homework_records_model.dart';
@@ -15,6 +16,8 @@ import '../Dashboard/dashboard.dart';
 import '../firebase_auth_implementation/firebase_auth_services.dart';
 import '../isar_storage/isar_user_service.dart';
 import '../isar_storage/school_details_model.dart';
+
+// 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  ---passkey---
 
 Future<void> syncLeavesFirestoreToIsar() async {
   try {
@@ -50,12 +53,12 @@ Future<void> syncLeavesFirestoreToIsar() async {
       query = FirebaseFirestore.instance
           .collection('Leaves')
           .where(Filter.or(
-        Filter('userId', isEqualTo: currentUser.uid),
-        Filter.and(
-          Filter('creator_role', isEqualTo: 'student'),
-          Filter('userDepartment', isEqualTo: userDepartment),
-        ),
-      ))
+            Filter('userId', isEqualTo: currentUser.uid),
+            Filter.and(
+              Filter('creator_role', isEqualTo: 'student'),
+              Filter('userDepartment', isEqualTo: userDepartment),
+            ),
+          ))
           .orderBy('createdAt', descending: true);
 
       print(
@@ -107,8 +110,7 @@ Future<void> syncLeavesFirestoreToIsar() async {
         await IsarUserService.isar!.leaveRequests.putAll(leaveRecords);
       });
       print(
-          "Synced ${leaveRecords
-              .length} leave records from Firestore to Isar.");
+          "Synced ${leaveRecords.length} leave records from Firestore to Isar.");
     } else {
       print("No new leave records to sync.");
     }
@@ -141,7 +143,7 @@ class SignIn extends StatefulWidget {
   State<SignIn> createState() => _SignInState();
 }
 
-class _SignInState extends State<SignIn> {
+class _SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
   bool isloading = false;
   final FirebaseAuthService _auth = FirebaseAuthService();
   final _formKey = GlobalKey<FormState>();
@@ -152,6 +154,17 @@ class _SignInState extends State<SignIn> {
   bool _isUpdatingEmail = false;
   final TextEditingController emailController = TextEditingController();
   String? userid;
+
+  double _titleSlidePosition = 50.0;
+  late AnimationController _animationController;
+  late Animation<double> _fadeInAnimation;
+  late Animation<Offset> _slideAnimation;
+  bool _isObscure = true;
+  bool _rememberMe = false;
+  final List<String> items = ['Student', 'Teacher'];
+  String dropdownvalue = 'Student';
+  String? selectedDepartment;
+  bool _isObscureConfirm = true;
 
   @override
   void dispose() {
@@ -237,9 +250,9 @@ class _SignInState extends State<SignIn> {
       }
 
       final existingRecords =
-      await IsarUserService.isar!.homeworkRecordModels.where().findAll();
+          await IsarUserService.isar!.homeworkRecordModels.where().findAll();
       final existingDocIds =
-      existingRecords.map((record) => record.docid).toSet();
+          existingRecords.map((record) => record.docid).toSet();
 
       List<HomeworkRecordModel> homeworkRecords = [];
 
@@ -269,8 +282,7 @@ class _SignInState extends State<SignIn> {
               .putAll(homeworkRecords);
         });
         print(
-            "Synced ${homeworkRecords
-                .length} new homework record(s) from Firestore to Isar.");
+            "Synced ${homeworkRecords.length} new homework record(s) from Firestore to Isar.");
       } else {
         print("No new homework records to sync.");
       }
@@ -312,12 +324,12 @@ class _SignInState extends State<SignIn> {
         query = FirebaseFirestore.instance
             .collection('Leaves')
             .where(Filter.or(
-          Filter('userId', isEqualTo: currentUser.uid),
-          Filter.and(
-            Filter('creator_role', isEqualTo: 'student'),
-            Filter('userDepartment', isEqualTo: userDepartment),
-          ),
-        ))
+              Filter('userId', isEqualTo: currentUser.uid),
+              Filter.and(
+                Filter('creator_role', isEqualTo: 'student'),
+                Filter('userDepartment', isEqualTo: userDepartment),
+              ),
+            ))
             .orderBy('createdAt', descending: true);
 
         print(
@@ -369,8 +381,7 @@ class _SignInState extends State<SignIn> {
           await IsarUserService.isar!.leaveRequests.putAll(leaveRecords);
         });
         print(
-            "Synced ${leaveRecords
-                .length} leave records from Firestore to Isar.");
+            "Synced ${leaveRecords.length} leave records from Firestore to Isar.");
       } else {
         print("No new leave records to sync.");
       }
@@ -449,7 +460,7 @@ class _SignInState extends State<SignIn> {
           ..name = data['name'] ?? ''
           ..email = data['email'] ?? ''
           ..score =
-          (data['score'] is num) ? (data['score'] as num).toDouble() : 0.0
+              (data['score'] is num) ? (data['score'] as num).toDouble() : 0.0
           ..percentage = (data['percentage'] is num)
               ? (data['percentage'] as num).toDouble()
               : 0.0
@@ -475,8 +486,7 @@ class _SignInState extends State<SignIn> {
               .putAll(studentRecords);
         });
         print(
-            "Synced ${studentRecords
-                .length} new record(s) from Firestore to Isar.");
+            "Synced ${studentRecords.length} new record(s) from Firestore to Isar.");
       } else {
         print("No new records to sync.");
       }
@@ -716,16 +726,16 @@ class _SignInState extends State<SignIn> {
       String email = _emailController.text.trim();
       String password = _passwordController.text.trim();
       User? userCredential =
-      await _auth.signInWithEmailAndPassword(email, password);
+          await _auth.signInWithEmailAndPassword(email, password);
       final User? user = FirebaseAuth.instance.currentUser;
       userid = user?.uid;
       if (userid != null) {
         _userSubscription =
             FirebaseAuth.instance.userChanges().listen((User? user) {
-              if (user != null && mounted) {
-                _handleUserChange(user);
-              }
-            });
+          if (user != null && mounted) {
+            _handleUserChange(user);
+          }
+        });
       }
       if (userCredential != null) {
         var userDoc = await FirebaseFirestore.instance
@@ -793,6 +803,39 @@ class _SignInState extends State<SignIn> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
+
+    // Create animations
+    _fadeInAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: const Interval(0.2, 1.0, curve: Curves.easeOut),
+      ),
+    );
+
+    _slideAnimation =
+        Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: const Interval(0.2, 1.0, curve: Curves.easeOutCubic),
+      ),
+    );
+
+    // Start animation
+    _animationController.forward();
+    Future.delayed(Duration(milliseconds: 300), () {
+      setState(() {
+        _titleSlidePosition = 0;
+      });
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       resizeToAvoidBottomInset: true,
@@ -801,167 +844,404 @@ class _SignInState extends State<SignIn> {
         child: Center(
           child: SingleChildScrollView(
             padding:
-            const EdgeInsets.symmetric(horizontal: 32.0, vertical: 20.0),
+                const EdgeInsets.symmetric(horizontal: 32.0, vertical: 20.0),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 500),
-                  curve: Curves.easeInOut,
-                  height: 180,
-                  child: Image.asset('lib/assets/access.png'),
-                ),
-                const SizedBox(height: 24),
-                ShaderMask(
-                  shaderCallback: (bounds) =>
-                      LinearGradient(
-                        colors: [Color(0xff3e948e), Color(0xff56c1ba)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ).createShader(bounds),
-                  child: const Text(
-                    "Welcome Back!",
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  "Sign in to continue",
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.black45,
-                    fontWeight: FontWeight.w400,
-                  ),
-                ),
-                const SizedBox(height: 40),
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 10,
-                        offset: Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      children: [
-                        TextFormField(
-                          controller: _emailController,
-                          decoration: InputDecoration(
-                            labelText: 'Email',
-                            prefixIcon:
-                            Icon(Icons.email, color: Color(0xff3e948e)),
-                            filled: true,
-                            fillColor: Colors.grey[50],
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: Color(0xff3e948e)),
-                            ),
-                          ),
-                          keyboardType: TextInputType.emailAddress,
-                          validator: (value) {
-                            if (value == null || value.isEmpty)
-                              return 'Please enter your email';
-                            if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value))
-                              return 'Enter a valid email';
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 20),
-                        TextFormField(
-                          controller: _passwordController,
-                          obscureText: true,
-                          decoration: InputDecoration(
-                            labelText: 'Password',
-                            prefixIcon:
-                            Icon(Icons.lock, color: Color(0xff3e948e)),
-                            filled: true,
-                            fillColor: Colors.grey[50],
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: Color(0xff3e948e)),
-                            ),
-                          ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty)
-                              return 'Please enter your password';
-                            if (value.length < 6)
-                              return 'Password must be at least 6 characters';
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 30),
-                        isloading
-                            ? const CircularProgressIndicator(
-                          color: Color(0xff3e948e),
-                        )
-                            : SizedBox(
-                          width: double.infinity,
-                          height: 42,
-                          child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Color(0xff3e948e),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              elevation: 2,
-                              shadowColor: Colors.black26,
-                            ),
-                            onPressed: _signIn,
-                            child: const Text(
-                              'Sign In',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Row(
+                Center(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 30.0, vertical: 20.0),
+                    child: FadeTransition(
+                      opacity: _fadeInAnimation,
+                      child: SlideTransition(
+                        position: _slideAnimation,
+                        child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            const Text(
-                              "Don't have an account?",
-                              style: TextStyle(color: Colors.black54),
-                            ),
-                            TextButton(
-                              onPressed: () =>
-                                  Navigator.pushReplacement(
-                                    context,
-                                    SlidingPageTransitionRL(page: SignUp()),
+                            TweenAnimationBuilder<double>(
+                              tween: Tween<double>(begin: 0.8, end: 1.0),
+                              duration: const Duration(seconds: 2),
+                              curve: Curves.easeInOut,
+                              builder: (context, value, child) {
+                                return Transform.scale(
+                                  scale: value,
+                                  child: SizedBox(
+                                    height: 120,
+                                    child: Hero(
+                                      tag: 'app_logo',
+                                      child:
+                                          Image.asset('lib/assets/access.png'),
+                                    ),
                                   ),
+                                );
+                              },
+                            ),
+                            const SizedBox(height: 30),
+                            ShaderMask(
+                              shaderCallback: (bounds) => LinearGradient(
+                                colors: [Color(0xff3e948e), Color(0xff56c1ba)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ).createShader(bounds),
                               child: const Text(
-                                'Sign Up',
+                                "Welcome Back",
                                 style: TextStyle(
-                                  color: Color(0xff3e948e),
+                                  fontSize: 30,
                                   fontWeight: FontWeight.bold,
+                                  color: Colors.white,
                                 ),
                               ),
                             ),
+                            const SizedBox(height: 10),
+                            Text(
+                              "Sign in to continue to your account.",
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[600],
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            const SizedBox(height: 40),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 24, vertical: 30),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(24),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.04),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 5),
+                                  ),
+                                  BoxShadow(
+                                    color: Color(0xff3e948e).withOpacity(0.03),
+                                    blurRadius: 24,
+                                    offset: const Offset(0, 8),
+                                  ),
+                                ],
+                              ),
+                              child: Form(
+                                key: _formKey,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "Account Information",
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xff3e948e),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 24),
+                                    AnimatedBuilder(
+                                      animation: _animationController,
+                                      builder: (context, child) {
+                                        return FadeTransition(
+                                          opacity: Tween<double>(
+                                                  begin: 0.0, end: 1.0)
+                                              .animate(
+                                            CurvedAnimation(
+                                              parent: _animationController,
+                                              curve: Interval(0.4, 1.0,
+                                                  curve: Curves.easeOut),
+                                            ),
+                                          ),
+                                          child: child,
+                                        );
+                                      },
+                                      child: TextFormField(
+                                        controller: _emailController,
+                                        decoration: InputDecoration(
+                                          labelText: 'Email Address',
+                                          hintText: 'example@email.com',
+                                          labelStyle: TextStyle(
+                                            color: Colors.grey[700],
+                                            fontSize: 14,
+                                          ),
+                                          prefixIcon: Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 12),
+                                            child: Icon(Icons.email_outlined,
+                                                color: Color(0xff3e948e)),
+                                          ),
+                                          filled: true,
+                                          fillColor: Colors.grey[50],
+                                          contentPadding:
+                                              const EdgeInsets.symmetric(
+                                                  vertical: 0),
+                                          enabledBorder: OutlineInputBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                            borderSide: BorderSide(
+                                                color: Colors.grey
+                                                    .withOpacity(0.15)),
+                                          ),
+                                          focusedBorder: OutlineInputBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                            borderSide: BorderSide(
+                                                color: Color(0xff3e948e),
+                                                width: 1.5),
+                                          ),
+                                          errorBorder: OutlineInputBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                            borderSide: BorderSide(
+                                                color: Colors.red.shade300),
+                                          ),
+                                        ),
+                                        keyboardType:
+                                            TextInputType.emailAddress,
+                                        validator: (value) {
+                                          if (value == null || value.isEmpty)
+                                            return 'Please enter your email';
+                                          if (!RegExp(r'^[^@]+@[^@]+\.[^@]+')
+                                              .hasMatch(value))
+                                            return 'Enter a valid email';
+                                          return null;
+                                        },
+                                      ),
+                                    ),
+                                    const SizedBox(height: 20),
+                                    AnimatedBuilder(
+                                      animation: _animationController,
+                                      builder: (context, child) {
+                                        return FadeTransition(
+                                          opacity: Tween<double>(
+                                                  begin: 0.0, end: 1.0)
+                                              .animate(
+                                            CurvedAnimation(
+                                              parent: _animationController,
+                                              curve: Interval(0.5, 1.0,
+                                                  curve: Curves.easeOut),
+                                            ),
+                                          ),
+                                          child: child,
+                                        );
+                                      },
+                                      child: TextFormField(
+                                        controller: _passwordController,
+                                        obscureText: _isObscure,
+                                        decoration: InputDecoration(
+                                          labelText: 'Password',
+                                          hintText: '••••••••',
+                                          labelStyle: TextStyle(
+                                            // Username field - with animation
+                                            color: Colors.grey[700],
+                                            fontSize: 14,
+                                          ),
+                                          prefixIcon: Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 12),
+                                            child: Icon(Icons.lock_outline,
+                                                color: Color(0xff3e948e)),
+                                          ),
+                                          suffixIcon: IconButton(
+                                            icon: Icon(
+                                              _isObscure
+                                                  ? Icons
+                                                      .visibility_off_outlined
+                                                  : Icons.visibility_outlined,
+                                              color: Colors.grey[600],
+                                              size: 20,
+                                            ),
+                                            onPressed: () {
+                                              setState(() {
+                                                _isObscure = !_isObscure;
+                                              });
+                                            },
+                                          ),
+                                          filled: true,
+                                          fillColor: Colors.grey[50],
+                                          contentPadding:
+                                              const EdgeInsets.symmetric(
+                                                  vertical: 0),
+                                          enabledBorder: OutlineInputBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                            borderSide: BorderSide(
+                                                color: Colors.grey
+                                                    .withOpacity(0.15)),
+                                          ),
+                                          focusedBorder: OutlineInputBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                            borderSide: BorderSide(
+                                                color: Color(0xff3e948e),
+                                                width: 1.5),
+                                          ),
+                                          errorBorder: OutlineInputBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                            borderSide: BorderSide(
+                                                color: Colors.red.shade300),
+                                          ),
+                                        ),
+                                        validator: (value) {
+                                          if (value == null || value.isEmpty)
+                                            return 'Please enter your password';
+                                          if (value.length < 6)
+                                            return 'Password must be at least 6 characters';
+                                          return null;
+                                        },
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    const SizedBox(height: 30),
+                                    AnimatedBuilder(
+                                      animation: _animationController,
+                                      builder: (context, child) {
+                                        return FadeTransition(
+                                          opacity: Tween<double>(
+                                                  begin: 0.0, end: 1.0)
+                                              .animate(
+                                            CurvedAnimation(
+                                              parent: _animationController,
+                                              curve: Interval(0.7, 1.0,
+                                                  curve: Curves.easeOut),
+                                            ),
+                                          ),
+                                          child: SlideTransition(
+                                            position: Tween<Offset>(
+                                                    begin: Offset(0, 0.3),
+                                                    end: Offset.zero)
+                                                .animate(
+                                              CurvedAnimation(
+                                                parent: _animationController,
+                                                curve: Interval(0.7, 1.0,
+                                                    curve: Curves.easeOutCubic),
+                                              ),
+                                            ),
+                                            child: child,
+                                          ),
+                                        );
+                                      },
+                                      child: SizedBox(
+                                        width: double.infinity,
+                                        height: 50,
+                                        child: TweenAnimationBuilder<double>(
+                                          tween: Tween<double>(
+                                              begin: 1.0, end: 1.0),
+                                          duration:
+                                              const Duration(milliseconds: 200),
+                                          builder: (context, value, child) {
+                                            return Transform.scale(
+                                              scale: value,
+                                              child: ElevatedButton(
+                                                style: ElevatedButton.styleFrom(
+                                                  backgroundColor:
+                                                      Color(0xff3e948e),
+                                                  foregroundColor: Colors.white,
+                                                  elevation: 0,
+                                                  shadowColor:
+                                                      Colors.transparent,
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            12),
+                                                  ),
+                                                ),
+                                                onPressed: isloading
+                                                    ? null
+                                                    : () {
+                                                        // Button press animation
+                                                        setState(() {
+                                                          _signIn();
+                                                        });
+                                                      },
+                                                child: isloading
+                                                    ? SizedBox(
+                                                        width: 24,
+                                                        height: 24,
+                                                        child:
+                                                            CircularProgressIndicator(
+                                                          color: Colors.white,
+                                                          strokeWidth: 2.0,
+                                                        ),
+                                                      )
+                                                    : Text(
+                                                        'Sign In',
+                                                        style: TextStyle(
+                                                          fontSize: 16,
+                                                          fontWeight:
+                                                              FontWeight.w600,
+                                                        ),
+                                                      ),
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                    ),
+                                    AnimatedBuilder(
+                                      animation: _animationController,
+                                      builder: (context, child) {
+                                        return FadeTransition(
+                                          opacity: Tween<double>(
+                                                  begin: 0.0, end: 1.0)
+                                              .animate(
+                                            CurvedAnimation(
+                                              parent: _animationController,
+                                              curve: const Interval(0.6, 1.0,
+                                                  curve: Curves.easeOut),
+                                            ),
+                                          ),
+                                          child: Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              const Flexible(
+                                                flex: 4,
+                                                child: Text(
+                                                  "Don't have an account?",
+                                                  style: TextStyle(
+                                                      color: Colors.black54,
+                                                      fontSize: 13),
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  softWrap: false,
+                                                ),
+                                              ),
+                                              Flexible(
+                                                flex: 2,
+                                                child: TextButton(
+                                                  onPressed: () =>
+                                                      Navigator.pushReplacement(
+                                                    context,
+                                                    SlidingPageTransitionRL(
+                                                        page: SignUp()),
+                                                  ),
+                                                  child: const Text(
+                                                    'Sign Up',
+                                                    style: TextStyle(
+                                                      color: Color(0xff3e948e),
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                    softWrap: false,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      },
+                                    )
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 30),
                           ],
                         ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
