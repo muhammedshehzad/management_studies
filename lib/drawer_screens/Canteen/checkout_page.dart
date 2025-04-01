@@ -284,9 +284,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
           'totalAmount': totalAmount,
           'timestamp': FieldValue.serverTimestamp(),
           'status': status,
-          // 'draft', 'success', or 'failed'
+
           'paymentId': paymentId ?? '',
-          // Save Razorpay payment ID if available
+
         });
 
         for (var entry in cartItems.entries) {
@@ -324,7 +324,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
               : (user.displayName ?? 'Test Customer'),
           'totalAmount': totalAmount,
           'timestamp': FieldValue.serverTimestamp(),
-          'status': status, // 'draft', 'success', or 'failed'
+          'status': status,
         });
 
         for (var entry in cartItems.entries) {
@@ -347,7 +347,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
   void _handlePaymentError(PaymentFailureResponse response) async {
     final totalAmount = context.read<CartProvider>().calculateTotal();
-    setState(() => isLoading = true); // Show loading animation
+    setState(() => isLoading = true);
     await saveTransactionToFirestore(totalAmount, status: 'failed');
     setState(() => isLoading = false);
     setState(() => paymentFailed = true);
@@ -422,16 +422,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
             title: Text('Checkout Page'),
             centerTitle: true,
             actions: [
-              // IconButton(
-              //     onPressed: () {
-              //       Navigator.push(
-              //         context,
-              //         SlidingPageTransitionRL(
-              //           page: OrdersPage(),
-              //         ),
-              //       );
-              //     },
-              //     icon: Icon(Icons.history)),
               SizedBox(width: 5),
             ],
           ),

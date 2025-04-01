@@ -40,7 +40,7 @@ class _StudentDetailsState extends State<StudentDetails> {
         'regno': student.registerNumber,
         'academicyear': student.academicYear,
         'admno': student.admissionNumber,
-        'admdate': student.admissionDate, // Ensure proper format
+        'admdate': student.admissionDate,
         'department': student.department,
         'hod': student.hod,
         'fathername': student.fatherName,

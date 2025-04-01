@@ -1,10 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:new_school/drawer_screens/Canteen/canteen_page.dart';
 import 'package:new_school/drawer_screens/Canteen/checkout_page.dart';
-
 import '../../sliding_transition.dart';
-import 'cart_page.dart';
-
 
 class PaymentFailurePage extends StatelessWidget {
   const PaymentFailurePage({super.key});

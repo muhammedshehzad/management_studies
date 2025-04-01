@@ -1695,7 +1695,7 @@ class GradeFilterButton extends StatefulWidget {
 
 class _GradeFilterButtonState extends State<GradeFilterButton> {
   List<String> grades = ['All'];
-  String? currentFilter; // Selected value
+  String? currentFilter;
 
   Future<List<String>> fetchGrades() async {
     try {
@@ -1728,7 +1728,7 @@ class _GradeFilterButtonState extends State<GradeFilterButton> {
     final fetchedGrades = await fetchGrades();
     setState(() {
       grades = ['All'] + fetchedGrades;
-      currentFilter = grades.first; // Set the default selected value
+      currentFilter = grades.first;
     });
   }
 
@@ -1736,7 +1736,6 @@ class _GradeFilterButtonState extends State<GradeFilterButton> {
   Widget build(BuildContext context) {
     return DropdownButton<String>(
       value: currentFilter,
-      // Currently selected value
       items: grades.map((grade) {
         return DropdownMenuItem<String>(
           value: grade,
@@ -1749,8 +1748,7 @@ class _GradeFilterButtonState extends State<GradeFilterButton> {
       onChanged: (String? value) {
         setState(() {
           currentFilter = value!;
-          widget.onSelected(value); // Notify the parent widget
-          print(currentFilter); // Debugging print statement
+          widget.onSelected(value);
         });
       },
       hint: Text(
@@ -1759,7 +1757,7 @@ class _GradeFilterButtonState extends State<GradeFilterButton> {
       ),
       icon: const Icon(Icons.arrow_drop_down, color: Colors.blueGrey),
       dropdownColor: Colors.white,
-      underline: Container(height: 0), // Optional: Remove underline
+      underline: Container(height: 0),
     );
   }
 }
@@ -1776,22 +1774,11 @@ class DepartmentFilterButton extends StatefulWidget {
 
 class _DepartmentFilterButtonState extends State<DepartmentFilterButton> {
   List<String> department = ['All'];
-  String? selectedFilter; // Selected value
+  String? selectedFilter;
   String _filterDepartment = '';
   List<DocumentSnapshot> filteredDeptRecords = [];
-  List<DocumentSnapshot> allDptRecords = []; // All fetched records
+  List<DocumentSnapshot> allDptRecords = [];
 
-  void _applyDeptFilter() {
-    setState(() {
-      if (_filterDepartment == 'All') {
-        filteredDeptRecords = allDptRecords;
-      } else {
-        filteredDeptRecords = allDptRecords
-            .where((doc) => doc['department'] == _filterDepartment)
-            .toList();
-      }
-    });
-  }
 
   Future<List<String>> fetchDepartments() async {
     try {
@@ -1827,7 +1814,7 @@ class _DepartmentFilterButtonState extends State<DepartmentFilterButton> {
     final fetchedDepartments = await fetchDepartments();
     setState(() {
       department = ['All'] + fetchedDepartments;
-      selectedFilter = department.first; // Set the default selected value
+      selectedFilter = department.first;
     });
   }
 
@@ -1839,7 +1826,7 @@ class _DepartmentFilterButtonState extends State<DepartmentFilterButton> {
         return DropdownMenuItem<String>(
           value: department,
           child: Text(
-            department == 'All' ? 'All Dept' : department, // Use $grade here
+            department == 'All' ? 'All Dept' : department,
             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
           ),
         );
@@ -1849,7 +1836,6 @@ class _DepartmentFilterButtonState extends State<DepartmentFilterButton> {
           selectedFilter = newValue!;
           _filterDepartment = newValue;
           widget.onSelected(newValue!);
-          print(selectedFilter); // Debugging print statement
         });
       },
       hint: Text(
@@ -1861,7 +1847,7 @@ class _DepartmentFilterButtonState extends State<DepartmentFilterButton> {
         color: Colors.blueGrey,
       ),
       dropdownColor: Colors.white,
-      underline: Container(height: 0), // Optional: Remove underline
+      underline: Container(height: 0),
     );
   }
 }

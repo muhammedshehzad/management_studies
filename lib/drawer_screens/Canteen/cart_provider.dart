@@ -6,7 +6,7 @@ class CartProvider with ChangeNotifier {
   Map<String, Map<String, dynamic>> get cart => _cart;
 
   String generateUniqueOrderId() {
-    return DateTime.now().millisecondsSinceEpoch.toString(); // Unique ID
+    return DateTime.now().millisecondsSinceEpoch.toString();
   }
 
   double calculateDiscountedPrice(double price, double discount) {
@@ -21,7 +21,7 @@ class CartProvider with ChangeNotifier {
   double calculateTotal() {
     return _cart.entries.fold(0.0, (total, entry) {
       final item = entry.value;
-      // Use the discounted price here when calculating the total
+
       return total + (item['discountedPrice'] * item['quantity']);
     });
   }
@@ -33,12 +33,12 @@ class CartProvider with ChangeNotifier {
 
   void addToCart(
       String name, int quantity, double price, double discountedPrice) {
-    String orderId = generateUniqueOrderId(); // Generate unique ID
+    String orderId = generateUniqueOrderId();
     if (_cart.containsKey(name)) {
       _cart[name]!['quantity'] = (_cart[name]!['quantity'] as int) + quantity;
     } else {
       _cart[name] = {
-        'orderId': orderId, // Add order ID
+        'orderId': orderId,
         'name': name,
         'price': price,
         'discountedPrice': discountedPrice,
@@ -55,9 +55,9 @@ class CartProvider with ChangeNotifier {
     } else {
       _cart[name] = {
         'name': name,
-        'price': price, // Store the original price
-        'discount': discount, // Store the discount rate
-        'discountedPrice': discountedPrice, // Store the discounted price
+        'price': price,
+        'discount': discount,
+        'discountedPrice': discountedPrice,
         'quantity': 1,
       };
     }

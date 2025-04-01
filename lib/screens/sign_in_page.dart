@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -148,18 +149,45 @@ class _SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  double _titleSlidePosition = 50.0;
-  late AnimationController _animationController;
-  late Animation<double> _fadeInAnimation;
-  late Animation<Offset> _slideAnimation;
-  bool _isObscure = true;
-  bool _rememberMe = false;
+  StreamSubscription<User?>? _userSubscription;
+  final _db = FirebaseFirestore.instance;
+  bool _isUpdatingEmail = false;
+  final TextEditingController emailController = TextEditingController();
+  String? userid;
+
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _saveProfileToIsar(Map<String, dynamic> data,
+      {bool updateEmail = true}) async {
+    await IsarUserService.isar!.writeTxn(() async {
+      final existingUser = await IsarUserService.isar!.userModels
+          .filter()
+          .uidEqualTo(userid!)
+          .findFirst();
+
+      final user = existingUser ?? UserModel();
+      user.uid = userid!;
+      user.username = data['username'] ?? 'N/A';
+      user.role = data['role'] ?? 'N/A';
+      user.url = data['url'] ?? '';
+      user.department = data['department'] ?? '';
+      user.address = data['address'] ?? '';
+      user.phone = data['phone'] ?? 'N/A';
+
+      if (updateEmail) {
+        user.email = data['email'] ?? 'N/A';
+      } else {
+        user.email = existingUser?.email ?? data['email'] ?? 'N/A';
+      }
+
+      await IsarUserService.isar!.userModels.put(user);
+    });
   }
 
   Future<void> syncHomeworkRecordsFirestoreToIsar() async {
@@ -252,6 +280,106 @@ class _SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
       print("1Error during sync: $e");
     }
   }
+
+  Future<void> syncLeavesFirestoreToIsar() async {
+    try {
+      final User? currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) {
+        print("User not logged in.");
+        return;
+      }
+
+      final String userRole = await _getUserRole();
+      Query<Map<String, dynamic>> query;
+
+      if (userRole == 'Student') {
+        query = FirebaseFirestore.instance
+            .collection('Leaves')
+            .where('userId', isEqualTo: currentUser.uid)
+            .orderBy('createdAt', descending: true);
+        print("Fetching leave records for Student...");
+      } else if (userRole == 'Teacher') {
+        final userDocSnapshot = await FirebaseFirestore.instance
+            .collection('Users')
+            .doc(currentUser.uid)
+            .get();
+
+        if (!userDocSnapshot.exists ||
+            userDocSnapshot.data()?['department'] == null) {
+          print("User department not found.");
+          return;
+        }
+
+        final userDepartment = userDocSnapshot.data()!['department'];
+        query = FirebaseFirestore.instance
+            .collection('Leaves')
+            .where(Filter.or(
+              Filter('userId', isEqualTo: currentUser.uid),
+              Filter.and(
+                Filter('creator_role', isEqualTo: 'student'),
+                Filter('userDepartment', isEqualTo: userDepartment),
+              ),
+            ))
+            .orderBy('createdAt', descending: true);
+
+        print(
+            "Fetching leave records for $userRole in department: $userDepartment...");
+      } else {
+        query = FirebaseFirestore.instance
+            .collection('Leaves')
+            .orderBy('createdAt', descending: true);
+        print("Fetching all leave records...");
+      }
+
+      final snapshot = await query.get();
+
+      if (snapshot.docs.isEmpty) {
+        print("No leave records found in Firestore.");
+        return;
+      }
+
+      await IsarUserService.isar!.writeTxn(() async {
+        await IsarUserService.isar!.leaveRequests.clear();
+      });
+
+      List<LeaveRequest> leaveRecords = [];
+
+      for (var doc in snapshot.docs) {
+        final data = doc.data();
+        DateTime startDate = (data['startDate'] as Timestamp).toDate();
+        DateTime endDate = (data['endDate'] as Timestamp).toDate();
+
+        leaveRecords.add(LeaveRequest()
+          ..userId = data['userId'] ?? ''
+          ..leavesId = data['leavesid'] ?? ''
+          ..username = data['username'] ?? ''
+          ..userDepartment = data['userDepartment'] ?? ''
+          ..creatorRole = data['creator_role'] ?? ''
+          ..leaveType = data['leaveType'] ?? ''
+          ..startDate = startDate
+          ..endDate = endDate
+          ..createdAt =
+              (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now()
+          ..leaveReason = data['leaveReason'] ?? ''
+          ..durationDays = data['durationDays'] ?? 0
+          ..status = data['status'] ?? ''
+          ..isSynced = true);
+      }
+
+      if (leaveRecords.isNotEmpty) {
+        await IsarUserService.isar!.writeTxn(() async {
+          await IsarUserService.isar!.leaveRequests.putAll(leaveRecords);
+        });
+        print(
+            "Synced ${leaveRecords.length} leave records from Firestore to Isar.");
+      } else {
+        print("No new leave records to sync.");
+      }
+    } catch (e) {
+      print("Error during leave records sync: $e");
+    }
+  }
+
 
   Future<void> syncRecordsFirestoreToIsar() async {
     try {
@@ -498,7 +626,6 @@ class _SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
         final String status = data['status'] ?? '';
         final String paymentId = data['paymentId'] ?? '';
 
-        // if (status == 'draft' || status == 'failed') {
         TransactionModel transaction = TransactionModel()
           ..transactionId = transactionId
           ..userId = userId
@@ -548,6 +675,36 @@ class _SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
     }
   }
 
+  Future<void> _handleUserChange(User user) async {
+    if (_isUpdatingEmail) return;
+
+    final currentFirebaseEmail = user.email;
+    if (currentFirebaseEmail == null) return;
+
+    print("Updating Firestore email to: $currentFirebaseEmail");
+
+    try {
+      await _db.collection('Users').doc(userid).update({
+        'email': currentFirebaseEmail,
+      });
+    } catch (e) {
+      print("Error updating Firestore email: $e");
+      return;
+    }
+
+    final snapshot = await _db.collection('Users').doc(userid).get();
+    if (snapshot.exists) {
+      final data = snapshot.data()!;
+
+      await _saveProfileToIsar(data, updateEmail: true);
+      if (mounted) {
+        setState(() {
+          emailController.text = currentFirebaseEmail;
+        });
+      }
+    }
+  }
+
   Future<void> _signIn() async {
     setState(() => isloading = true);
 
@@ -561,7 +718,16 @@ class _SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
       String password = _passwordController.text.trim();
       User? userCredential =
           await _auth.signInWithEmailAndPassword(email, password);
-
+      final User? user = FirebaseAuth.instance.currentUser;
+      userid = user?.uid;
+      if (userid != null) {
+        _userSubscription =
+            FirebaseAuth.instance.userChanges().listen((User? user) {
+          if (user != null && mounted) {
+            _handleUserChange(user);
+          }
+        });
+      }
       if (userCredential != null) {
         var userDoc = await FirebaseFirestore.instance
             .collection('Users')
@@ -663,48 +829,60 @@ class _SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
-      body: Stack(
-        children: [
-          Positioned(
-            top: -100,
-            right: -100,
-            child: AnimatedBuilder(
-              animation: _animationController,
-              builder: (context, child) {
-                return Transform.scale(
-                  scale: _animationController.value * 1.0,
-                  child: Opacity(
-                    opacity: _animationController.value * 0.7,
-                    child: Container(
-                      width: 300,
-                      height: 300,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Color(0xff56c1ba).withOpacity(0.2),
-                      ),
+      resizeToAvoidBottomInset: true,
+      backgroundColor: Colors.grey[100],
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 32.0, vertical: 20.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 500),
+                  curve: Curves.easeInOut,
+                  height: 180,
+                  child: Image.asset('lib/assets/access.png'),
+                ),
+                const SizedBox(height: 24),
+                ShaderMask(
+                  shaderCallback: (bounds) => LinearGradient(
+                    colors: [Color(0xff3e948e), Color(0xff56c1ba)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ).createShader(bounds),
+                  child: const Text(
+                    "Welcome Back!",
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
                     ),
                   ),
-                );
-              },
-            ),
-          ),
-          Positioned(
-            bottom: -80,
-            left: -50,
-            child: AnimatedBuilder(
-              animation: _animationController,
-              builder: (context, child) {
-                return Transform.scale(
-                  scale: _animationController.value * 1.0,
-                  child: Opacity(
-                    opacity: _animationController.value * 0.5,
-                    child: Container(
-                      width: 200,
-                      height: 200,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Color(0xff3e948e).withOpacity(0.3),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  "Sign in to continue",
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.black45,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+                const SizedBox(height: 40),
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10,
+                        offset: Offset(0, 4),
+    
                       ),
                     ),
                   ),

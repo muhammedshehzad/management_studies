@@ -1,10 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-// import 'package:new_school/drawer_screens/Canteen/orders_page.dart';
 import 'package:provider/provider.dart';
 import '../../../sliding_transition.dart';
-// import '../cart_provider.dart';
-// import '../cart_page.dart';
 import 'package:badges/badges.dart' as badges;
 import 'dart:convert';
 import 'dart:typed_data';
@@ -123,7 +120,7 @@ class _CanteenMenuPageState extends State<CanteenMenuPage> {
 
   Future<void> saveMenuItemsToFirestore() async {
     try {
-      // Reference to the Firestore 'menuItems' collection
+
       CollectionReference menuCollection =
       FirebaseFirestore.instance.collection('menuItems');
 
@@ -132,7 +129,7 @@ class _CanteenMenuPageState extends State<CanteenMenuPage> {
           'name': item['name'],
           'price': item['price'],
           'discount': item['discount'],
-          'image': item['image'], // Store local image path relative to assets
+          'image': item['image'],
         });
       }
       print("Menu items saved successfully!");
@@ -150,7 +147,7 @@ class _CanteenMenuPageState extends State<CanteenMenuPage> {
           'name': doc['name'],
           'price': doc['price'],
           'discount': doc['discount'],
-          'image': doc['image'], // The image path is retrieved
+          'image': doc['image'],
         };
       }).toList();
       return items;
@@ -229,8 +226,8 @@ class _CanteenMenuPageState extends State<CanteenMenuPage> {
                   itemCount: menuItems.length,
                   itemBuilder: (context, index) {
                     final item = menuItems[index];
-                    // final discountedPrice = calculateDiscountedPrice(
-                    //     item['price'], item['discount']);
+
+
                     return Container(
                       child: Card(
                         elevation: 3.0,

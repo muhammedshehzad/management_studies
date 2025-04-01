@@ -114,6 +114,7 @@ class _SignUpState extends State<SignUp> with SingleTickerProviderStateMixin {
 
         print('User details added to Firestore.');
 
+
         await _checkIfAdmin(userCredential.uid);
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -200,7 +201,27 @@ class _SignUpState extends State<SignUp> with SingleTickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: Colors.grey[100],
+      appBar: AppBar(
+        backgroundColor: Colors.grey[100],
+        elevation: 0,
+        title: ShaderMask(
+          shaderCallback: (bounds) => LinearGradient(
+            colors: [Color(0xff3e948e), Color(0xff56c1ba)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ).createShader(bounds),
+          child: const Text(
+            "Sign Up",
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+        ),
+      ),
+
       body: SafeArea(
         child: Stack(
           children: [

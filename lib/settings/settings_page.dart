@@ -1,10 +1,8 @@
 import 'dart:async';
 import 'dart:io';
-
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:new_school/screens/sign_up_page.dart';
 import 'package:new_school/settings/terms_of_use.dart';
 import 'package:new_school/settings/two-factor_authentication.dart';
 
